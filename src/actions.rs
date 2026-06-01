@@ -31,8 +31,18 @@ pub fn run_action(state: &mut GameState, action: Action) {
         return;
     }
 
+    if matches!(action, Action::AcceptOrder | Action::DeclineOrder) {
+        resolve_pending_order(state, action);
+        return;
+    }
+
     if state.event.is_some() {
         state.log_line("An incident is waiting for a decision.");
+        return;
+    }
+
+    if state.pending_order.is_some() {
+        state.log_line("A premium contract is waiting for a decision.");
         return;
     }
 
@@ -163,6 +173,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.log_line("No roasted coffee ready to sell.");
             }
         }
+        Action::DeliverOrder => deliver_order(state),
         Action::ImproveEnclosure => {
             let cost = 45 + state.enclosure_level as i32 * 20;
             if state.money >= cost {
@@ -242,6 +253,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         }
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => {}
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {}
+        Action::AcceptOrder | Action::DeclineOrder => {}
         Action::ContinueDay => {}
     }
 
@@ -249,6 +261,62 @@ pub fn run_action(state: &mut GameState, action: Action) {
         state.suspicion += 2.0;
         state.reputation -= 1;
     }
+    state.clamp();
+}
+
+fn resolve_pending_order(state: &mut GameState, action: Action) {
+    let Some(order) = state.pending_order.take() else {
+        state.log_line("No premium order is waiting.");
+        return;
+    };
+
+    match action {
+        Action::AcceptOrder => {
+            state.log_line(format!(
+                "Accepted order from {}: {:.1} bags due day {}.",
+                order.client, order.bags, order.due_day
+            ));
+            state.active_order = Some(order);
+            state.suspicion += 1.5;
+        }
+        Action::DeclineOrder => {
+            state.log_line(format!(
+                "Declined {}. The contract used too many quiet adjectives.",
+                order.client
+            ));
+            state.reputation -= 1;
+            state.suspicion -= 1.5;
+        }
+        _ => {}
+    }
+    state.clamp();
+}
+
+fn deliver_order(state: &mut GameState) {
+    let Some(order) = state.active_order.clone() else {
+        state.log_line("No active premium order to deliver.");
+        return;
+    };
+
+    if state.roasted_coffee < order.bags {
+        state.log_line(format!(
+            "Order needs {:.1} roasted bags. Current stock is {:.1}.",
+            order.bags, state.roasted_coffee
+        ));
+        return;
+    }
+
+    state.roasted_coffee -= order.bags;
+    state.money += order.payout;
+    state.daily_sales += order.payout;
+    state.reputation += order.reputation_reward + i32::from(state.tasting_room);
+    let legal_reduction = if state.legal_office { 1.5 } else { 0.0 };
+    state.suspicion += (order.suspicion_risk - legal_reduction).max(0.5);
+    state.active_order = None;
+    state.log_line(format!(
+        "Delivered premium order to {} for ${}.",
+        order.client, order.payout
+    ));
     state.clamp();
 }
 

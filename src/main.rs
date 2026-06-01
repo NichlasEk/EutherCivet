@@ -7,10 +7,10 @@ mod ui;
 mod visuals;
 
 use model::*;
-use simulation::{advance_day, tick_game, trigger_random_events};
+use simulation::{advance_day, generate_order_offers, tick_game, trigger_random_events};
 use ui::{
-    handle_buttons, refresh_day_modal, refresh_event_modal, refresh_inspection_modal, spawn_ui,
-    update_log, update_stats, update_status_bars,
+    handle_buttons, refresh_day_modal, refresh_event_modal, refresh_inspection_modal,
+    refresh_order_modal, spawn_ui, update_log, update_stats, update_status_bars,
 };
 use visuals::{animate_world, refresh_world_visuals, spawn_world};
 
@@ -21,6 +21,7 @@ fn main() {
         .insert_resource(GameTick(Timer::from_seconds(1.0, TimerMode::Repeating)))
         .insert_resource(EventTick(Timer::from_seconds(9.0, TimerMode::Repeating)))
         .insert_resource(DayTick(Timer::from_seconds(45.0, TimerMode::Repeating)))
+        .insert_resource(OrderTick(Timer::from_seconds(32.0, TimerMode::Repeating)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherCivet".to_string(),
@@ -36,6 +37,7 @@ fn main() {
                 handle_buttons,
                 tick_game,
                 trigger_random_events,
+                generate_order_offers,
                 advance_day,
                 update_stats,
                 update_status_bars,
@@ -44,6 +46,7 @@ fn main() {
                 refresh_world_visuals,
                 refresh_inspection_modal,
                 refresh_event_modal,
+                refresh_order_modal,
                 refresh_day_modal,
             ),
         )

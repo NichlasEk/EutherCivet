@@ -1,13 +1,15 @@
 use bevy::prelude::*;
 
 use crate::model::{
-    DayReport, DayTick, EventState, EventTick, GameResult, GameState, GameTick, RandomEventKind,
+    DayReport, DayTick, EventState, EventTick, GameResult, GameState, GameTick, OrderOffer,
+    OrderTick, RandomEventKind,
 };
 
 pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut<GameState>) {
     if !timer.0.tick(time.delta()).just_finished()
         || state.inspection
         || state.event.is_some()
+        || state.pending_order.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
@@ -46,6 +48,7 @@ pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMu
     if !timer.0.tick(time.delta()).just_finished()
         || state.inspection
         || state.event.is_some()
+        || state.pending_order.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
@@ -54,6 +57,49 @@ pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMu
 
     let report = settle_day(&mut state);
     state.day_report = Some(report);
+}
+
+pub fn generate_order_offers(
+    time: Res<Time>,
+    mut timer: ResMut<OrderTick>,
+    mut state: ResMut<GameState>,
+) {
+    if !timer.0.tick(time.delta()).just_finished()
+        || state.inspection
+        || state.event.is_some()
+        || state.pending_order.is_some()
+        || state.day_report.is_some()
+        || state.game_result.is_some()
+        || state.pending_order.is_some()
+        || state.active_order.is_some()
+    {
+        return;
+    }
+
+    let client = match state.rand_index(5) {
+        0 => "Nordic Embassy Breakfast Desk",
+        1 => "Suspiciously Calm Boutique Hotel",
+        2 => "Ministry of Agricultural Irony",
+        3 => "Very Normal Import Cooperative",
+        _ => "Monaco Goat-Free Espresso Bar",
+    };
+    let bags = 3.0 + state.rand_index(5) as f32;
+    let base_price = 22.0 + state.reputation.max(0) as f32 * 0.9;
+    let tasting_bonus = if state.tasting_room { 1.15 } else { 1.0 };
+    let payout = (bags * base_price * tasting_bonus).round() as i32;
+    let reputation_reward = 2 + (bags / 4.0) as i32;
+    let suspicion_risk = 2.5 + bags * 0.55;
+    let due_day = (state.day + 1).min(7);
+
+    state.pending_order = Some(OrderOffer {
+        client: client.to_string(),
+        bags,
+        payout,
+        reputation_reward,
+        suspicion_risk,
+        due_day,
+    });
+    state.log_line("A premium buyer sends a contract that uses the word 'discreet' too often.");
 }
 
 fn settle_day(state: &mut GameState) -> DayReport {
@@ -101,6 +147,17 @@ fn settle_day(state: &mut GameState) -> DayReport {
     }
     if state.tasting_room && state.daily_sales > 0 {
         reputation_delta += 1;
+    }
+
+    if state
+        .active_order
+        .as_ref()
+        .is_some_and(|order| order.due_day <= day)
+    {
+        state.active_order = None;
+        reputation_delta -= 3;
+        suspicion_delta += 6.0;
+        state.log_line("Missed a premium order. The buyer files a complaint with adjectives.");
     }
 
     state.reputation += reputation_delta;

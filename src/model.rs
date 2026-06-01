@@ -34,6 +34,10 @@ pub struct GameState {
     pub inspection: bool,
     #[serde(default)]
     pub event: Option<EventState>,
+    #[serde(default)]
+    pub pending_order: Option<OrderOffer>,
+    #[serde(default)]
+    pub active_order: Option<OrderOffer>,
     pub daily_sales: i32,
     pub daily_expenses: i32,
     pub day_report: Option<DayReport>,
@@ -77,6 +81,16 @@ pub struct EventState {
     pub body: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct OrderOffer {
+    pub client: String,
+    pub bags: f32,
+    pub payout: i32,
+    pub reputation_reward: i32,
+    pub suspicion_risk: f32,
+    pub due_day: u32,
+}
+
 impl Default for GameState {
     fn default() -> Self {
         Self {
@@ -102,6 +116,8 @@ impl Default for GameState {
             goat_present: true,
             inspection: false,
             event: None,
+            pending_order: None,
+            active_order: None,
             daily_sales: 0,
             daily_expenses: 0,
             day_report: None,
@@ -173,6 +189,9 @@ pub struct EventTick(pub Timer);
 #[derive(Resource)]
 pub struct DayTick(pub Timer);
 
+#[derive(Resource)]
+pub struct OrderTick(pub Timer);
+
 #[derive(Component)]
 pub struct StatText(pub StatKind);
 
@@ -202,6 +221,9 @@ pub struct DayModal;
 #[derive(Component)]
 pub struct EventModal;
 
+#[derive(Component)]
+pub struct OrderModal;
+
 #[derive(Component, Clone, Copy)]
 pub struct ActionButton(pub Action);
 
@@ -220,6 +242,7 @@ pub enum StatKind {
     Reputation,
     Paperwork,
     Upgrades,
+    Order,
 }
 
 #[derive(Clone, Copy)]
@@ -244,12 +267,15 @@ pub enum Action {
     BuildFruitSorter,
     BuildRoastingShed,
     BuildTastingRoom,
+    DeliverOrder,
     Save,
     Load,
     ContinueDay,
     EventOptionA,
     EventOptionB,
     EventOptionC,
+    AcceptOrder,
+    DeclineOrder,
     InspectPaperwork,
     InspectTasting,
     InspectGoat,

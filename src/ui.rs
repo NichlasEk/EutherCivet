@@ -63,6 +63,7 @@ pub fn spawn_ui(commands: &mut Commands) {
                     StatKind::Reputation,
                     StatKind::Paperwork,
                     StatKind::Upgrades,
+                    StatKind::Order,
                 ] {
                     panel.spawn((
                         Text::new("..."),
@@ -118,6 +119,7 @@ pub fn spawn_ui(commands: &mut Commands) {
                             ("Collect beans", Action::CollectBeans),
                             ("Roast coffee", Action::RoastCoffee),
                             ("Sell coffee", Action::SellCoffee),
+                            ("Deliver order", Action::DeliverOrder),
                             ("Improve enclosure", Action::ImproveEnclosure),
                             ("Show paperwork to authorities", Action::ShowPaperwork),
                             ("Build legal office", Action::BuildLegalOffice),
@@ -211,6 +213,8 @@ fn button_base_color(action: Action) -> Color {
         }
         Action::Save | Action::Load => Color::srgb(0.18, 0.18, 0.18),
         Action::ContinueDay => Color::srgb(0.22, 0.38, 0.22),
+        Action::DeliverOrder | Action::AcceptOrder => Color::srgb(0.33, 0.34, 0.12),
+        Action::DeclineOrder => Color::srgb(0.32, 0.16, 0.12),
         Action::BuildLegalOffice
         | Action::HireCaretaker
         | Action::BuildFruitSorter
@@ -275,6 +279,7 @@ pub fn update_stats(
             StatKind::Reputation => format!("Reputation: {}", state.reputation),
             StatKind::Paperwork => format!("Paperwork level: {}", state.paperwork_level),
             StatKind::Upgrades => format!("Upgrades: {}", upgrade_summary(&state)),
+            StatKind::Order => order_summary(&state),
         };
         **text = value;
         color.0 = match stat.0 {
@@ -284,6 +289,19 @@ pub fn update_stats(
             StatKind::Money if state.money < 20 => Color::srgb(1.0, 0.38, 0.22),
             _ => Color::srgb(0.97, 0.92, 0.78),
         };
+    }
+}
+
+fn order_summary(state: &GameState) -> String {
+    if let Some(order) = &state.active_order {
+        format!(
+            "Order: {:.1} bags for ${} due day {}",
+            order.bags, order.payout, order.due_day
+        )
+    } else if state.pending_order.is_some() {
+        "Order: offer pending".to_string()
+    } else {
+        "Order: none".to_string()
     }
 }
 
@@ -565,6 +583,79 @@ pub fn refresh_event_modal(
                 spawn_button(modal, a, Action::EventOptionA);
                 spawn_button(modal, b, Action::EventOptionB);
                 spawn_button(modal, c, Action::EventOptionC);
+            });
+    } else if !should_show && exists {
+        for entity in &modal {
+            commands.entity(entity).despawn();
+        }
+    } else if should_show && exists && state.is_changed() {
+        for entity in &modal {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+pub fn refresh_order_modal(
+    mut commands: Commands,
+    state: Res<GameState>,
+    modal: Query<Entity, With<OrderModal>>,
+) {
+    let should_show = state.pending_order.is_some();
+    let exists = !modal.is_empty();
+
+    if should_show && !exists {
+        let order = state.pending_order.as_ref().expect("order checked above");
+        commands
+            .spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: percent(26),
+                    top: percent(18),
+                    width: percent(48),
+                    padding: UiRect::all(px(22)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(12),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.06, 0.09, 0.055, 0.97)),
+                GlobalZIndex(7),
+                OrderModal,
+            ))
+            .with_children(|modal| {
+                modal.spawn((
+                    Text::new("Premium Coffee Contract"),
+                    TextFont {
+                        font_size: 31.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.86, 1.0, 0.48)),
+                ));
+                modal.spawn((
+                    Text::new(format!(
+                        "{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.",
+                        order.client,
+                        order.bags,
+                        order.due_day,
+                        order.payout,
+                        order.reputation_reward,
+                        order.suspicion_risk
+                    )),
+                    TextFont {
+                        font_size: 17.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.94, 0.91, 0.75)),
+                ));
+                modal.spawn((
+                    Text::new("The contract is legitimate. The word 'discreet' appears seven times."),
+                    TextFont {
+                        font_size: 15.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.78, 0.88, 0.70)),
+                ));
+                spawn_button(modal, "Accept contract", Action::AcceptOrder);
+                spawn_button(modal, "Decline politely", Action::DeclineOrder);
             });
     } else if !should_show && exists {
         for entity in &modal {
