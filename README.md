@@ -16,7 +16,12 @@ The game saves to `euther_civet_save.json` in the project root. Use the in-game 
 Cargo.toml
 README.md
 src/
+  actions.rs
   main.rs
+  model.rs
+  simulation.rs
+  ui.rs
+  visuals.rs
 ```
 
 ## Implemented
@@ -28,6 +33,7 @@ src/
 - Buttons for planting, harvesting, feeding, collecting, roasting, selling, enclosure upgrades, paperwork, save, and load.
 - Random absurd events, including police, journalists, inspections, helicopter, binturong escape, picky civet, and goat.
 - Inspection event: Operation Bitter Bean, with three responses.
+- Seven-day run structure with daily reports, upkeep, reputation/suspicion adjustments, and weekly win/fail verdicts.
 - Warm plantation visuals with red suspicion UI and placeholder shapes for plants, civets, binturong, goat, helicopter, and coffee bags.
 - Polished first-pass UI with status bars, two-column controls, animated helicopter, enclosure staging, and suspicion glow.
 - Local save/load via JSON.
