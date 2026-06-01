@@ -22,6 +22,8 @@ pub struct GameState {
     pub binturong_home: bool,
     pub goat_present: bool,
     pub inspection: bool,
+    #[serde(default)]
+    pub event: Option<EventState>,
     pub daily_sales: i32,
     pub daily_expenses: i32,
     pub day_report: Option<DayReport>,
@@ -47,6 +49,24 @@ pub enum GameResult {
     Failed(String),
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub enum RandomEventKind {
+    PoliceVisit,
+    JournalistQuestions,
+    WelfareInspection,
+    HelicopterOverhead,
+    BinturongEscape,
+    PickyCivet,
+    GoatAppearance,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct EventState {
+    pub kind: RandomEventKind,
+    pub title: String,
+    pub body: String,
+}
+
 impl Default for GameState {
     fn default() -> Self {
         Self {
@@ -66,6 +86,7 @@ impl Default for GameState {
             binturong_home: true,
             goat_present: true,
             inspection: false,
+            event: None,
             daily_sales: 0,
             daily_expenses: 0,
             day_report: None,
@@ -163,6 +184,9 @@ pub struct InspectionModal;
 #[derive(Component)]
 pub struct DayModal;
 
+#[derive(Component)]
+pub struct EventModal;
+
 #[derive(Component, Clone, Copy)]
 pub struct ActionButton(pub Action);
 
@@ -202,6 +226,9 @@ pub enum Action {
     Save,
     Load,
     ContinueDay,
+    EventOptionA,
+    EventOptionB,
+    EventOptionC,
     InspectPaperwork,
     InspectTasting,
     InspectGoat,

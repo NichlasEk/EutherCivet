@@ -32,6 +32,7 @@ src/
 - Happiness changes production, suspicion, and reputation pressure.
 - Buttons for planting, harvesting, feeding, collecting, roasting, selling, enclosure upgrades, paperwork, save, and load.
 - Random absurd events, including police, journalists, inspections, helicopter, binturong escape, picky civet, and goat.
+- Random events pause play and present three response choices with different resource, reputation, suspicion, and welfare effects.
 - Inspection event: Operation Bitter Bean, with three responses.
 - Seven-day run structure with daily reports, upkeep, reputation/suspicion adjustments, and weekly win/fail verdicts.
 - Warm plantation visuals with red suspicion UI and placeholder shapes for plants, civets, binturong, goat, helicopter, and coffee bags.

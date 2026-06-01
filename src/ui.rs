@@ -205,6 +205,9 @@ fn button_base_color(action: Action) -> Color {
         }
         Action::Save | Action::Load => Color::srgb(0.18, 0.18, 0.18),
         Action::ContinueDay => Color::srgb(0.22, 0.38, 0.22),
+        Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {
+            Color::srgb(0.26, 0.25, 0.13)
+        }
         Action::InspectGoat => Color::srgb(0.48, 0.16, 0.12),
         _ => Color::srgb(0.33, 0.21, 0.10),
     }
@@ -474,5 +477,99 @@ pub fn refresh_day_modal(
         for entity in &modal {
             commands.entity(entity).despawn();
         }
+    }
+}
+
+pub fn refresh_event_modal(
+    mut commands: Commands,
+    state: Res<GameState>,
+    modal: Query<Entity, With<EventModal>>,
+) {
+    let should_show = state.event.is_some();
+    let exists = !modal.is_empty();
+
+    if should_show && !exists {
+        let event = state.event.as_ref().expect("event checked above");
+        commands
+            .spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: percent(24),
+                    top: percent(15),
+                    width: percent(52),
+                    padding: UiRect::all(px(22)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(12),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.12, 0.075, 0.035, 0.97)),
+                GlobalZIndex(8),
+                EventModal,
+            ))
+            .with_children(|modal| {
+                modal.spawn((
+                    Text::new(event.title.clone()),
+                    TextFont {
+                        font_size: 31.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(1.0, 0.82, 0.40)),
+                ));
+                modal.spawn((
+                    Text::new(event.body.clone()),
+                    TextFont {
+                        font_size: 17.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.94, 0.88, 0.72)),
+                ));
+
+                let (a, b, c) = event_option_labels(event.kind);
+                spawn_button(modal, a, Action::EventOptionA);
+                spawn_button(modal, b, Action::EventOptionB);
+                spawn_button(modal, c, Action::EventOptionC);
+            });
+    } else if !should_show && exists {
+        for entity in &modal {
+            commands.entity(entity).despawn();
+        }
+    } else if should_show && exists && state.is_changed() {
+        for entity in &modal {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn event_option_labels(kind: RandomEventKind) -> (&'static str, &'static str, &'static str) {
+    match kind {
+        RandomEventKind::PoliceVisit => (
+            "Show bean paperwork",
+            "Offer coffee tasting",
+            "Answer vaguely",
+        ),
+        RandomEventKind::JournalistQuestions => (
+            "Invite full civet tour",
+            "Control the tour route",
+            "No comment",
+        ),
+        RandomEventKind::WelfareInspection => (
+            "Buy enrichment now",
+            "Open every enclosure",
+            "Reschedule politely",
+        ),
+        RandomEventKind::HelicopterOverhead => {
+            ("Deploy coffee tarps", "Wave cheerfully", "Hide everyone")
+        }
+        RandomEventKind::BinturongEscape => ("Hire caretaker", "Let fame happen", "Send the goat"),
+        RandomEventKind::PickyCivet => (
+            "Serve best fruit",
+            "Import better fruit",
+            "Insist it is fine",
+        ),
+        RandomEventKind::GoatAppearance => (
+            "Put goat on payroll",
+            "Remove goat quietly",
+            "Blame goat early",
+        ),
     }
 }

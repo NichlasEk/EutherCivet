@@ -1,4 +1,4 @@
-use crate::model::{Action, GameState};
+use crate::model::{Action, GameState, RandomEventKind};
 
 pub fn run_action(state: &mut GameState, action: Action) {
     if matches!(action, Action::ContinueDay) {
@@ -20,6 +20,19 @@ pub fn run_action(state: &mut GameState, action: Action) {
         } else {
             state.log_line("No save file found.");
         }
+        return;
+    }
+
+    if matches!(
+        action,
+        Action::EventOptionA | Action::EventOptionB | Action::EventOptionC
+    ) {
+        resolve_event(state, action);
+        return;
+    }
+
+    if state.event.is_some() {
+        state.log_line("An incident is waiting for a decision.");
         return;
     }
 
@@ -180,6 +193,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
             }
         }
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => {}
+        Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {}
         Action::ContinueDay => {}
     }
 
@@ -187,5 +201,162 @@ pub fn run_action(state: &mut GameState, action: Action) {
         state.suspicion += 2.0;
         state.reputation -= 1;
     }
+    state.clamp();
+}
+
+fn resolve_event(state: &mut GameState, action: Action) {
+    let Some(event) = state.event.take() else {
+        state.log_line("No event is waiting for a decision.");
+        return;
+    };
+
+    match (event.kind, action) {
+        (RandomEventKind::PoliceVisit, Action::EventOptionA) => {
+            state.money -= 14;
+            state.suspicion -= 13.0 + state.paperwork_level as f32 * 1.5;
+            state.reputation += 1;
+            state.log_line("Police accept the paperwork and leave with a laminated bean diagram.");
+        }
+        (RandomEventKind::PoliceVisit, Action::EventOptionB) => {
+            state.roasted_coffee = (state.roasted_coffee - 2.0).max(0.0);
+            state.suspicion -= 8.0;
+            state.reputation += 2;
+            state.log_line("Officers attend a tasting and downgrade the threat to 'nutty finish'.");
+        }
+        (RandomEventKind::PoliceVisit, Action::EventOptionC) => {
+            state.suspicion += 9.0;
+            state.reputation -= 2;
+            state
+                .log_line("You answer evasively. The officers write 'too much coffee confidence'.");
+        }
+
+        (RandomEventKind::JournalistQuestions, Action::EventOptionA) => {
+            state.reputation += 4;
+            state.suspicion += 4.0;
+            state
+                .log_line("The journalist loves the civets. The headline still uses 'mysterious'.");
+        }
+        (RandomEventKind::JournalistQuestions, Action::EventOptionB) => {
+            state.money -= 20;
+            state.suspicion -= 9.0;
+            state.reputation += 1;
+            state.log_line("You give a controlled tour. Every label says 'coffee' twice.");
+        }
+        (RandomEventKind::JournalistQuestions, Action::EventOptionC) => {
+            state.suspicion += 12.0;
+            state.reputation -= 3;
+            state.log_line("No comment becomes the story. The goat is photographed in profile.");
+        }
+
+        (RandomEventKind::WelfareInspection, Action::EventOptionA) => {
+            state.money -= 24;
+            state.civet_happiness += 12.0;
+            state.reputation += 3;
+            state.suspicion -= 5.0;
+            state.log_line(
+                "Emergency enrichment deployed. Civets receive excellent tiny furniture.",
+            );
+        }
+        (RandomEventKind::WelfareInspection, Action::EventOptionB) => {
+            if state.civet_happiness >= 60.0 {
+                state.reputation += 4;
+                state.suspicion -= 7.0;
+                state.log_line("Inspection passes. Civets look professionally satisfied.");
+            } else {
+                state.reputation -= 4;
+                state.suspicion += 10.0;
+                state.log_line(
+                    "Inspection finds disappointed civets and suspiciously tidy excuses.",
+                );
+            }
+        }
+        (RandomEventKind::WelfareInspection, Action::EventOptionC) => {
+            state.money -= 10;
+            state.reputation -= 1;
+            state.suspicion += 2.0;
+            state.log_line("You reschedule. It works, but the clipboard remembers.");
+        }
+
+        (RandomEventKind::HelicopterOverhead, Action::EventOptionA) => {
+            state.suspicion -= 7.0;
+            state.money -= 12;
+            state.log_line(
+                "Reflective coffee tarps deployed. Perfectly normal agricultural behavior.",
+            );
+        }
+        (RandomEventKind::HelicopterOverhead, Action::EventOptionB) => {
+            state.reputation += 2;
+            state.suspicion += 5.0;
+            state.log_line("You wave cheerfully. This is either innocence or advanced theater.");
+        }
+        (RandomEventKind::HelicopterOverhead, Action::EventOptionC) => {
+            state.suspicion += 13.0;
+            state
+                .log_line("Everyone hides. The helicopter learns nothing and suspects everything.");
+        }
+
+        (RandomEventKind::BinturongEscape, Action::EventOptionA) => {
+            state.money -= 16;
+            state.binturong_home = true;
+            state.civet_happiness += 3.0;
+            state.suspicion -= 4.0;
+            state.log_line("A caretaker retrieves the binturong with snacks and quiet bargaining.");
+        }
+        (RandomEventKind::BinturongEscape, Action::EventOptionB) => {
+            state.binturong_home = false;
+            state.reputation += 1;
+            state.suspicion += 7.0;
+            state.log_line("The binturong becomes a local celebrity and a regulatory problem.");
+        }
+        (RandomEventKind::BinturongEscape, Action::EventOptionC) => {
+            state.goat_present = true;
+            state.binturong_home = true;
+            state.reputation -= 1;
+            state.suspicion += 3.0;
+            state.log_line("The goat is sent as negotiator. Nobody understands why it works.");
+        }
+
+        (RandomEventKind::PickyCivet, Action::EventOptionA) => {
+            let spent = state.coffee_fruit.min(8.0);
+            state.coffee_fruit -= spent;
+            state.civet_happiness += 10.0;
+            state.reputation += 1;
+            state.log_line("Only the best fruit is served. The civet accepts tribute.");
+        }
+        (RandomEventKind::PickyCivet, Action::EventOptionB) => {
+            state.money -= 18;
+            state.civet_happiness += 8.0;
+            state.suspicion -= 2.0;
+            state.log_line("Imported fruit arrives with more documentation than the staff.");
+        }
+        (RandomEventKind::PickyCivet, Action::EventOptionC) => {
+            state.civet_happiness -= 9.0;
+            state.suspicion += 4.0;
+            state.reputation -= 1;
+            state.log_line("You insist the fruit is fine. The civet disagrees in silence.");
+        }
+
+        (RandomEventKind::GoatAppearance, Action::EventOptionA) => {
+            state.goat_present = true;
+            state.suspicion += 2.0;
+            state.reputation += 1;
+            state.log_line("The goat is listed as unpaid compliance intern.");
+        }
+        (RandomEventKind::GoatAppearance, Action::EventOptionB) => {
+            state.goat_present = false;
+            state.money -= 9;
+            state.suspicion -= 4.0;
+            state.log_line("The goat is escorted off-site by a very serious courier.");
+        }
+        (RandomEventKind::GoatAppearance, Action::EventOptionC) => {
+            state.goat_present = true;
+            state.suspicion -= 2.0;
+            state.civet_happiness += 2.0;
+            state.log_line("You blame the goat preemptively. Oddly, morale improves.");
+        }
+        _ => {}
+    }
+
+    state.dirty_visuals = true;
     state.clamp();
 }

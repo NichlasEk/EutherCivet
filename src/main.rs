@@ -9,8 +9,8 @@ mod visuals;
 use model::*;
 use simulation::{advance_day, tick_game, trigger_random_events};
 use ui::{
-    handle_buttons, refresh_day_modal, refresh_inspection_modal, spawn_ui, update_log,
-    update_stats, update_status_bars,
+    handle_buttons, refresh_day_modal, refresh_event_modal, refresh_inspection_modal, spawn_ui,
+    update_log, update_stats, update_status_bars,
 };
 use visuals::{animate_world, refresh_world_visuals, spawn_world};
 
@@ -43,6 +43,7 @@ fn main() {
                 animate_world,
                 refresh_world_visuals,
                 refresh_inspection_modal,
+                refresh_event_modal,
                 refresh_day_modal,
             ),
         )

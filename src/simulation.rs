@@ -1,10 +1,13 @@
 use bevy::prelude::*;
 
-use crate::model::{DayReport, DayTick, EventTick, GameResult, GameState, GameTick};
+use crate::model::{
+    DayReport, DayTick, EventState, EventTick, GameResult, GameState, GameTick, RandomEventKind,
+};
 
 pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut<GameState>) {
     if !timer.0.tick(time.delta()).just_finished()
         || state.inspection
+        || state.event.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
@@ -41,6 +44,7 @@ pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut
 pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMut<GameState>) {
     if !timer.0.tick(time.delta()).just_finished()
         || state.inspection
+        || state.event.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
@@ -156,54 +160,64 @@ pub fn trigger_random_events(
 ) {
     if !timer.0.tick(time.delta()).just_finished()
         || state.inspection
+        || state.event.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
         return;
     }
 
-    match state.rand_index(7) {
-        0 => {
-            state.suspicion += 7.0;
-            state.log_line("Local police visit. They admire the beans with tactical suspicion.");
+    let kind = match state.rand_index(7) {
+        0 => RandomEventKind::PoliceVisit,
+        1 => RandomEventKind::JournalistQuestions,
+        2 => RandomEventKind::WelfareInspection,
+        3 => RandomEventKind::HelicopterOverhead,
+        4 => RandomEventKind::BinturongEscape,
+        5 => RandomEventKind::PickyCivet,
+        _ => RandomEventKind::GoatAppearance,
+    };
+
+    state.event = Some(EventState {
+        kind,
+        title: event_title(kind).to_string(),
+        body: event_body(kind).to_string(),
+    });
+}
+
+fn event_title(kind: RandomEventKind) -> &'static str {
+    match kind {
+        RandomEventKind::PoliceVisit => "Local Police Visit",
+        RandomEventKind::JournalistQuestions => "Journalist Asks Questions",
+        RandomEventKind::WelfareInspection => "Animal Welfare Inspection",
+        RandomEventKind::HelicopterOverhead => "Helicopter Overhead",
+        RandomEventKind::BinturongEscape => "Binturong Escape",
+        RandomEventKind::PickyCivet => "Civet Refuses Fruit",
+        RandomEventKind::GoatAppearance => "Unscheduled Goat",
+    }
+}
+
+fn event_body(kind: RandomEventKind) -> &'static str {
+    match kind {
+        RandomEventKind::PoliceVisit => {
+            "Two officers arrive to ask why the legal coffee estate has a perimeter plan and mirrored sunglasses."
         }
-        1 => {
-            state.suspicion += 5.0;
-            state.reputation += 1;
-            state.log_line("A journalist asks why every invoice says 'totally beans'.");
+        RandomEventKind::JournalistQuestions => {
+            "A reporter wants a tour, a quote, and a plausible explanation for the phrase 'bean chain of custody'."
         }
-        2 => {
-            if state.civet_happiness >= 60.0 {
-                state.reputation += 3;
-                state.suspicion -= 5.0;
-                state.log_line("Animal welfare inspection passes. Civets look smug.");
-            } else {
-                state.reputation -= 4;
-                state.suspicion += 11.0;
-                state.log_line("Animal welfare inspection finds disappointed civets.");
-            }
+        RandomEventKind::WelfareInspection => {
+            "An animal welfare inspector has a clipboard, good shoes, and very specific civet enrichment expectations."
         }
-        3 => {
-            state.suspicion += 10.0;
-            state.log_line("A police helicopter flies overhead. It circles the coffee bags twice.");
+        RandomEventKind::HelicopterOverhead => {
+            "A helicopter circles low enough to read the coffee bags and mispronounce 'civet' on the radio."
         }
-        4 => {
-            state.binturong_home = false;
-            state.suspicion += 8.0;
-            state.civet_happiness -= 4.0;
-            state.dirty_visuals = true;
-            state.log_line("The binturong escapes and naps inside a government vehicle.");
+        RandomEventKind::BinturongEscape => {
+            "The binturong exits its enclosure with the quiet confidence of a shareholder."
         }
-        5 => {
-            state.civet_happiness -= 6.0;
-            state.log_line("A civet refuses low-quality fruit with devastating eye contact.");
+        RandomEventKind::PickyCivet => {
+            "A civet rejects today's fruit selection and makes eye contact with everyone responsible."
         }
-        _ => {
-            state.goat_present = true;
-            state.suspicion += 3.0;
-            state.dirty_visuals = true;
-            state.log_line("A goat appears for no clear reason. Legal recommends silence.");
+        RandomEventKind::GoatAppearance => {
+            "A goat appears inside the paperwork room. No one hired it. No one can prove that."
         }
     }
-    state.clamp();
 }
