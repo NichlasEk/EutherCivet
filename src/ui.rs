@@ -62,6 +62,7 @@ pub fn spawn_ui(commands: &mut Commands) {
                     StatKind::Happiness,
                     StatKind::Reputation,
                     StatKind::Paperwork,
+                    StatKind::Upgrades,
                 ] {
                     panel.spawn((
                         Text::new("..."),
@@ -119,6 +120,11 @@ pub fn spawn_ui(commands: &mut Commands) {
                             ("Sell coffee", Action::SellCoffee),
                             ("Improve enclosure", Action::ImproveEnclosure),
                             ("Show paperwork to authorities", Action::ShowPaperwork),
+                            ("Build legal office", Action::BuildLegalOffice),
+                            ("Hire caretaker", Action::HireCaretaker),
+                            ("Build fruit sorter", Action::BuildFruitSorter),
+                            ("Build roasting shed", Action::BuildRoastingShed),
+                            ("Open tasting room", Action::BuildTastingRoom),
                             ("Save", Action::Save),
                             ("Load", Action::Load),
                         ] {
@@ -205,6 +211,11 @@ fn button_base_color(action: Action) -> Color {
         }
         Action::Save | Action::Load => Color::srgb(0.18, 0.18, 0.18),
         Action::ContinueDay => Color::srgb(0.22, 0.38, 0.22),
+        Action::BuildLegalOffice
+        | Action::HireCaretaker
+        | Action::BuildFruitSorter
+        | Action::BuildRoastingShed
+        | Action::BuildTastingRoom => Color::srgb(0.20, 0.30, 0.18),
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {
             Color::srgb(0.26, 0.25, 0.13)
         }
@@ -263,6 +274,7 @@ pub fn update_stats(
             StatKind::Happiness => format!("Civet happiness: {:.0}%", state.civet_happiness),
             StatKind::Reputation => format!("Reputation: {}", state.reputation),
             StatKind::Paperwork => format!("Paperwork level: {}", state.paperwork_level),
+            StatKind::Upgrades => format!("Upgrades: {}", upgrade_summary(&state)),
         };
         **text = value;
         color.0 = match stat.0 {
@@ -272,6 +284,31 @@ pub fn update_stats(
             StatKind::Money if state.money < 20 => Color::srgb(1.0, 0.38, 0.22),
             _ => Color::srgb(0.97, 0.92, 0.78),
         };
+    }
+}
+
+fn upgrade_summary(state: &GameState) -> String {
+    let mut names = Vec::new();
+    if state.legal_office {
+        names.push("legal");
+    }
+    if state.caretaker {
+        names.push("caretaker");
+    }
+    if state.fruit_sorter {
+        names.push("sorter");
+    }
+    if state.roasting_shed {
+        names.push("roaster");
+    }
+    if state.tasting_room {
+        names.push("tasting");
+    }
+
+    if names.is_empty() {
+        "none".to_string()
+    } else {
+        names.join(", ")
     }
 }
 

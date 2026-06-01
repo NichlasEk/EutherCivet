@@ -35,6 +35,7 @@ src/
 - Random events pause play and present three response choices with different resource, reputation, suspicion, and welfare effects.
 - Inspection event: Operation Bitter Bean, with three responses.
 - Seven-day run structure with daily reports, upkeep, reputation/suspicion adjustments, and weekly win/fail verdicts.
+- Buyable upgrades: Legal Office, Caretaker, Fruit Sorter, Roasting Shed, and Visitor Tasting Room.
 - Warm plantation visuals with red suspicion UI and placeholder shapes for plants, civets, binturong, goat, helicopter, and coffee bags.
 - Polished first-pass UI with status bars, two-column controls, animated helicopter, enclosure staging, and suspicion glow.
 - Local save/load via JSON.

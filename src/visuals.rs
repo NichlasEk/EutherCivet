@@ -262,5 +262,73 @@ pub fn refresh_world_visuals(
         WorldVisual,
     ));
 
+    spawn_upgrade_buildings(&mut commands, &state);
+
     state.dirty_visuals = false;
+}
+
+fn spawn_upgrade_buildings(commands: &mut Commands, state: &GameState) {
+    let buildings = [
+        (
+            state.legal_office,
+            -545.0,
+            -255.0,
+            "LEGAL",
+            Color::srgb(0.16, 0.28, 0.32),
+        ),
+        (
+            state.caretaker,
+            -455.0,
+            -255.0,
+            "CARE",
+            Color::srgb(0.24, 0.35, 0.18),
+        ),
+        (
+            state.fruit_sorter,
+            -365.0,
+            -255.0,
+            "SORT",
+            Color::srgb(0.42, 0.31, 0.10),
+        ),
+        (
+            state.roasting_shed,
+            -275.0,
+            -255.0,
+            "ROAST",
+            Color::srgb(0.33, 0.19, 0.11),
+        ),
+        (
+            state.tasting_room,
+            -185.0,
+            -255.0,
+            "TASTE",
+            Color::srgb(0.38, 0.24, 0.30),
+        ),
+    ];
+
+    for (enabled, x, y, label, color) in buildings {
+        if !enabled {
+            continue;
+        }
+        commands.spawn((
+            Sprite::from_color(color, Vec2::new(72.0, 48.0)),
+            Transform::from_xyz(x, y, 2.0),
+            WorldVisual,
+        ));
+        commands.spawn((
+            Sprite::from_color(Color::srgb(0.74, 0.57, 0.30), Vec2::new(82.0, 10.0)),
+            Transform::from_xyz(x, y + 29.0, 3.0),
+            WorldVisual,
+        ));
+        commands.spawn((
+            Text2d::new(label),
+            TextFont {
+                font_size: 12.0,
+                ..default()
+            },
+            TextColor(Color::srgb(1.0, 0.90, 0.65)),
+            Transform::from_xyz(x, y, 4.0),
+            WorldVisual,
+        ));
+    }
 }

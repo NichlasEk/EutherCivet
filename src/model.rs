@@ -19,6 +19,16 @@ pub struct GameState {
     pub reputation: i32,
     pub enclosure_level: u32,
     pub paperwork_level: u32,
+    #[serde(default)]
+    pub legal_office: bool,
+    #[serde(default)]
+    pub caretaker: bool,
+    #[serde(default)]
+    pub fruit_sorter: bool,
+    #[serde(default)]
+    pub roasting_shed: bool,
+    #[serde(default)]
+    pub tasting_room: bool,
     pub binturong_home: bool,
     pub goat_present: bool,
     pub inspection: bool,
@@ -83,6 +93,11 @@ impl Default for GameState {
             reputation: 8,
             enclosure_level: 1,
             paperwork_level: 1,
+            legal_office: false,
+            caretaker: false,
+            fruit_sorter: false,
+            roasting_shed: false,
+            tasting_room: false,
             binturong_home: true,
             goat_present: true,
             inspection: false,
@@ -204,6 +219,7 @@ pub enum StatKind {
     Happiness,
     Reputation,
     Paperwork,
+    Upgrades,
 }
 
 #[derive(Clone, Copy)]
@@ -223,6 +239,11 @@ pub enum Action {
     SellCoffee,
     ImproveEnclosure,
     ShowPaperwork,
+    BuildLegalOffice,
+    HireCaretaker,
+    BuildFruitSorter,
+    BuildRoastingShed,
+    BuildTastingRoom,
     Save,
     Load,
     ContinueDay,

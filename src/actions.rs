@@ -110,7 +110,8 @@ pub fn run_action(state: &mut GameState, action: Action) {
             if fed > 0.0 {
                 state.coffee_fruit -= fed;
                 state.civet_feed += fed;
-                state.civet_happiness += 8.0 + fed * 0.25;
+                let sorter_bonus = if state.fruit_sorter { 4.0 } else { 0.0 };
+                state.civet_happiness += 8.0 + sorter_bonus + fed * 0.25;
                 state.suspicion -= 1.0;
                 state.log_line("Civets receive fruit. Morale improves. Optics remain complex.");
             } else {
@@ -131,9 +132,10 @@ pub fn run_action(state: &mut GameState, action: Action) {
             let batch = state.processed_beans.min(8.0);
             if batch >= 1.0 {
                 state.processed_beans -= batch;
-                state.roasted_coffee += batch * 0.82;
-                state.money -= 2;
-                state.suspicion += 0.8;
+                let yield_rate = if state.roasting_shed { 0.96 } else { 0.82 };
+                state.roasted_coffee += batch * yield_rate;
+                state.money -= if state.roasting_shed { 1 } else { 2 };
+                state.suspicion += if state.roasting_shed { 0.4 } else { 0.8 };
                 state.log_line("Roasted a premium batch. Smoke plume described as theatrical.");
             } else {
                 state.log_line("Not enough processed beans to roast.");
@@ -142,12 +144,18 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::SellCoffee => {
             let sold = state.roasted_coffee.min(8.0);
             if sold >= 1.0 {
-                let earned = (sold * (13.0 + state.reputation as f32 * 0.7)).round() as i32;
+                let tasting_bonus = if state.tasting_room { 5.0 } else { 0.0 };
+                let earned =
+                    (sold * (13.0 + tasting_bonus + state.reputation as f32 * 0.7)).round() as i32;
                 state.roasted_coffee -= sold;
                 state.money += earned;
                 state.daily_sales += earned;
-                state.reputation += 1 + (sold / 5.0) as i32;
-                state.suspicion += if sold > 6.0 { 4.0 } else { 1.2 };
+                state.reputation += 1 + (sold / 5.0) as i32 + i32::from(state.tasting_room);
+                state.suspicion += if sold > 6.0 {
+                    if state.tasting_room { 2.5 } else { 4.0 }
+                } else {
+                    1.2
+                };
                 state.log_line(format!(
                     "Sold {sold:.1} bags of civet coffee for ${earned}."
                 ));
@@ -170,12 +178,17 @@ pub fn run_action(state: &mut GameState, action: Action) {
             }
         }
         Action::ShowPaperwork => {
-            let cost = 16 + state.paperwork_level as i32 * 3;
+            let cost = if state.legal_office {
+                8 + state.paperwork_level as i32 * 2
+            } else {
+                16 + state.paperwork_level as i32 * 3
+            };
             if state.money >= cost {
                 state.money -= cost;
                 state.daily_expenses += cost;
                 state.paperwork_level += 1;
-                state.suspicion -= 18.0 + state.paperwork_level as f32;
+                let legal_bonus = if state.legal_office { 8.0 } else { 0.0 };
+                state.suspicion -= 18.0 + legal_bonus + state.paperwork_level as f32;
                 state.reputation += 1;
                 state.log_line(
                     "Presented receipts, permits, civet dental charts, and bean custody forms.",
@@ -184,6 +197,41 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.log_line("Not enough money to print the paperwork annex.");
             }
         }
+        Action::BuildLegalOffice => buy_upgrade(
+            state,
+            110,
+            |state| state.legal_office,
+            |state| state.legal_office = true,
+            "Built Legal Office. Suspicion now has to wait in reception.",
+        ),
+        Action::HireCaretaker => buy_upgrade(
+            state,
+            85,
+            |state| state.caretaker,
+            |state| state.caretaker = true,
+            "Hired caretaker. Civets receive professional attention and fewer dramatic sighs.",
+        ),
+        Action::BuildFruitSorter => buy_upgrade(
+            state,
+            95,
+            |state| state.fruit_sorter,
+            |state| state.fruit_sorter = true,
+            "Installed fruit sorter. Low-quality fruit is now rejected before the civets can judge you.",
+        ),
+        Action::BuildRoastingShed => buy_upgrade(
+            state,
+            125,
+            |state| state.roasting_shed,
+            |state| state.roasting_shed = true,
+            "Built roasting shed. Smoke is now artisanal instead of incriminating.",
+        ),
+        Action::BuildTastingRoom => buy_upgrade(
+            state,
+            140,
+            |state| state.tasting_room,
+            |state| state.tasting_room = true,
+            "Opened tasting room. Guests pay extra to misunderstand the business in person.",
+        ),
         Action::Save => state.save(),
         Action::Load => {
             if let Some(loaded) = GameState::load() {
@@ -202,6 +250,31 @@ pub fn run_action(state: &mut GameState, action: Action) {
         state.reputation -= 1;
     }
     state.clamp();
+}
+
+fn buy_upgrade(
+    state: &mut GameState,
+    cost: i32,
+    already_bought: impl Fn(&GameState) -> bool,
+    apply: impl Fn(&mut GameState),
+    message: &'static str,
+) {
+    if already_bought(state) {
+        state.log_line("That upgrade is already in place.");
+        return;
+    }
+    if state.money < cost {
+        state.log_line(format!("Upgrade needs ${cost}."));
+        return;
+    }
+
+    state.money -= cost;
+    state.daily_expenses += cost;
+    state.suspicion += 2.0;
+    state.reputation += 1;
+    apply(state);
+    state.dirty_visuals = true;
+    state.log_line(message);
 }
 
 fn resolve_event(state: &mut GameState, action: Action) {
