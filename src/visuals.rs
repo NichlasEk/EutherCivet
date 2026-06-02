@@ -2,35 +2,57 @@ use bevy::prelude::*;
 
 use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
-    Action, CharacterAssets, CivetClickTarget, GameScreen, GameState, Helicopter, MovingCivet,
-    PlantationRoom, PropAssets, SuspicionGlow, WorldActionTarget, WorldVisual,
+    Action, BackgroundAssets, CharacterAssets, CivetClickTarget, EnvironmentBackdrop, GameScreen,
+    GameState, Helicopter, MovingCivet, ParallaxLayer, PlantationRoom, PropAssets, SuspicionGlow,
+    UiSkinAssets, WorldActionTarget, WorldVisual,
 };
 
-pub fn spawn_world(commands: &mut Commands) {
+const SKIN_STATS_PANEL: usize = 0;
+const SKIN_TOOL_PANEL: usize = 1;
+const SKIN_BUTTON: usize = 3;
+
+pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
+    for phase in 0..4 {
+        commands.spawn((
+            Sprite::from_atlas_image(
+                backgrounds.texture.clone(),
+                TextureAtlas {
+                    layout: backgrounds.atlas.clone(),
+                    index: phase,
+                },
+            ),
+            Transform::from_xyz(0.0, -25.0, -30.0).with_scale(Vec3::splat(2.38)),
+            EnvironmentBackdrop { phase },
+        ));
+    }
+
+    for (x, y, speed, amplitude, alpha) in [
+        (-470.0, 250.0, 5.5, 36.0, 0.20),
+        (-70.0, 285.0, 3.7, 24.0, 0.16),
+        (390.0, 232.0, 4.6, 31.0, 0.18),
+    ] {
+        spawn_cloud(commands, x, y, speed, amplitude, alpha);
+    }
+
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.54, 0.72, 0.48), Vec2::new(2400.0, 1000.0)),
-        Transform::from_xyz(0.0, -80.0, -10.0),
+        Sprite::from_color(
+            Color::srgba(0.12, 0.22, 0.10, 0.24),
+            Vec2::new(2400.0, 90.0),
+        ),
+        Transform::from_xyz(0.0, -332.0, -6.0),
+        ParallaxLayer {
+            base: Vec3::new(0.0, -332.0, -6.0),
+            speed: 1.1,
+            amplitude: 18.0,
+        },
     ));
     commands.spawn((
         Sprite::from_color(
-            Color::srgba(1.0, 0.80, 0.68, 0.22),
-            Vec2::new(2400.0, 260.0),
+            Color::srgba(0.78, 0.50, 0.23, 0.50),
+            Vec2::new(2400.0, 150.0),
         ),
-        Transform::from_xyz(0.0, 250.0, -9.0),
+        Transform::from_xyz(0.0, -365.0, -5.0),
     ));
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.70, 0.52, 0.32), Vec2::new(2400.0, 150.0)),
-        Transform::from_xyz(0.0, -360.0, -8.0),
-    ));
-    for i in 0..8 {
-        commands.spawn((
-            Sprite::from_color(
-                Color::srgba(0.24, 0.46, 0.22, 0.42),
-                Vec2::new(2400.0, 18.0),
-            ),
-            Transform::from_xyz(0.0, -245.0 + i as f32 * 54.0, -7.0),
-        ));
-    }
     commands.spawn((
         Sprite::from_color(
             Color::srgba(0.76, 0.05, 0.04, 0.0),
@@ -41,9 +63,32 @@ pub fn spawn_world(commands: &mut Commands) {
     ));
 }
 
+fn spawn_cloud(commands: &mut Commands, x: f32, y: f32, speed: f32, amplitude: f32, alpha: f32) {
+    for (dx, width, height) in [(-48.0, 92.0, 30.0), (0.0, 128.0, 40.0), (58.0, 86.0, 28.0)] {
+        let base = Vec3::new(x + dx, y, -14.0);
+        commands.spawn((
+            Sprite::from_color(
+                Color::srgba(1.0, 0.96, 0.86, alpha),
+                Vec2::new(width, height),
+            ),
+            Transform::from_translation(base),
+            ParallaxLayer {
+                base,
+                speed,
+                amplitude,
+            },
+        ));
+    }
+}
+
 pub fn animate_world(
     time: Res<Time>,
     state: Res<GameState>,
+    mut backdrops: Query<(&EnvironmentBackdrop, &mut Sprite), Without<SuspicionGlow>>,
+    mut parallax: Query<
+        (&ParallaxLayer, &mut Transform),
+        (Without<Helicopter>, Without<MovingCivet>),
+    >,
     mut helicopters: Query<(&Helicopter, &mut Transform)>,
     mut civets: Query<(&MovingCivet, &mut Transform), Without<Helicopter>>,
     mut glows: Query<&mut Sprite, With<SuspicionGlow>>,
@@ -56,6 +101,18 @@ pub fn animate_world(
     );
     for (helicopter, mut transform) in &mut helicopters {
         transform.translation = base + helicopter.offset;
+    }
+
+    let cycle = (t / 96.0).fract();
+    for (backdrop, mut sprite) in &mut backdrops {
+        let alpha = backdrop_alpha(cycle, backdrop.phase);
+        sprite.color = Color::srgba(1.0, 1.0, 1.0, alpha);
+    }
+
+    for (layer, mut transform) in &mut parallax {
+        let drift = (t * layer.speed * 0.04).sin() * layer.amplitude;
+        transform.translation.x = layer.base.x + drift;
+        transform.translation.y = layer.base.y + (t * layer.speed * 0.025).cos() * 3.0;
     }
 
     for (civet, mut transform) in &mut civets {
@@ -77,11 +134,33 @@ pub fn animate_world(
     }
 }
 
+fn backdrop_alpha(cycle: f32, phase: usize) -> f32 {
+    let centers = [0.08, 0.34, 0.62, 0.86];
+    let mut weights = [0.0; 4];
+    for (index, center) in centers.iter().enumerate() {
+        let distance = circular_distance(cycle, *center);
+        let weight = (1.0_f32 - distance / 0.28).clamp(0.0, 1.0);
+        weights[index] = weight * weight;
+    }
+    let total: f32 = weights.iter().sum();
+    if total <= 0.0 {
+        if phase == 1 { 1.0 } else { 0.0 }
+    } else {
+        weights[phase] / total
+    }
+}
+
+fn circular_distance(a: f32, b: f32) -> f32 {
+    let distance = (a - b).abs();
+    distance.min(1.0 - distance)
+}
+
 pub fn refresh_world_visuals(
     mut commands: Commands,
     mut state: ResMut<GameState>,
     characters: Res<CharacterAssets>,
     props: Res<PropAssets>,
+    skin: Res<UiSkinAssets>,
     visuals: Query<Entity, With<WorldVisual>>,
 ) {
     if !state.dirty_visuals {
@@ -95,12 +174,12 @@ pub fn refresh_world_visuals(
     spawn_player(&mut commands, &characters, &state);
     match state.current_room {
         PlantationRoom::Sanctuary => {
-            spawn_sanctuary_room(&mut commands, &state, &characters, &props)
+            spawn_sanctuary_room(&mut commands, &state, &characters, &props, &skin)
         }
         PlantationRoom::CoffeeField => spawn_coffee_field_room(&mut commands, &state, &props),
-        PlantationRoom::Roastery => spawn_roastery_room(&mut commands, &state, &props),
+        PlantationRoom::Roastery => spawn_roastery_room(&mut commands, &state, &props, &skin),
         PlantationRoom::PaperworkOffice => {
-            spawn_paperwork_office_room(&mut commands, &state, &props)
+            spawn_paperwork_office_room(&mut commands, &state, &props, &skin)
         }
     }
 
@@ -115,6 +194,18 @@ fn prop_sprite(props: &PropAssets, index: usize) -> Sprite {
             index,
         },
     )
+}
+
+fn skin_sprite(skin: &UiSkinAssets, index: usize, color: Color) -> Sprite {
+    let mut sprite = Sprite::from_atlas_image(
+        skin.texture.clone(),
+        TextureAtlas {
+            layout: skin.atlas.clone(),
+            index,
+        },
+    );
+    sprite.color = color;
+    sprite
 }
 
 fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &GameState) {
@@ -292,27 +383,39 @@ fn spawn_sanctuary_room(
     state: &GameState,
     characters: &CharacterAssets,
     props: &PropAssets,
+    skin: &UiSkinAssets,
 ) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.67, 0.44, 0.22), Vec2::new(320.0, 8.0)),
-        Transform::from_xyz(430.0, -170.0, 2.0),
+        skin_sprite(skin, SKIN_TOOL_PANEL, Color::srgba(1.0, 0.86, 0.66, 0.86)),
+        Transform::from_xyz(430.0, -84.0, 1.0),
         WorldVisual,
     ));
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.67, 0.44, 0.22), Vec2::new(320.0, 8.0)),
-        Transform::from_xyz(430.0, 2.0, 2.0),
-        WorldVisual,
-    ));
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.67, 0.44, 0.22), Vec2::new(8.0, 180.0)),
-        Transform::from_xyz(275.0, -84.0, 2.0),
-        WorldVisual,
-    ));
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.67, 0.44, 0.22), Vec2::new(8.0, 180.0)),
-        Transform::from_xyz(585.0, -84.0, 2.0),
-        WorldVisual,
-    ));
+    for i in 0..9 {
+        let x = 260.0 + i as f32 * 43.0;
+        spawn_prop(
+            commands,
+            props,
+            15,
+            x,
+            4.0 + (i % 2) as f32 * 8.0,
+            0.20,
+            2.0,
+        );
+        spawn_prop(
+            commands,
+            props,
+            15,
+            x,
+            -174.0 + (i % 2) as f32 * 7.0,
+            0.18,
+            2.0,
+        );
+    }
+    for i in 0..4 {
+        let y = -152.0 + i as f32 * 48.0;
+        spawn_prop(commands, props, 0, 264.0, y, 0.13, 2.0);
+        spawn_prop(commands, props, 0, 588.0, y + 8.0, 0.13, 2.0);
+    }
     commands.spawn((
         Text2d::new("CIVET ENCLOSURE"),
         TextFont {
@@ -408,12 +511,20 @@ fn spawn_sanctuary_room(
     );
 }
 
-fn spawn_roastery_room(commands: &mut Commands, state: &GameState, props: &PropAssets) {
+fn spawn_roastery_room(
+    commands: &mut Commands,
+    state: &GameState,
+    props: &PropAssets,
+    skin: &UiSkinAssets,
+) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.22, 0.13, 0.08), Vec2::new(360.0, 145.0)),
-        Transform::from_xyz(-175.0, -92.0, 2.0),
+        skin_sprite(skin, SKIN_BUTTON, Color::srgba(1.0, 0.80, 0.55, 0.86)),
+        Transform::from_xyz(-175.0, -102.0, 1.0),
         WorldVisual,
     ));
+    spawn_prop(commands, props, 4, -325.0, -115.0, 0.23, 2.0);
+    spawn_prop(commands, props, 3, -35.0, -120.0, 0.21, 2.0);
+    spawn_prop(commands, props, 14, -18.0, -42.0, 0.26, 2.0);
     commands
         .spawn((
             prop_sprite(props, 6),
@@ -502,17 +613,25 @@ fn spawn_roastery_room(commands: &mut Commands, state: &GameState, props: &PropA
     );
 }
 
-fn spawn_paperwork_office_room(commands: &mut Commands, state: &GameState, props: &PropAssets) {
+fn spawn_paperwork_office_room(
+    commands: &mut Commands,
+    state: &GameState,
+    props: &PropAssets,
+    skin: &UiSkinAssets,
+) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.15, 0.18, 0.18), Vec2::new(620.0, 245.0)),
+        skin_sprite(skin, SKIN_STATS_PANEL, Color::srgba(0.74, 0.92, 0.94, 0.82)),
         Transform::from_xyz(25.0, -45.0, 1.5),
         WorldVisual,
     ));
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.45, 0.32, 0.18), Vec2::new(410.0, 92.0)),
+        skin_sprite(skin, SKIN_BUTTON, Color::srgba(0.92, 0.72, 0.50, 0.88)),
         Transform::from_xyz(-120.0, -160.0, 2.0),
         WorldVisual,
     ));
+    spawn_prop(commands, props, 15, -335.0, -34.0, 0.30, 2.0);
+    spawn_prop(commands, props, 15, 270.0, -34.0, 0.30, 2.0);
+    spawn_prop(commands, props, 13, 320.0, -158.0, 0.23, 3.0);
     for i in 0..7 {
         let x = -290.0 + i as f32 * 54.0;
         commands

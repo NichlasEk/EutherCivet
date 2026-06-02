@@ -335,6 +335,18 @@ pub struct PropAssets {
     pub atlas: Handle<TextureAtlasLayout>,
 }
 
+#[derive(Resource, Clone)]
+pub struct BackgroundAssets {
+    pub texture: Handle<Image>,
+    pub atlas: Handle<TextureAtlasLayout>,
+}
+
+#[derive(Resource, Clone)]
+pub struct UiSkinAssets {
+    pub texture: Handle<Image>,
+    pub atlas: Handle<TextureAtlasLayout>,
+}
+
 #[derive(Component)]
 pub struct StatText(pub StatKind);
 
@@ -346,6 +358,18 @@ pub struct LogText;
 
 #[derive(Component)]
 pub struct WorldVisual;
+
+#[derive(Component)]
+pub struct EnvironmentBackdrop {
+    pub phase: usize,
+}
+
+#[derive(Component)]
+pub struct ParallaxLayer {
+    pub base: Vec3,
+    pub speed: f32,
+    pub amplitude: f32,
+}
 
 #[derive(Component)]
 pub struct Helicopter {

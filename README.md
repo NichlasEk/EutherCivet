@@ -44,6 +44,9 @@ src/
 - Clickable civets with a care panel for feeding, petting, and inspecting animal notes.
 - Generated original character sprite sheet for three palm civets and the plantation owner.
 - Generated original prop sprite sheet for coffee plants, fruit, beans, bags, roaster, paperwork, helicopter, goat, binturong, and room decor.
+- Generated four-panel background atlas with dawn, day, sunset, and night plantation scenes.
+- Layered environment rendering with crossfading day/night cycle and drifting parallax clouds.
+- Generated illustrated UI skin atlas with wooden HUD boards, bamboo tool panels, parchment modals, and drawn button plaques.
 - Palm civets have simple wandering/bobbing motion in the Sanctuary.
 - Clickable room objects that trigger core actions: plants, fruit baskets, roaster, coffee bags, bean crate, and paperwork stacks.
 - Dynamic action buttons that show costs/requirements and dim when unavailable.

@@ -9,7 +9,7 @@ mod visuals;
 use model::*;
 use simulation::{advance_day, generate_order_offers, tick_game, trigger_random_events};
 use ui::{
-    handle_buttons, refresh_animal_panel, refresh_day_modal, refresh_event_modal,
+    animate_buttons, handle_buttons, refresh_animal_panel, refresh_day_modal, refresh_event_modal,
     refresh_inspection_modal, refresh_order_modal, refresh_screen_modal, spawn_ui,
     update_button_labels, update_log, update_stats, update_status_bars,
 };
@@ -41,6 +41,7 @@ fn main() {
                 generate_order_offers,
                 advance_day,
                 update_button_labels,
+                animate_buttons,
                 update_stats,
                 update_status_bars,
                 update_log,
@@ -76,6 +77,20 @@ fn setup(
         None,
         None,
     ));
+    let background_atlas = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+        UVec2::new(627, 627),
+        2,
+        2,
+        None,
+        None,
+    ));
+    let ui_skin_atlas = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+        UVec2::new(627, 627),
+        2,
+        2,
+        None,
+        None,
+    ));
     commands.insert_resource(CharacterAssets {
         texture: asset_server.load("sprites/euther_civet_character_sheet.png"),
         atlas: character_atlas,
@@ -84,8 +99,18 @@ fn setup(
         texture: asset_server.load("sprites/euther_civet_prop_sheet.png"),
         atlas: prop_atlas,
     });
+    let background_assets = BackgroundAssets {
+        texture: asset_server.load("sprites/euther_civet_background_atlas.png"),
+        atlas: background_atlas,
+    };
+    commands.insert_resource(background_assets.clone());
+    let ui_skin_assets = UiSkinAssets {
+        texture: asset_server.load("sprites/euther_civet_ui_atlas.png"),
+        atlas: ui_skin_atlas,
+    };
+    commands.insert_resource(ui_skin_assets.clone());
 
     commands.spawn(Camera2d);
-    spawn_world(&mut commands);
-    spawn_ui(&mut commands);
+    spawn_world(&mut commands, &background_assets);
+    spawn_ui(&mut commands, &ui_skin_assets);
 }

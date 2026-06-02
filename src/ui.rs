@@ -3,7 +3,15 @@ use bevy::prelude::*;
 use crate::actions::run_action;
 use crate::model::*;
 
-pub fn spawn_ui(commands: &mut Commands) {
+const PANEL_DARK: Color = Color::srgba(0.08, 0.065, 0.045, 0.18);
+const PANEL_WOOD: Color = Color::srgba(0.15, 0.095, 0.055, 0.16);
+const PANEL_PAPER: Color = Color::srgba(0.98, 0.84, 0.70, 0.10);
+const SKIN_STATS_PANEL: usize = 0;
+const SKIN_TOOL_PANEL: usize = 1;
+const SKIN_PAPER_PANEL: usize = 2;
+const SKIN_BUTTON: usize = 3;
+
+pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
     commands
         .spawn((
             Node {
@@ -23,9 +31,13 @@ pub fn spawn_ui(commands: &mut Commands) {
                     flex_direction: FlexDirection::Column,
                     row_gap: px(10),
                     padding: UiRect::all(px(16)),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(12)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.06, 0.05, 0.035, 0.92)),
+                BackgroundColor(PANEL_DARK),
+                ui_skin_node(skin, SKIN_STATS_PANEL, Color::srgba(1.0, 1.0, 1.0, 0.94)),
+                BorderColor::all(Color::srgba(0.94, 0.72, 0.38, 0.45)),
             ))
             .with_children(|panel| {
                 panel.spawn((
@@ -107,9 +119,13 @@ pub fn spawn_ui(commands: &mut Commands) {
                             row_gap: px(7),
                             column_gap: px(7),
                             padding: UiRect::all(px(12)),
+                            border: UiRect::all(px(2)),
+                            border_radius: BorderRadius::all(px(12)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgba(0.10, 0.065, 0.04, 0.92)),
+                        BackgroundColor(PANEL_WOOD),
+                        ui_skin_node(skin, SKIN_TOOL_PANEL, Color::srgba(1.0, 1.0, 1.0, 0.95)),
+                        BorderColor::all(Color::srgba(0.88, 0.66, 0.34, 0.45)),
                     ))
                     .with_children(|buttons| {
                         for (label, action) in [
@@ -118,7 +134,7 @@ pub fn spawn_ui(commands: &mut Commands) {
                             ("Roastery", Action::GoRoastery),
                             ("Paperwork Office", Action::GoPaperworkOffice),
                         ] {
-                            spawn_dynamic_button(buttons, label, action, 145.0);
+                            spawn_dynamic_button(buttons, skin, label, action, 145.0);
                         }
                         for (label, action) in [
                             ("Care", Action::ShowCareTools),
@@ -128,7 +144,7 @@ pub fn spawn_ui(commands: &mut Commands) {
                             ("Upgrades", Action::ShowUpgradeTools),
                             ("System", Action::ShowSystemTools),
                         ] {
-                            spawn_dynamic_button(buttons, label, action, 95.0);
+                            spawn_dynamic_button(buttons, skin, label, action, 95.0);
                         }
                         for (label, action, group) in [
                             ("Feed civets", Action::FeedCivets, ToolGroup::Care),
@@ -172,15 +188,27 @@ pub fn spawn_ui(commands: &mut Commands) {
                             ("Save", Action::Save, ToolGroup::System),
                             ("Load", Action::Load, ToolGroup::System),
                         ] {
-                            spawn_grouped_dynamic_button(buttons, label, action, group);
+                            spawn_grouped_dynamic_button(buttons, skin, label, action, group);
                         }
                     });
             });
         });
 }
 
+fn ui_skin_node(skin: &UiSkinAssets, index: usize, color: Color) -> ImageNode {
+    ImageNode::from_atlas_image(
+        skin.texture.clone(),
+        TextureAtlas {
+            layout: skin.atlas.clone(),
+            index,
+        },
+    )
+    .with_color(color)
+}
+
 fn spawn_dynamic_button(
     parent: &mut ChildSpawnerCommands,
+    skin: &UiSkinAssets,
     label: &str,
     action: Action,
     width: f32,
@@ -194,9 +222,13 @@ fn spawn_dynamic_button(
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 padding: UiRect::horizontal(px(8)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(8)),
                 ..default()
             },
-            BackgroundColor(button_base_color(action)),
+            BackgroundColor(Color::NONE),
+            ui_skin_node(skin, SKIN_BUTTON, button_base_color(action)),
+            BorderColor::all(button_border_color(action)),
             ActionButton(action),
         ))
         .with_children(|button| {
@@ -214,6 +246,7 @@ fn spawn_dynamic_button(
 
 fn spawn_grouped_dynamic_button(
     parent: &mut ChildSpawnerCommands,
+    skin: &UiSkinAssets,
     label: &str,
     action: Action,
     group: ToolGroup,
@@ -227,9 +260,13 @@ fn spawn_grouped_dynamic_button(
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 padding: UiRect::horizontal(px(8)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(8)),
                 ..default()
             },
-            BackgroundColor(button_base_color(action)),
+            BackgroundColor(Color::NONE),
+            ui_skin_node(skin, SKIN_BUTTON, button_base_color(action)),
+            BorderColor::all(button_border_color(action)),
             ActionButton(action),
             ToolActionGroup(group),
         ))
@@ -246,7 +283,12 @@ fn spawn_grouped_dynamic_button(
         });
 }
 
-fn spawn_button(parent: &mut ChildSpawnerCommands, label: &str, action: Action) {
+fn spawn_button(
+    parent: &mut ChildSpawnerCommands,
+    skin: &UiSkinAssets,
+    label: &str,
+    action: Action,
+) {
     parent
         .spawn((
             Button,
@@ -256,9 +298,13 @@ fn spawn_button(parent: &mut ChildSpawnerCommands, label: &str, action: Action) 
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 padding: UiRect::horizontal(px(8)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(8)),
                 ..default()
             },
-            BackgroundColor(button_base_color(action)),
+            BackgroundColor(Color::NONE),
+            ui_skin_node(skin, SKIN_BUTTON, button_base_color(action)),
+            BorderColor::all(button_border_color(action)),
             ActionButton(action),
         ))
         .with_children(|button| {
@@ -296,9 +342,12 @@ fn spawn_bar(parent: &mut ChildSpawnerCommands, label: &str, kind: StatusKind) {
                     width: percent(100),
                     height: px(13),
                     padding: UiRect::all(px(2)),
+                    border: UiRect::all(px(1)),
+                    border_radius: BorderRadius::all(px(5)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.55)),
+                BackgroundColor(Color::srgba(0.02, 0.025, 0.015, 0.62)),
+                BorderColor::all(Color::srgba(1.0, 0.83, 0.42, 0.25)),
             ))
             .with_children(|track| {
                 track.spawn((
@@ -355,16 +404,140 @@ fn button_base_color(action: Action) -> Color {
     }
 }
 
-pub fn handle_buttons(
-    mut interactions: Query<
-        (&Interaction, &ActionButton, &mut BackgroundColor),
-        (Changed<Interaction>, With<Button>),
+fn button_border_color(action: Action) -> Color {
+    match action {
+        Action::ShowPaperwork | Action::InspectPaperwork => Color::srgba(0.56, 0.86, 0.72, 0.70),
+        Action::GoSanctuary
+        | Action::GoCoffeeField
+        | Action::GoRoastery
+        | Action::GoPaperworkOffice => Color::srgba(1.0, 0.70, 0.82, 0.56),
+        Action::ShowCareTools
+        | Action::ShowFieldTools
+        | Action::ShowProductionTools
+        | Action::ShowComplianceTools
+        | Action::ShowUpgradeTools
+        | Action::ShowSystemTools => Color::srgba(0.78, 1.0, 0.64, 0.45),
+        Action::Save | Action::Load => Color::srgba(0.88, 0.88, 0.78, 0.30),
+        _ => Color::srgba(1.0, 0.76, 0.42, 0.50),
+    }
+}
+
+fn button_lit_color(action: Action) -> Color {
+    match action {
+        Action::ShowPaperwork | Action::InspectPaperwork => Color::srgb(0.28, 0.52, 0.43),
+        Action::SellCoffee | Action::RoastCoffee | Action::InspectTasting => {
+            Color::srgb(0.72, 0.43, 0.16)
+        }
+        Action::GoSanctuary
+        | Action::GoCoffeeField
+        | Action::GoRoastery
+        | Action::GoPaperworkOffice => Color::srgb(0.46, 0.26, 0.38),
+        Action::ShowCareTools
+        | Action::ShowFieldTools
+        | Action::ShowProductionTools
+        | Action::ShowComplianceTools
+        | Action::ShowUpgradeTools
+        | Action::ShowSystemTools => Color::srgb(0.28, 0.43, 0.27),
+        _ => Color::srgb(0.62, 0.39, 0.15),
+    }
+}
+
+fn button_phase(action: Action) -> f32 {
+    match action {
+        Action::GoSanctuary => 0.0,
+        Action::GoCoffeeField => 0.7,
+        Action::GoRoastery => 1.4,
+        Action::GoPaperworkOffice => 2.1,
+        Action::ShowCareTools => 0.3,
+        Action::ShowFieldTools => 0.9,
+        Action::ShowProductionTools => 1.5,
+        Action::ShowComplianceTools => 2.1,
+        Action::ShowUpgradeTools => 2.7,
+        Action::ShowSystemTools => 3.3,
+        Action::PlantCoffee => 0.2,
+        Action::HarvestFruit => 0.8,
+        Action::FeedCivets => 1.2,
+        Action::CollectBeans => 1.8,
+        Action::RoastCoffee => 2.4,
+        Action::SellCoffee => 3.0,
+        _ => 0.5,
+    }
+}
+
+fn mix_color(a: Color, b: Color, amount: f32) -> Color {
+    let a = a.to_srgba();
+    let b = b.to_srgba();
+    let t = amount.clamp(0.0, 1.0);
+    Color::srgba(
+        a.red + (b.red - a.red) * t,
+        a.green + (b.green - a.green) * t,
+        a.blue + (b.blue - a.blue) * t,
+        a.alpha + (b.alpha - a.alpha) * t,
+    )
+}
+
+pub fn animate_buttons(
+    time: Res<Time>,
+    state: Res<GameState>,
+    mut buttons: Query<
+        (
+            &ActionButton,
+            &Interaction,
+            &mut ImageNode,
+            &mut BorderColor,
+            &mut Node,
+        ),
+        With<Button>,
     >,
+) {
+    let t = time.elapsed_secs();
+    for (button, interaction, mut image, mut border, mut node) in &mut buttons {
+        let available = can_run(button.0, &state);
+        let pulse = 0.5 + 0.5 * (t * 2.8 + button_phase(button.0)).sin();
+
+        if !available {
+            image.color = Color::srgba(0.44, 0.40, 0.34, 0.72);
+            *border = BorderColor::all(Color::srgba(0.48, 0.42, 0.32, 0.22));
+            node.border = UiRect::all(px(1));
+            continue;
+        }
+
+        let base = button_base_color(button.0);
+        let lit = button_lit_color(button.0);
+        let active = is_active_group_action(button.0, &state);
+        let amount = match *interaction {
+            Interaction::Pressed => 0.92,
+            Interaction::Hovered => 0.55 + pulse * 0.18,
+            Interaction::None if active => 0.32 + pulse * 0.18,
+            Interaction::None => 0.08 + pulse * 0.04,
+        };
+
+        image.color = mix_color(base, lit, amount);
+        *border = BorderColor::all(mix_color(
+            button_border_color(button.0),
+            Color::srgba(1.0, 0.92, 0.62, 0.92),
+            if active {
+                0.55 + pulse * 0.25
+            } else {
+                amount * 0.55
+            },
+        ));
+        node.border = UiRect::all(px(
+            if active || matches!(*interaction, Interaction::Hovered) {
+                2
+            } else {
+                1
+            },
+        ));
+    }
+}
+
+pub fn handle_buttons(
+    interactions: Query<(&Interaction, &ActionButton), (Changed<Interaction>, With<Button>)>,
     mut state: ResMut<GameState>,
 ) {
-    for (interaction, button, mut color) in &mut interactions {
+    for (interaction, button) in &interactions {
         if !can_run(button.0, &state) {
-            *color = BackgroundColor(Color::srgba(0.12, 0.11, 0.09, 0.82));
             if matches!(*interaction, Interaction::Pressed) {
                 let reason = unavailable_reason(button.0, &state);
                 state.log_line(reason);
@@ -373,15 +546,9 @@ pub fn handle_buttons(
         }
         match *interaction {
             Interaction::Pressed => {
-                *color = BackgroundColor(Color::srgb(0.78, 0.32, 0.18));
                 run_action(&mut state, button.0);
             }
-            Interaction::Hovered => {
-                *color = BackgroundColor(Color::srgb(0.62, 0.39, 0.15));
-            }
-            Interaction::None => {
-                *color = BackgroundColor(button_base_color(button.0));
-            }
+            Interaction::Hovered | Interaction::None => {}
         }
     }
 }
@@ -389,7 +556,6 @@ pub fn handle_buttons(
 pub fn update_button_labels(
     state: Res<GameState>,
     mut labels: Query<(&DynamicButtonText, &mut Text)>,
-    mut buttons: Query<(&ActionButton, &mut BackgroundColor), With<Button>>,
     mut grouped_actions: Query<(&ToolActionGroup, &mut Node)>,
 ) {
     if !state.is_changed() {
@@ -398,18 +564,6 @@ pub fn update_button_labels(
 
     for (dynamic, mut text) in &mut labels {
         **text = action_label(dynamic.0, &state);
-    }
-
-    for (button, mut color) in &mut buttons {
-        color.0 = if can_run(button.0, &state) {
-            if is_active_group_action(button.0, &state) {
-                Color::srgb(0.34, 0.25, 0.15)
-            } else {
-                button_base_color(button.0)
-            }
-        } else {
-            Color::srgba(0.12, 0.11, 0.09, 0.82)
-        };
     }
 
     for (group, mut node) in &mut grouped_actions {
@@ -707,6 +861,7 @@ pub fn update_log(state: Res<GameState>, mut logs: Query<&mut Text, With<LogText
 pub fn refresh_inspection_modal(
     mut commands: Commands,
     state: Res<GameState>,
+    skin: Res<UiSkinAssets>,
     modal: Query<Entity, With<InspectionModal>>,
 ) {
     let exists = !modal.is_empty();
@@ -721,9 +876,13 @@ pub fn refresh_inspection_modal(
                     padding: UiRect::all(px(22)),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(12),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(14)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.42, 0.03, 0.02, 0.96)),
+                BackgroundColor(Color::srgba(0.42, 0.03, 0.02, 0.90)),
+                ui_skin_node(&skin, SKIN_STATS_PANEL, Color::srgba(1.0, 0.64, 0.54, 0.85)),
+                BorderColor::all(Color::srgba(1.0, 0.68, 0.40, 0.72)),
                 GlobalZIndex(10),
                 InspectionModal,
             ))
@@ -746,9 +905,9 @@ pub fn refresh_inspection_modal(
                     },
                     TextColor(Color::WHITE),
                 ));
-                spawn_button(modal, "Show paperwork", Action::InspectPaperwork);
-                spawn_button(modal, "Offer coffee tasting", Action::InspectTasting);
-                spawn_button(modal, "Blame the goat", Action::InspectGoat);
+                spawn_button(modal, &skin, "Show paperwork", Action::InspectPaperwork);
+                spawn_button(modal, &skin, "Offer coffee tasting", Action::InspectTasting);
+                spawn_button(modal, &skin, "Blame the goat", Action::InspectGoat);
             });
     } else if !state.inspection && exists {
         for entity in &modal {
@@ -760,6 +919,7 @@ pub fn refresh_inspection_modal(
 pub fn refresh_day_modal(
     mut commands: Commands,
     state: Res<GameState>,
+    skin: Res<UiSkinAssets>,
     modal: Query<Entity, With<DayModal>>,
 ) {
     let should_show = state.day_report.is_some() || state.game_result.is_some();
@@ -776,9 +936,13 @@ pub fn refresh_day_modal(
                     padding: UiRect::all(px(22)),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(12),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(14)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.05, 0.08, 0.055, 0.97)),
+                BackgroundColor(Color::srgba(0.05, 0.08, 0.055, 0.91)),
+                ui_skin_node(&skin, SKIN_STATS_PANEL, Color::srgba(0.88, 1.0, 0.74, 0.82)),
+                BorderColor::all(Color::srgba(0.84, 1.0, 0.62, 0.55)),
                 GlobalZIndex(9),
                 DayModal,
             ))
@@ -813,9 +977,9 @@ pub fn refresh_day_modal(
                     ));
 
                     if state.game_result.is_none() {
-                        spawn_button(modal, "Begin next day", Action::ContinueDay);
+                        spawn_button(modal, &skin, "Begin next day", Action::ContinueDay);
                     } else {
-                        spawn_button(modal, "View final verdict", Action::ContinueDay);
+                        spawn_button(modal, &skin, "View final verdict", Action::ContinueDay);
                     }
                 } else if let Some(result) = &state.game_result {
                     let (title, body, color) = match result {
@@ -870,6 +1034,7 @@ pub fn refresh_day_modal(
 pub fn refresh_event_modal(
     mut commands: Commands,
     state: Res<GameState>,
+    skin: Res<UiSkinAssets>,
     modal: Query<Entity, With<EventModal>>,
 ) {
     let should_show = state.event.is_some();
@@ -887,9 +1052,13 @@ pub fn refresh_event_modal(
                     padding: UiRect::all(px(22)),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(12),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(14)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.12, 0.075, 0.035, 0.97)),
+                BackgroundColor(Color::srgba(0.12, 0.075, 0.035, 0.91)),
+                ui_skin_node(&skin, SKIN_PAPER_PANEL, Color::srgba(1.0, 0.90, 0.72, 0.90)),
+                BorderColor::all(Color::srgba(1.0, 0.76, 0.42, 0.56)),
                 GlobalZIndex(8),
                 EventModal,
             ))
@@ -912,9 +1081,9 @@ pub fn refresh_event_modal(
                 ));
 
                 let (a, b, c) = event_option_labels(event.kind);
-                spawn_button(modal, a, Action::EventOptionA);
-                spawn_button(modal, b, Action::EventOptionB);
-                spawn_button(modal, c, Action::EventOptionC);
+                spawn_button(modal, &skin, a, Action::EventOptionA);
+                spawn_button(modal, &skin, b, Action::EventOptionB);
+                spawn_button(modal, &skin, c, Action::EventOptionC);
             });
     } else if !should_show && exists {
         for entity in &modal {
@@ -930,6 +1099,7 @@ pub fn refresh_event_modal(
 pub fn refresh_order_modal(
     mut commands: Commands,
     state: Res<GameState>,
+    skin: Res<UiSkinAssets>,
     modal: Query<Entity, With<OrderModal>>,
 ) {
     let should_show = state.pending_order.is_some();
@@ -947,9 +1117,13 @@ pub fn refresh_order_modal(
                     padding: UiRect::all(px(22)),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(12),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(14)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.06, 0.09, 0.055, 0.97)),
+                BackgroundColor(Color::srgba(0.06, 0.09, 0.055, 0.91)),
+                ui_skin_node(&skin, SKIN_PAPER_PANEL, Color::srgba(0.88, 1.0, 0.76, 0.88)),
+                BorderColor::all(Color::srgba(0.76, 1.0, 0.48, 0.56)),
                 GlobalZIndex(7),
                 OrderModal,
             ))
@@ -986,8 +1160,8 @@ pub fn refresh_order_modal(
                     },
                     TextColor(Color::srgb(0.78, 0.88, 0.70)),
                 ));
-                spawn_button(modal, "Accept contract", Action::AcceptOrder);
-                spawn_button(modal, "Decline politely", Action::DeclineOrder);
+                spawn_button(modal, &skin, "Accept contract", Action::AcceptOrder);
+                spawn_button(modal, &skin, "Decline politely", Action::DeclineOrder);
             });
     } else if !should_show && exists {
         for entity in &modal {
@@ -1003,6 +1177,7 @@ pub fn refresh_order_modal(
 pub fn refresh_animal_panel(
     mut commands: Commands,
     state: Res<GameState>,
+    skin: Res<UiSkinAssets>,
     panel: Query<Entity, With<AnimalPanel>>,
 ) {
     let should_show = state.screen == GameScreen::Playing
@@ -1037,9 +1212,13 @@ pub fn refresh_animal_panel(
                     padding: UiRect::all(px(16)),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(9),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(14)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(1.0, 0.78, 0.72, 0.96)),
+                BackgroundColor(Color::srgba(1.0, 0.78, 0.72, 0.90)),
+                ui_skin_node(&skin, SKIN_PAPER_PANEL, Color::srgba(1.0, 0.88, 0.82, 0.93)),
+                BorderColor::all(Color::srgba(0.55, 0.24, 0.16, 0.50)),
                 GlobalZIndex(5),
                 AnimalPanel,
             ))
@@ -1072,10 +1251,10 @@ pub fn refresh_animal_panel(
                     TextColor(Color::srgb(0.30, 0.20, 0.14)),
                 ));
 
-                spawn_button(panel, "Feed fruit tray", Action::FeedSelectedCivet);
-                spawn_button(panel, "Pet gently", Action::PetSelectedCivet);
-                spawn_button(panel, "Inspect notes", Action::InspectSelectedCivet);
-                spawn_button(panel, "Close", Action::CloseAnimalPanel);
+                spawn_button(panel, &skin, "Feed fruit tray", Action::FeedSelectedCivet);
+                spawn_button(panel, &skin, "Pet gently", Action::PetSelectedCivet);
+                spawn_button(panel, &skin, "Inspect notes", Action::InspectSelectedCivet);
+                spawn_button(panel, &skin, "Close", Action::CloseAnimalPanel);
             });
     } else if !should_show && exists {
         for entity in &panel {
@@ -1087,6 +1266,7 @@ pub fn refresh_animal_panel(
 pub fn refresh_screen_modal(
     mut commands: Commands,
     state: Res<GameState>,
+    skin: Res<UiSkinAssets>,
     modal: Query<Entity, With<ScreenModal>>,
 ) {
     let should_show = state.screen != GameScreen::Playing;
@@ -1110,16 +1290,20 @@ pub fn refresh_screen_modal(
                     padding: UiRect::all(px(24)),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(14),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(16)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.99, 0.83, 0.79, 0.97)),
+                BackgroundColor(PANEL_PAPER),
+                ui_skin_node(&skin, SKIN_PAPER_PANEL, Color::srgba(1.0, 0.92, 0.82, 0.94)),
+                BorderColor::all(Color::srgba(0.48, 0.23, 0.14, 0.42)),
                 GlobalZIndex(20),
                 ScreenModal,
             ))
             .with_children(|modal| match state.screen {
-                GameScreen::MainMenu => spawn_main_menu(modal),
-                GameScreen::Intro => spawn_intro(modal),
-                GameScreen::AnimalBook => spawn_animal_book(modal, &state),
+                GameScreen::MainMenu => spawn_main_menu(modal, &skin),
+                GameScreen::Intro => spawn_intro(modal, &skin),
+                GameScreen::AnimalBook => spawn_animal_book(modal, &skin, &state),
                 GameScreen::Playing => {}
             });
     } else if !should_show && exists {
@@ -1129,7 +1313,7 @@ pub fn refresh_screen_modal(
     }
 }
 
-fn spawn_main_menu(parent: &mut ChildSpawnerCommands) {
+fn spawn_main_menu(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets) {
     parent.spawn((
         Text::new("EutherCivet"),
         TextFont {
@@ -1146,12 +1330,12 @@ fn spawn_main_menu(parent: &mut ChildSpawnerCommands) {
         },
         TextColor(Color::srgb(0.36, 0.23, 0.18)),
     ));
-    spawn_button(parent, "Start plantation", Action::StartGame);
-    spawn_button(parent, "What is this company?", Action::ShowIntro);
-    spawn_button(parent, "Meet the animals", Action::ShowAnimalBook);
+    spawn_button(parent, skin, "Start plantation", Action::StartGame);
+    spawn_button(parent, skin, "What is this company?", Action::ShowIntro);
+    spawn_button(parent, skin, "Meet the animals", Action::ShowAnimalBook);
 }
 
-fn spawn_intro(parent: &mut ChildSpawnerCommands) {
+fn spawn_intro(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets) {
     parent.spawn((
         Text::new("What EutherCivet Stands For"),
         TextFont {
@@ -1180,12 +1364,12 @@ fn spawn_intro(parent: &mut ChildSpawnerCommands) {
         },
         TextColor(Color::srgb(0.40, 0.28, 0.20)),
     ));
-    spawn_button(parent, "Start plantation", Action::StartGame);
-    spawn_button(parent, "Meet the animals", Action::ShowAnimalBook);
-    spawn_button(parent, "Back to menu", Action::BackToMenu);
+    spawn_button(parent, skin, "Start plantation", Action::StartGame);
+    spawn_button(parent, skin, "Meet the animals", Action::ShowAnimalBook);
+    spawn_button(parent, skin, "Back to menu", Action::BackToMenu);
 }
 
-fn spawn_animal_book(parent: &mut ChildSpawnerCommands, state: &GameState) {
+fn spawn_animal_book(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets, state: &GameState) {
     parent.spawn((
         Text::new("Meet the Animals"),
         TextFont {
@@ -1220,9 +1404,9 @@ fn spawn_animal_book(parent: &mut ChildSpawnerCommands, state: &GameState) {
         },
         TextColor(Color::srgb(0.40, 0.28, 0.20)),
     ));
-    spawn_button(parent, "Start plantation", Action::StartGame);
-    spawn_button(parent, "Company mission", Action::ShowIntro);
-    spawn_button(parent, "Back to menu", Action::BackToMenu);
+    spawn_button(parent, skin, "Start plantation", Action::StartGame);
+    spawn_button(parent, skin, "Company mission", Action::ShowIntro);
+    spawn_button(parent, skin, "Back to menu", Action::BackToMenu);
 }
 
 fn event_option_labels(kind: RandomEventKind) -> (&'static str, &'static str, &'static str) {
