@@ -13,7 +13,7 @@ const SKIN_TOOL_PANEL: usize = 1;
 const SKIN_BUTTON: usize = 3;
 
 pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
-    spawn_retro_sky(commands);
+    spawn_retro_sky(commands, backgrounds);
 
     for phase in 0..4 {
         commands.spawn((
@@ -27,14 +27,6 @@ pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
             Transform::from_xyz(0.0, -25.0, -34.0).with_scale(Vec3::splat(2.38)),
             EnvironmentBackdrop { phase },
         ));
-    }
-
-    for (x, y, speed, amplitude, alpha) in [
-        (-470.0, 250.0, 5.5, 36.0, 0.20),
-        (-70.0, 285.0, 3.7, 24.0, 0.16),
-        (390.0, 232.0, 4.6, 31.0, 0.18),
-    ] {
-        spawn_cloud(commands, x, y, speed, amplitude, alpha);
     }
 
     commands.spawn((
@@ -66,139 +58,45 @@ pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
     ));
 }
 
-fn spawn_cloud(commands: &mut Commands, x: f32, y: f32, speed: f32, amplitude: f32, alpha: f32) {
-    for (dx, width, height) in [(-48.0, 92.0, 30.0), (0.0, 128.0, 40.0), (58.0, 86.0, 28.0)] {
-        let base = Vec3::new(x + dx, y, -14.0);
-        commands.spawn((
-            Sprite::from_color(
-                Color::srgba(1.0, 0.93, 0.76, alpha),
-                Vec2::new(width, height),
-            ),
-            Transform::from_translation(base),
-            ParallaxLayer {
-                base,
-                speed,
-                amplitude,
-            },
-        ));
+fn spawn_retro_sky(commands: &mut Commands, backgrounds: &BackgroundAssets) {
+    for (index, y, z, scale, speed, alpha) in [
+        (0, 268.0, -33.4, 0.93, -8.0, 0.54),
+        (1, 193.0, -32.8, 0.92, -18.0, 0.50),
+        (2, 104.0, -31.9, 0.94, -34.0, 0.46),
+    ] {
+        spawn_parallax_image_strip(commands, backgrounds, index, y, z, scale, speed, alpha);
     }
 }
 
-fn spawn_retro_sky(commands: &mut Commands) {
-    spawn_sky_panel(
-        commands,
-        0.0,
-        238.0,
-        1480.0,
-        370.0,
-        Color::srgba(0.08, 0.22, 0.58, 0.42),
-        -33.4,
-    );
-    for (y, height, color) in [
-        (356.0, 24.0, Color::srgba(0.12, 0.38, 0.90, 0.24)),
-        (304.0, 18.0, Color::srgba(0.46, 0.78, 1.00, 0.16)),
-        (246.0, 16.0, Color::srgba(1.00, 0.58, 0.30, 0.12)),
-        (193.0, 12.0, Color::srgba(0.99, 0.86, 0.42, 0.09)),
-    ] {
-        spawn_sky_panel(commands, 0.0, y, 1480.0, height, color, -33.0);
-    }
-
-    for (layer, y, speed, color, height) in [
-        (0, 266.0, 7.0, Color::srgba(0.08, 0.11, 0.26, 0.22), 78.0),
-        (1, 219.0, 12.0, Color::srgba(0.07, 0.18, 0.23, 0.18), 58.0),
-        (2, 174.0, 19.0, Color::srgba(0.12, 0.28, 0.18, 0.15), 46.0),
-    ] {
-        for tile in -1..=1 {
-            spawn_mountain_ridge(
-                commands,
-                tile as f32 * 620.0,
-                y,
-                height,
-                color,
-                -32.5 + layer as f32 * 0.3,
-                speed,
-                layer as f32 * 0.7,
-            );
-        }
-    }
-
-    for (x, y, speed, scale, alpha) in [
-        (-520.0, 324.0, 18.0, 1.0, 0.14),
-        (-80.0, 349.0, 13.0, 1.25, 0.11),
-        (430.0, 294.0, 23.0, 0.88, 0.13),
-    ] {
-        spawn_sky_wisp(commands, x, y, speed, scale, alpha);
-    }
-
-    for y in [169.0, 181.0, 197.0] {
-        spawn_sky_wisp(commands, -120.0, y, -7.0, 1.7, 0.045);
-    }
-}
-
-fn spawn_sky_panel(
+fn spawn_parallax_image_strip(
     commands: &mut Commands,
-    x: f32,
+    backgrounds: &BackgroundAssets,
+    index: usize,
     y: f32,
-    width: f32,
-    height: f32,
-    color: Color,
     z: f32,
-) {
-    commands.spawn((
-        Sprite::from_color(color, Vec2::new(width, height)),
-        Transform::from_xyz(x, y, z),
-    ));
-}
-
-fn spawn_mountain_ridge(
-    commands: &mut Commands,
-    x: f32,
-    y: f32,
-    height: f32,
-    color: Color,
-    z: f32,
+    scale: f32,
     speed: f32,
-    phase: f32,
+    alpha: f32,
 ) {
-    for (i, peak) in [0.50, 0.76, 0.58, 0.84, 0.62, 0.70, 0.52]
-        .iter()
-        .enumerate()
-    {
-        let width = 108.0 + i as f32 * 7.0;
-        let x = x - 318.0 + i as f32 * 96.0;
-        let y = y - height * (1.0 - peak) * 0.40;
+    let wrap_width = 1774.0 * scale;
+    for tile in -1..=1 {
+        let x = tile as f32 * wrap_width;
+        let mut sprite = Sprite::from_atlas_image(
+            backgrounds.parallax_texture.clone(),
+            TextureAtlas {
+                layout: backgrounds.parallax_atlas.clone(),
+                index,
+            },
+        );
+        sprite.color = Color::srgba(1.0, 1.0, 1.0, alpha);
         commands.spawn((
-            Sprite::from_color(color, Vec2::new(width, height * peak)),
-            Transform::from_xyz(x, y, z).with_rotation(Quat::from_rotation_z(0.70)),
+            sprite,
+            Transform::from_xyz(x, y, z).with_scale(Vec3::splat(scale)),
             RetroSkyBand {
                 base: Vec3::new(x, y, z),
                 speed,
-                wave: phase + i as f32 * 0.17,
-                wrap_width: 1860.0,
-            },
-        ));
-    }
-}
-
-fn spawn_sky_wisp(commands: &mut Commands, x: f32, y: f32, speed: f32, scale: f32, alpha: f32) {
-    for (dx, dy, w, h) in [
-        (-92.0, 0.0, 122.0, 8.0),
-        (-18.0, 10.0, 168.0, 10.0),
-        (86.0, 2.0, 116.0, 7.0),
-        (18.0, -9.0, 198.0, 6.0),
-    ] {
-        let base = Vec3::new(x + dx * scale, y + dy * scale, -30.8);
-        commands.spawn((
-            Sprite::from_color(
-                Color::srgba(1.0, 0.90, 0.72, alpha),
-                Vec2::new(w * scale, h * scale),
-            ),
-            Transform::from_translation(base).with_rotation(Quat::from_rotation_z(-0.015)),
-            RetroSkyBand {
-                base,
-                speed,
-                wave: dx * 0.01,
-                wrap_width: 1600.0,
+                wave: 0.0,
+                wrap_width,
             },
         ));
     }
@@ -302,8 +200,8 @@ pub fn animate_world(
     }
 
     for (band, mut transform) in &mut sky {
-        let offset = (t * band.speed + band.wave * 79.0).rem_euclid(band.wrap_width);
-        transform.translation.x = band.base.x + offset - band.wrap_width * 0.5;
+        let offset = (t * band.speed + band.wave).rem_euclid(band.wrap_width);
+        transform.translation.x = band.base.x + offset;
         transform.translation.y = band.base.y + (t * 0.55 + band.wave).sin() * 2.5;
     }
 

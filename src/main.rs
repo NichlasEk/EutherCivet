@@ -85,6 +85,13 @@ fn setup(
         None,
         None,
     ));
+    let parallax_atlas = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+        UVec2::new(1774, 295),
+        1,
+        3,
+        None,
+        None,
+    ));
     let ui_skin_atlas = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
         UVec2::new(627, 627),
         2,
@@ -103,6 +110,8 @@ fn setup(
     let background_assets = BackgroundAssets {
         texture: asset_server.load("sprites/euther_civet_background_atlas.png"),
         atlas: background_atlas,
+        parallax_texture: asset_server.load("sprites/euther_civet_parallax_atlas.png"),
+        parallax_atlas,
     };
     commands.insert_resource(background_assets.clone());
     let ui_skin_assets = UiSkinAssets {

@@ -384,6 +384,8 @@ pub struct PropAssets {
 pub struct BackgroundAssets {
     pub texture: Handle<Image>,
     pub atlas: Handle<TextureAtlasLayout>,
+    pub parallax_texture: Handle<Image>,
+    pub parallax_atlas: Handle<TextureAtlasLayout>,
 }
 
 #[derive(Resource, Clone)]

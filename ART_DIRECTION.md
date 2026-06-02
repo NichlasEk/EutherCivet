@@ -6,7 +6,8 @@ Cute plantation dollhouse with dry bureaucratic paranoia. The world should feel 
 
 ## Layer Rules
 
-- Background sky: bold Mega Drive style parallax bands, clouds, and silhouettes.
+- Background sky: use painted parallax bitmap strips, currently `assets/sprites/euther_civet_parallax_atlas.png`.
+- Do not build skies from visible debug rectangles; if a layer moves, it should be a painted image strip.
 - Distant jungle: soft and atmospheric, never more detailed than interactable rooms.
 - Room floor: painted walkable area with clear foot contact.
 - Interactables: brighter, sharper, and anchored by shadows.
