@@ -1039,12 +1039,30 @@ pub fn refresh_day_modal(
     mut commands: Commands,
     state: Res<GameState>,
     skin: Res<UiSkinAssets>,
-    modal: Query<Entity, With<DayModal>>,
+    modal: Query<(Entity, &DayModalKind), With<DayModal>>,
 ) {
     let should_show = state.day_report.is_some() || state.game_result.is_some();
-    let exists = !modal.is_empty();
+    let desired_kind = if state.day_report.is_some() {
+        Some(DayModalKind::DayReport)
+    } else if state.game_result.is_some() {
+        Some(DayModalKind::FinalVerdict)
+    } else {
+        None
+    };
+    let mut exists = false;
 
-    if should_show && !exists {
+    if should_show {
+        let desired_kind = desired_kind.expect("modal kind checked by should_show");
+        for (entity, kind) in &modal {
+            exists = true;
+            if *kind != desired_kind {
+                commands.entity(entity).despawn();
+                exists = false;
+            }
+        }
+        if exists {
+            return;
+        }
         commands
             .spawn((
                 Node {
@@ -1064,6 +1082,7 @@ pub fn refresh_day_modal(
                 BorderColor::all(Color::srgba(0.84, 1.0, 0.62, 0.55)),
                 GlobalZIndex(9),
                 DayModal,
+                desired_kind,
             ))
             .with_children(|modal| {
                 if let Some(report) = &state.day_report {
@@ -1139,8 +1158,8 @@ pub fn refresh_day_modal(
                     ));
                 }
             });
-    } else if !should_show && exists {
-        for entity in &modal {
+    } else {
+        for (entity, _) in &modal {
             commands.entity(entity).despawn();
         }
     }

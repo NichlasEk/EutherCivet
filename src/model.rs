@@ -264,7 +264,7 @@ pub fn default_player_x() -> f32 {
 }
 
 pub fn default_player_y() -> f32 {
-    -145.0
+    -244.0
 }
 
 impl GameState {
@@ -440,6 +440,12 @@ pub struct InspectionModal;
 #[derive(Component)]
 pub struct DayModal;
 
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum DayModalKind {
+    DayReport,
+    FinalVerdict,
+}
+
 #[derive(Component)]
 pub struct EventModal;
 
@@ -467,6 +473,7 @@ pub struct MovingCivet {
 pub struct PlayerAvatar {
     pub facing: f32,
     pub moving: bool,
+    pub jumping: bool,
 }
 
 #[derive(Component)]

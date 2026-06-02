@@ -108,7 +108,7 @@ fn setup(
         atlas: prop_atlas,
     });
     let background_assets = BackgroundAssets {
-        texture: asset_server.load("sprites/euther_civet_background_atlas.png"),
+        texture: asset_server.load("sprites/euther_civet_neutral_background_atlas.png"),
         atlas: background_atlas,
         parallax_texture: asset_server.load("sprites/euther_civet_parallax_atlas.png"),
         parallax_atlas,

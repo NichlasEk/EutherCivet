@@ -188,7 +188,6 @@ pub fn animate_world(
         sprite.color = Color::srgba(1.0, 1.0, 1.0, alpha);
         transform.scale = Vec3::splat(backdrop_scale);
     }
-
     for (layer, mut transform) in &mut parallax {
         let drift = (t * layer.speed * 0.04).sin() * layer.amplitude;
         transform.translation.x = layer.base.x + drift;
@@ -212,10 +211,11 @@ pub fn animate_world(
 
     for (avatar, mut transform) in &mut players {
         let stride = (t * 10.0).sin();
+        let hop = if avatar.jumping { 20.0 } else { 0.0 };
         let lift = if avatar.moving {
-            stride.abs() * 7.0
+            stride.abs() * 7.0 + hop
         } else {
-            0.0
+            hop
         };
         let squash = if avatar.moving {
             stride.abs() * 0.015
@@ -280,6 +280,7 @@ pub fn move_player(
     {
         for (_, mut avatar) in &mut players {
             avatar.moving = false;
+            avatar.jumping = false;
         }
         return;
     }
@@ -291,24 +292,23 @@ pub fn move_player(
     if keys.pressed(KeyCode::ArrowRight) || keys.pressed(KeyCode::KeyD) {
         delta.x += 1.0;
     }
-    if keys.pressed(KeyCode::ArrowUp) || keys.pressed(KeyCode::KeyW) {
-        delta.y += 1.0;
-    }
-    if keys.pressed(KeyCode::ArrowDown) || keys.pressed(KeyCode::KeyS) {
-        delta.y -= 1.0;
-    }
+    let jumping = keys.pressed(KeyCode::Space);
 
-    if delta == Vec2::ZERO {
+    if delta == Vec2::ZERO && !jumping {
         for (_, mut avatar) in &mut players {
             avatar.moving = false;
+            avatar.jumping = false;
         }
         return;
     }
 
     let speed = 205.0;
-    let step = delta.normalize() * speed * time.delta_secs();
+    let step = if delta == Vec2::ZERO {
+        Vec2::ZERO
+    } else {
+        delta.normalize() * speed * time.delta_secs()
+    };
     state.player_x += step.x;
-    state.player_y += step.y;
 
     if state.player_x < -525.0 {
         let next_room = exit_left(state.current_room);
@@ -319,9 +319,7 @@ pub fn move_player(
     } else {
         state.player_x = state.player_x.clamp(-525.0, 525.0);
     }
-    let floor = walkable_floor(state.current_room);
-    state.player_y = state.player_y.clamp(floor.min_y, floor.max_y);
-    state.player_x = state.player_x.clamp(floor.min_x, floor.max_x);
+    clamp_player_to_floor(&mut state);
 
     for (mut transform, mut avatar) in &mut players {
         transform.translation.x = state.player_x;
@@ -333,7 +331,8 @@ pub fn move_player(
         } else {
             avatar.facing
         };
-        avatar.moving = true;
+        avatar.moving = step.x.abs() > 0.1;
+        avatar.jumping = jumping;
     }
     for mut transform in &mut labels {
         transform.translation.x = state.player_x;
@@ -348,11 +347,13 @@ pub fn move_player(
 fn walk_to_room(state: &mut GameState, room: PlantationRoom, player_x: f32) {
     if state.current_room == room {
         state.player_x = player_x;
+        clamp_player_to_floor(state);
         return;
     }
     state.current_room = room;
     state.player_x = player_x;
-    state.player_y = -145.0;
+    state.player_y = default_ground_y(room);
+    clamp_player_to_floor(state);
     state.selected_civet = None;
     state.dirty_visuals = true;
     state.log_line(format!("Walked to {}.", room_name(room)));
@@ -397,28 +398,38 @@ fn walkable_floor(room: PlantationRoom) -> WalkableFloor {
         PlantationRoom::Sanctuary => WalkableFloor {
             min_x: -525.0,
             max_x: 525.0,
-            min_y: -268.0,
-            max_y: 48.0,
+            min_y: -252.0,
+            max_y: -240.0,
         },
         PlantationRoom::CoffeeField => WalkableFloor {
             min_x: -525.0,
             max_x: 525.0,
-            min_y: -272.0,
-            max_y: 128.0,
+            min_y: -252.0,
+            max_y: -240.0,
         },
         PlantationRoom::Roastery => WalkableFloor {
             min_x: -525.0,
             max_x: 525.0,
-            min_y: -270.0,
-            max_y: 88.0,
+            min_y: -252.0,
+            max_y: -240.0,
         },
         PlantationRoom::PaperworkOffice => WalkableFloor {
             min_x: -525.0,
             max_x: 525.0,
-            min_y: -270.0,
-            max_y: 58.0,
+            min_y: -252.0,
+            max_y: -240.0,
         },
     }
+}
+
+fn default_ground_y(_room: PlantationRoom) -> f32 {
+    -244.0
+}
+
+fn clamp_player_to_floor(state: &mut GameState) {
+    let floor = walkable_floor(state.current_room);
+    state.player_x = state.player_x.clamp(floor.min_x, floor.max_x);
+    state.player_y = state.player_y.clamp(floor.min_y, floor.max_y);
 }
 
 fn ground_z(y: f32) -> f32 {
@@ -461,6 +472,7 @@ pub fn refresh_world_visuals(
         commands.entity(entity).despawn();
     }
 
+    clamp_player_to_floor(&mut state);
     spawn_room_title(&mut commands, &state);
     spawn_walkable_floor(&mut commands, state.current_room);
     spawn_room_exits(&mut commands, &state);
@@ -520,6 +532,7 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
         PlayerAvatar {
             facing: 1.0,
             moving: false,
+            jumping: false,
         },
         WorldVisual,
     ));
@@ -537,17 +550,17 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
 }
 
 fn spawn_walkable_floor(commands: &mut Commands, room: PlantationRoom) {
-    let (warmth, y, h) = match room {
-        PlantationRoom::Sanctuary => (Color::srgba(0.55, 0.34, 0.12, 0.08), -150.0, 305.0),
-        PlantationRoom::CoffeeField => (Color::srgba(0.20, 0.45, 0.16, 0.07), -145.0, 355.0),
-        PlantationRoom::Roastery => (Color::srgba(0.42, 0.22, 0.10, 0.08), -153.0, 270.0),
-        PlantationRoom::PaperworkOffice => (Color::srgba(0.50, 0.32, 0.17, 0.07), -150.0, 285.0),
+    let warmth = match room {
+        PlantationRoom::Sanctuary => Color::srgba(0.55, 0.34, 0.12, 0.08),
+        PlantationRoom::CoffeeField => Color::srgba(0.20, 0.45, 0.16, 0.07),
+        PlantationRoom::Roastery => Color::srgba(0.42, 0.22, 0.10, 0.08),
+        PlantationRoom::PaperworkOffice => Color::srgba(0.50, 0.32, 0.17, 0.07),
     };
 
     for (x, shade_y, width, height, alpha) in [
-        (-300.0, y - h * 0.26, 420.0, 24.0, 0.09),
-        (80.0, y - h * 0.04, 520.0, 28.0, 0.075),
-        (345.0, y + h * 0.24, 360.0, 18.0, 0.055),
+        (-270.0, -254.0, 430.0, 16.0, 0.10),
+        (100.0, -244.0, 620.0, 22.0, 0.10),
+        (402.0, -233.0, 310.0, 14.0, 0.07),
     ] {
         commands.spawn((
             Sprite::from_color(warmth.with_alpha(alpha), Vec2::new(width, height)),
@@ -623,6 +636,7 @@ fn spawn_room_exits(commands: &mut Commands, state: &GameState) {
 }
 
 fn spawn_exit_sign(commands: &mut Commands, x: f32, y: f32, label: String, action: Action) {
+    let z = 8.1;
     let plank = Color::srgba(0.42, 0.23, 0.09, 0.92);
     let plank_hover = Color::srgba(0.58, 0.34, 0.13, 0.96);
     let plank_dark = Color::srgba(0.16, 0.08, 0.035, 0.80);
@@ -632,30 +646,30 @@ fn spawn_exit_sign(commands: &mut Commands, x: f32, y: f32, label: String, actio
     for dx in [-78.0, 78.0] {
         commands.spawn((
             Sprite::from_color(plank_dark, Vec2::new(14.0, 92.0)),
-            Transform::from_xyz(x + dx + 3.0, y - 34.0, 2.75),
+            Transform::from_xyz(x + dx + 3.0, y - 34.0, z - 0.25),
             WorldVisual,
         ));
         commands.spawn((
             Sprite::from_color(bamboo, Vec2::new(12.0, 88.0)),
-            Transform::from_xyz(x + dx, y - 34.0, 2.8),
+            Transform::from_xyz(x + dx, y - 34.0, z - 0.2),
             WorldVisual,
         ));
         commands.spawn((
             Sprite::from_color(highlight, Vec2::new(3.0, 78.0)),
-            Transform::from_xyz(x + dx - 3.0, y - 31.0, 2.9),
+            Transform::from_xyz(x + dx - 3.0, y - 31.0, z - 0.1),
             WorldVisual,
         ));
     }
 
     commands.spawn((
         Sprite::from_color(plank_dark, Vec2::new(206.0, 56.0)),
-        Transform::from_xyz(x + 4.0, y - 5.0, 2.95),
+        Transform::from_xyz(x + 4.0, y - 5.0, z - 0.05),
         WorldVisual,
     ));
     commands
         .spawn((
             Sprite::from_color(plank, Vec2::new(198.0, 48.0)),
-            Transform::from_xyz(x, y, 3.0),
+            Transform::from_xyz(x, y, z),
             Pickable::default(),
             WorldActionTarget(action),
             WorldVisual,
@@ -665,7 +679,7 @@ fn spawn_exit_sign(commands: &mut Commands, x: f32, y: f32, label: String, actio
         .observe(tint_sprite_on_out(plank));
     commands.spawn((
         Sprite::from_color(highlight, Vec2::new(178.0, 4.0)),
-        Transform::from_xyz(x - 2.0, y + 15.0, 3.1),
+        Transform::from_xyz(x - 2.0, y + 15.0, z + 0.1),
         WorldVisual,
     ));
     commands.spawn((
@@ -675,7 +689,7 @@ fn spawn_exit_sign(commands: &mut Commands, x: f32, y: f32, label: String, actio
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.92, 0.70)),
-        Transform::from_xyz(x, y + 1.0, 4.0),
+        Transform::from_xyz(x, y + 1.0, z + 0.4),
         WorldVisual,
     ));
 }
@@ -690,14 +704,25 @@ fn room_action(room: PlantationRoom) -> Action {
 }
 
 fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &PropAssets) {
+    spawn_wood_platform(
+        commands,
+        -250.0,
+        -174.0,
+        455.0,
+        30.0,
+        ground_z(-174.0) - 0.3,
+    );
+    spawn_wood_platform(commands, 390.0, -185.0, 170.0, 30.0, ground_z(-185.0) - 0.3);
+
     let plant_count = state.coffee_plants.min(36);
     for i in 0..plant_count {
-        let x = -250.0 + (i % 12) as f32 * 42.0;
-        let y = -160.0 + (i / 12) as f32 * 48.0;
+        let x = -235.0 + (i % 12) as f32 * 42.0;
+        let y = -222.0 + (i / 12) as f32 * 26.0;
+        spawn_contact_shadow(commands, x, y - 16.0, 38.0, 10.0, ground_z(y) - 0.35);
         commands
             .spawn((
                 prop_sprite(props, 1),
-                Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(0.18)),
+                Transform::from_xyz(x, y, ground_z(y)).with_scale(Vec3::splat(0.16)),
                 Pickable::default(),
                 WorldActionTarget(Action::HarvestFruit),
                 WorldVisual,
@@ -707,18 +732,19 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
             .observe(tint_sprite_on_out(Color::srgb(0.05, 0.48, 0.19)));
         commands.spawn((
             Sprite::from_color(Color::srgb(0.88, 0.12, 0.08), Vec2::new(7.0, 7.0)),
-            Transform::from_xyz(x + 6.0, y + 6.0, 2.0),
+            Transform::from_xyz(x + 6.0, y + 6.0, ground_z(y) + 0.4),
             WorldVisual,
         ));
     }
 
     for i in 0..5 {
-        let x = -460.0 + i as f32 * 92.0;
+        let x = -430.0 + i as f32 * 82.0;
+        let y = -156.0 + (i % 2) as f32 * 7.0;
+        spawn_contact_shadow(commands, x, y - 20.0, 70.0, 16.0, ground_z(y) - 0.35);
         commands
             .spawn((
                 prop_sprite(props, 2),
-                Transform::from_xyz(x, 105.0 + (i % 2) as f32 * 22.0, 2.0)
-                    .with_scale(Vec3::splat(0.30)),
+                Transform::from_xyz(x, y, ground_z(y)).with_scale(Vec3::splat(0.22)),
                 Pickable::default(),
                 WorldActionTarget(Action::FeedCivets),
                 WorldVisual,
@@ -733,15 +759,16 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
                 ..default()
             },
             TextColor(Color::srgb(1.0, 0.78, 0.52)),
-            Transform::from_xyz(x, 105.0 + (i % 2) as f32 * 22.0, 3.0),
+            Transform::from_xyz(x, y, ground_z(y) + 0.6),
             WorldVisual,
         ));
     }
 
+    spawn_contact_shadow(commands, 410.0, -174.0, 76.0, 18.0, ground_z(-156.0) - 0.35);
     commands
         .spawn((
             prop_sprite(props, 0),
-            Transform::from_xyz(410.0, 72.0, 2.0).with_scale(Vec3::splat(0.34)),
+            Transform::from_xyz(410.0, -156.0, ground_z(-156.0)).with_scale(Vec3::splat(0.26)),
             Pickable::default(),
             WorldActionTarget(Action::PlantCoffee),
             WorldVisual,
@@ -756,7 +783,7 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
             ..default()
         },
         TextColor(Color::srgb(0.92, 1.0, 0.72)),
-        Transform::from_xyz(410.0, 72.0, 3.0),
+        Transform::from_xyz(410.0, -156.0, ground_z(-156.0) + 0.6),
         WorldVisual,
     ));
 
@@ -767,13 +794,13 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
             ..default()
         },
         TextColor(Color::srgb(0.95, 1.0, 0.74)),
-        Transform::from_xyz(235.0, 125.0, 3.0),
+        Transform::from_xyz(205.0, -128.0, 5.0),
         WorldVisual,
     ));
 
-    spawn_prop(commands, props, 15, 525.0, 80.0, 0.42, 2.0);
+    spawn_prop(commands, props, 15, 525.0, -170.0, 0.34, ground_z(-170.0));
     if state.goat_present {
-        spawn_goat(commands, props, 420.0, -95.0, "field goat?");
+        spawn_goat(commands, props, 496.0, -224.0, "field goat?");
     }
 
     spawn_room_hint(
@@ -789,15 +816,17 @@ fn spawn_sanctuary_room(
     props: &PropAssets,
     _skin: &UiSkinAssets,
 ) {
+    spawn_civet_perch(commands);
+
     for i in 0..14 {
         let x = -185.0 + (i % 7) as f32 * 55.0;
-        let y = -214.0 + (i / 7) as f32 * 34.0 + (i % 2) as f32 * 5.0;
+        let y = -178.0 + (i / 7) as f32 * 34.0 + (i % 2) as f32 * 5.0;
         spawn_prop(commands, props, 15, x, y, 0.18, ground_z(y) - 0.2);
     }
     for (x, y) in [
-        (-245.0, -190.0),
+        (-245.0, -188.0),
         (-220.0, -235.0),
-        (245.0, -192.0),
+        (245.0, -188.0),
         (220.0, -236.0),
     ] {
         spawn_prop(commands, props, 0, x, y, 0.13, ground_z(y) - 0.1);
@@ -814,8 +843,8 @@ fn spawn_sanctuary_room(
     ));
 
     for i in 0..state.civets.min(10) {
-        let x = -70.0 + (i % 5) as f32 * 54.0;
-        let y = -214.0 + (i / 5) as f32 * 34.0;
+        let x = -116.0 + (i % 5) as f32 * 58.0;
+        let y = -196.0 + (i / 5) as f32 * 44.0;
         spawn_contact_shadow(commands, x, y - 13.0, 45.0, 14.0, 2.7);
         commands
             .spawn((
@@ -863,15 +892,15 @@ fn spawn_sanctuary_room(
     }
 
     if state.binturong_home {
-        spawn_contact_shadow(commands, 120.0, -178.0, 88.0, 24.0, 2.7);
+        spawn_contact_shadow(commands, 118.0, -154.0, 88.0, 24.0, 2.7);
         spawn_prop(
             commands,
             props,
             11,
-            120.0,
-            -168.0,
+            118.0,
+            -144.0,
             0.28,
-            ground_z(-168.0) + 0.1,
+            ground_z(-144.0) + 0.1,
         );
         commands.spawn((
             Text2d::new("binturong"),
@@ -880,13 +909,13 @@ fn spawn_sanctuary_room(
                 ..default()
             },
             TextColor(Color::srgb(0.95, 0.87, 0.68)),
-            Transform::from_xyz(120.0, -139.0, 5.0),
+            Transform::from_xyz(118.0, -115.0, 5.0),
             WorldVisual,
         ));
     }
 
     if state.goat_present {
-        spawn_goat(commands, props, -292.0, -198.0, "goat?");
+        spawn_goat(commands, props, -292.0, -224.0, "goat?");
     }
 
     spawn_prop(commands, props, 12, -330.0, -228.0, 0.42, ground_z(-228.0));
@@ -1105,6 +1134,64 @@ fn spawn_prop(
         Transform::from_xyz(x, y, z).with_scale(Vec3::splat(scale)),
         WorldVisual,
     ));
+}
+
+fn spawn_wood_platform(commands: &mut Commands, x: f32, y: f32, width: f32, height: f32, z: f32) {
+    let shadow = Color::srgba(0.05, 0.03, 0.015, 0.24);
+    let dark = Color::srgba(0.30, 0.16, 0.06, 0.92);
+    let wood = Color::srgba(0.52, 0.29, 0.10, 0.95);
+    let trim = Color::srgba(0.86, 0.58, 0.22, 0.76);
+    let surface = Color::srgba(0.96, 0.72, 0.34, 0.42);
+    commands.spawn((
+        Sprite::from_color(shadow, Vec2::new(width + 34.0, 22.0)),
+        Transform::from_xyz(x + 6.0, y - height * 0.5 - 16.0, z - 0.25),
+        WorldVisual,
+    ));
+    for dx in [-(width * 0.42), width * 0.42] {
+        commands.spawn((
+            Sprite::from_color(dark, Vec2::new(12.0, 72.0)),
+            Transform::from_xyz(x + dx + 4.0, y - 42.0, z - 0.05),
+            WorldVisual,
+        ));
+        commands.spawn((
+            Sprite::from_color(wood, Vec2::new(10.0, 68.0)),
+            Transform::from_xyz(x + dx, y - 40.0, z),
+            WorldVisual,
+        ));
+    }
+    commands.spawn((
+        Sprite::from_color(dark, Vec2::new(width + 12.0, height + 10.0)),
+        Transform::from_xyz(x + 5.0, y - 4.0, z + 0.05),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Sprite::from_color(wood, Vec2::new(width, height)),
+        Transform::from_xyz(x, y, z + 0.1),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Sprite::from_color(trim, Vec2::new(width - 22.0, 4.0)),
+        Transform::from_xyz(x, y + height * 0.28, z + 0.2),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Sprite::from_color(surface, Vec2::new(width - 34.0, 3.0)),
+        Transform::from_xyz(x, y + height * 0.48, z + 0.3),
+        WorldVisual,
+    ));
+}
+
+fn spawn_civet_perch(commands: &mut Commands) {
+    spawn_wood_platform(commands, 0.0, -203.0, 430.0, 28.0, ground_z(-203.0) - 0.35);
+    spawn_wood_platform(commands, -6.0, -151.0, 300.0, 24.0, ground_z(-151.0) - 0.35);
+    let trunk = Color::srgba(0.39, 0.21, 0.08, 0.94);
+    for x in [-170.0, 0.0, 170.0] {
+        commands.spawn((
+            Sprite::from_color(trunk, Vec2::new(18.0, 118.0)),
+            Transform::from_xyz(x, -188.0, ground_z(-188.0) - 0.45),
+            WorldVisual,
+        ));
+    }
 }
 
 fn spawn_contact_shadow(commands: &mut Commands, x: f32, y: f32, width: f32, height: f32, z: f32) {
