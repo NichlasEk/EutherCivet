@@ -948,20 +948,33 @@ fn spawn_roastery_room(
     commands: &mut Commands,
     state: &GameState,
     props: &PropAssets,
-    skin: &UiSkinAssets,
+    _skin: &UiSkinAssets,
 ) {
-    commands.spawn((
-        skin_sprite(skin, SKIN_BUTTON, Color::srgba(1.0, 0.80, 0.55, 0.86)),
-        Transform::from_xyz(-175.0, -102.0, 1.0),
-        WorldVisual,
-    ));
-    spawn_prop(commands, props, 4, -325.0, -115.0, 0.23, 2.0);
-    spawn_prop(commands, props, 3, -35.0, -120.0, 0.21, 2.0);
-    spawn_prop(commands, props, 14, -18.0, -42.0, 0.26, 2.0);
+    spawn_wood_platform(
+        commands,
+        -185.0,
+        -170.0,
+        500.0,
+        42.0,
+        ground_z(-170.0) - 0.3,
+    );
+    spawn_wood_platform(commands, 235.0, -160.0, 260.0, 34.0, ground_z(-160.0) - 0.3);
+    spawn_wood_platform(commands, -330.0, -74.0, 190.0, 26.0, ground_z(-74.0) - 0.3);
+    spawn_prop(commands, props, 4, -330.0, -52.0, 0.22, ground_z(-52.0));
+    spawn_prop(commands, props, 3, -35.0, -145.0, 0.20, ground_z(-145.0));
+    spawn_prop(commands, props, 14, -18.0, -115.0, 0.24, ground_z(-115.0));
+    spawn_contact_shadow(
+        commands,
+        -185.0,
+        -158.0,
+        112.0,
+        22.0,
+        ground_z(-150.0) - 0.35,
+    );
     commands
         .spawn((
             prop_sprite(props, 6),
-            Transform::from_xyz(-175.0, -60.0, 3.0).with_scale(Vec3::splat(0.48)),
+            Transform::from_xyz(-185.0, -138.0, ground_z(-138.0)).with_scale(Vec3::splat(0.42)),
             Pickable::default(),
             WorldActionTarget(Action::RoastCoffee),
             WorldVisual,
@@ -972,20 +985,21 @@ fn spawn_roastery_room(
     commands.spawn((
         Text2d::new("ROASTER"),
         TextFont {
-            font_size: 22.0,
+            font_size: 18.0,
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.78, 0.45)),
-        Transform::from_xyz(-175.0, -60.0, 4.0),
+        Transform::from_xyz(-185.0, -138.0, ground_z(-138.0) + 0.4),
         WorldVisual,
     ));
     for i in 0..6 {
-        let x = 140.0 + (i % 3) as f32 * 76.0;
-        let y = -140.0 + (i / 3) as f32 * 74.0;
+        let x = 140.0 + (i % 3) as f32 * 72.0;
+        let y = -143.0 + (i / 3) as f32 * 32.0;
+        spawn_contact_shadow(commands, x, y - 16.0, 42.0, 12.0, ground_z(y) - 0.35);
         commands
             .spawn((
                 prop_sprite(props, 5),
-                Transform::from_xyz(x, y, 2.0).with_scale(Vec3::splat(0.27)),
+                Transform::from_xyz(x, y, ground_z(y)).with_scale(Vec3::splat(0.23)),
                 Pickable::default(),
                 WorldActionTarget(Action::SellCoffee),
                 WorldVisual,
@@ -1000,14 +1014,15 @@ fn spawn_roastery_room(
                 ..default()
             },
             TextColor(Color::srgb(0.22, 0.12, 0.05)),
-            Transform::from_xyz(x, y, 3.0),
+            Transform::from_xyz(x, y, ground_z(y) + 0.4),
             WorldVisual,
         ));
     }
+    spawn_contact_shadow(commands, -390.0, -54.0, 74.0, 16.0, ground_z(-42.0) - 0.35);
     commands
         .spawn((
             prop_sprite(props, 3),
-            Transform::from_xyz(-390.0, 45.0, 2.0).with_scale(Vec3::splat(0.34)),
+            Transform::from_xyz(-390.0, -42.0, ground_z(-42.0)).with_scale(Vec3::splat(0.30)),
             Pickable::default(),
             WorldActionTarget(Action::CollectBeans),
             WorldVisual,
@@ -1022,7 +1037,7 @@ fn spawn_roastery_room(
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.78, 0.54)),
-        Transform::from_xyz(-390.0, 45.0, 3.0),
+        Transform::from_xyz(-390.0, -42.0, ground_z(-42.0) + 0.4),
         WorldVisual,
     ));
 
@@ -1036,7 +1051,7 @@ fn spawn_roastery_room(
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.84, 0.58)),
-        Transform::from_xyz(100.0, 95.0, 3.0),
+        Transform::from_xyz(135.0, -50.0, 4.0),
         WorldVisual,
     ));
 

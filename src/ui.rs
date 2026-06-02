@@ -1192,53 +1192,75 @@ pub fn refresh_event_modal(
 ) {
     let should_show = state.screen == GameScreen::Playing
         && state.current_room == PlantationRoom::PaperworkOffice
-        && state.event.is_some();
+        && (state.event.is_some() || state.pending_order.is_some());
     let exists = !modal.is_empty();
 
     if should_show && !exists {
-        let event = state.event.as_ref().expect("event checked above");
         commands
             .spawn((
                 Node {
                     position_type: PositionType::Absolute,
-                    left: percent(24),
-                    top: percent(15),
-                    width: percent(52),
-                    padding: UiRect::all(px(22)),
+                    left: percent(4),
+                    top: percent(12),
+                    width: percent(42),
+                    padding: UiRect::all(px(16)),
                     flex_direction: FlexDirection::Column,
-                    row_gap: px(12),
+                    row_gap: px(10),
                     border: UiRect::all(px(2)),
-                    border_radius: BorderRadius::all(px(14)),
+                    border_radius: BorderRadius::all(px(12)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.12, 0.075, 0.035, 0.91)),
-                ui_skin_node(&skin, SKIN_PAPER_PANEL, Color::srgba(1.0, 0.90, 0.72, 0.90)),
-                BorderColor::all(Color::srgba(1.0, 0.76, 0.42, 0.56)),
+                BackgroundColor(Color::srgba(0.05, 0.06, 0.04, 0.78)),
+                ui_skin_node(&skin, SKIN_STATS_PANEL, Color::srgba(0.86, 0.96, 0.74, 0.78)),
+                BorderColor::all(Color::srgba(0.86, 1.0, 0.58, 0.42)),
                 GlobalZIndex(8),
                 EventModal,
             ))
             .with_children(|modal| {
                 modal.spawn((
-                    Text::new(format!("Mailbox: {}", event.title)),
+                    Text::new("Paperwork Inbox"),
                     TextFont {
-                        font_size: 31.0,
+                        font_size: 28.0,
                         ..default()
                     },
                     TextColor(Color::srgb(1.0, 0.82, 0.40)),
                 ));
-                modal.spawn((
-                    Text::new(event.body.clone()),
-                    TextFont {
-                        font_size: 17.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.94, 0.88, 0.72)),
-                ));
 
-                let (a, b, c) = event_option_labels(event.kind);
-                spawn_button(modal, &skin, a, Action::EventOptionA);
-                spawn_button(modal, &skin, b, Action::EventOptionB);
-                spawn_button(modal, &skin, c, Action::EventOptionC);
+                if let Some(event) = state.event.as_ref() {
+                    spawn_inbox_card(modal, &skin, &event.title, &event.body, |card| {
+                        let (a, b, c) = event_option_labels(event.kind);
+                        spawn_button(card, &skin, a, Action::EventOptionA);
+                        spawn_button(card, &skin, b, Action::EventOptionB);
+                        spawn_button(card, &skin, c, Action::EventOptionC);
+                    });
+                }
+
+                if let Some(order) = state.pending_order.as_ref() {
+                    let body = format!(
+                        "{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\nLegitimate contract. The word 'discreet' appears seven times.",
+                        order.client,
+                        order.bags,
+                        order.due_day,
+                        order.payout,
+                        order.reputation_reward,
+                        order.suspicion_risk
+                    );
+                    spawn_inbox_card(modal, &skin, "Premium Coffee Contract", &body, |card| {
+                        spawn_button(card, &skin, "Accept contract", Action::AcceptOrder);
+                        spawn_button(card, &skin, "Decline politely", Action::DeclineOrder);
+                    });
+                }
+
+                if state.event.is_none() && state.pending_order.is_none() {
+                    modal.spawn((
+                        Text::new("No letters. The office smells faintly of stamps."),
+                        TextFont {
+                            font_size: 15.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.94, 0.91, 0.75)),
+                    ));
+                }
             });
     } else if !should_show && exists {
         for entity in &modal {
@@ -1247,80 +1269,57 @@ pub fn refresh_event_modal(
     }
 }
 
-pub fn refresh_order_modal(
-    mut commands: Commands,
-    state: Res<GameState>,
-    skin: Res<UiSkinAssets>,
-    modal: Query<Entity, With<OrderModal>>,
+fn spawn_inbox_card(
+    parent: &mut ChildSpawnerCommands,
+    skin: &UiSkinAssets,
+    title: &str,
+    body: &str,
+    add_buttons: impl FnOnce(&mut ChildSpawnerCommands),
 ) {
-    let should_show = state.screen == GameScreen::Playing
-        && state.current_room == PlantationRoom::PaperworkOffice
-        && state.event.is_none()
-        && state.pending_order.is_some();
-    let exists = !modal.is_empty();
-
-    if should_show && !exists {
-        let order = state.pending_order.as_ref().expect("order checked above");
-        commands
-            .spawn((
-                Node {
-                    position_type: PositionType::Absolute,
-                    left: percent(28),
-                    top: percent(47),
-                    width: percent(48),
-                    padding: UiRect::all(px(22)),
-                    flex_direction: FlexDirection::Column,
-                    row_gap: px(12),
-                    border: UiRect::all(px(2)),
-                    border_radius: BorderRadius::all(px(14)),
+    parent
+        .spawn((
+            Node {
+                width: percent(100),
+                padding: UiRect::all(px(14)),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(8),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(10)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.14, 0.10, 0.045, 0.68)),
+            ui_skin_node(skin, SKIN_PAPER_PANEL, Color::srgba(1.0, 0.91, 0.70, 0.76)),
+            BorderColor::all(Color::srgba(1.0, 0.78, 0.42, 0.34)),
+        ))
+        .with_children(|card| {
+            card.spawn((
+                Text::new(title.to_string()),
+                TextFont {
+                    font_size: 20.0,
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.06, 0.09, 0.055, 0.91)),
-                ui_skin_node(&skin, SKIN_PAPER_PANEL, Color::srgba(0.88, 1.0, 0.76, 0.88)),
-                BorderColor::all(Color::srgba(0.76, 1.0, 0.48, 0.56)),
-                GlobalZIndex(7),
-                OrderModal,
-            ))
-            .with_children(|modal| {
-                modal.spawn((
-                    Text::new("Mailbox: Premium Coffee Contract"),
-                    TextFont {
-                        font_size: 31.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.86, 1.0, 0.48)),
-                ));
-                modal.spawn((
-                    Text::new(format!(
-                        "{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\nThe letter waits in the mailbox until its due day.",
-                        order.client,
-                        order.bags,
-                        order.due_day,
-                        order.payout,
-                        order.reputation_reward,
-                        order.suspicion_risk
-                    )),
-                    TextFont {
-                        font_size: 17.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.94, 0.91, 0.75)),
-                ));
-                modal.spawn((
-                    Text::new("The contract is legitimate. The word 'discreet' appears seven times."),
-                    TextFont {
-                        font_size: 15.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.78, 0.88, 0.70)),
-                ));
-                spawn_button(modal, &skin, "Accept contract", Action::AcceptOrder);
-                spawn_button(modal, &skin, "Decline politely", Action::DeclineOrder);
-            });
-    } else if !should_show && exists {
-        for entity in &modal {
-            commands.entity(entity).despawn();
-        }
+                TextColor(Color::srgb(1.0, 0.86, 0.42)),
+            ));
+            card.spawn((
+                Text::new(body.to_string()),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.94, 0.89, 0.72)),
+            ));
+            add_buttons(card);
+        });
+}
+
+pub fn refresh_order_modal(
+    mut commands: Commands,
+    _state: Res<GameState>,
+    _skin: Res<UiSkinAssets>,
+    modal: Query<Entity, With<OrderModal>>,
+) {
+    for entity in &modal {
+        commands.entity(entity).despawn();
     }
 }
 
