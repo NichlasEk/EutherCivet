@@ -1,4 +1,4 @@
-use crate::model::{Action, GameState, RandomEventKind};
+use crate::model::{Action, GameState, PlantationRoom, RandomEventKind};
 
 pub fn run_action(state: &mut GameState, action: Action) {
     match action {
@@ -19,6 +19,13 @@ pub fn run_action(state: &mut GameState, action: Action) {
         }
         Action::BackToMenu => {
             state.screen = crate::model::GameScreen::MainMenu;
+            return;
+        }
+        Action::GoSanctuary
+        | Action::GoCoffeeField
+        | Action::GoRoastery
+        | Action::GoPaperworkOffice => {
+            switch_room(state, action);
             return;
         }
         _ => {}
@@ -288,6 +295,10 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {}
         Action::AcceptOrder | Action::DeclineOrder => {}
         Action::CloseAnimalPanel => {}
+        Action::GoSanctuary
+        | Action::GoCoffeeField
+        | Action::GoRoastery
+        | Action::GoPaperworkOffice => {}
         Action::StartGame | Action::ShowIntro | Action::ShowAnimalBook | Action::BackToMenu => {}
         Action::ContinueDay => {}
     }
@@ -297,6 +308,23 @@ pub fn run_action(state: &mut GameState, action: Action) {
         state.reputation -= 1;
     }
     state.clamp();
+}
+
+fn switch_room(state: &mut GameState, action: Action) {
+    let (room, label) = match action {
+        Action::GoSanctuary => (PlantationRoom::Sanctuary, "Sanctuary"),
+        Action::GoCoffeeField => (PlantationRoom::CoffeeField, "Coffee Field"),
+        Action::GoRoastery => (PlantationRoom::Roastery, "Roastery"),
+        Action::GoPaperworkOffice => (PlantationRoom::PaperworkOffice, "Paperwork Office"),
+        _ => return,
+    };
+
+    state.current_room = room;
+    if room != PlantationRoom::Sanctuary {
+        state.selected_civet = None;
+    }
+    state.dirty_visuals = true;
+    state.log_line(format!("Moved to {label}. Everything is still legal."));
 }
 
 pub fn select_civet_by_index(state: &mut GameState, index: usize) {

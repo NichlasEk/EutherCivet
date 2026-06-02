@@ -113,6 +113,14 @@ pub fn spawn_ui(commands: &mut Commands) {
                     ))
                     .with_children(|buttons| {
                         for (label, action) in [
+                            ("Sanctuary", Action::GoSanctuary),
+                            ("Coffee Field", Action::GoCoffeeField),
+                            ("Roastery", Action::GoRoastery),
+                            ("Paperwork Office", Action::GoPaperworkOffice),
+                        ] {
+                            spawn_dynamic_button(buttons, label, action);
+                        }
+                        for (label, action) in [
                             ("Plant coffee", Action::PlantCoffee),
                             ("Harvest fruit", Action::HarvestFruit),
                             ("Feed civets", Action::FeedCivets),
@@ -249,6 +257,10 @@ fn button_base_color(action: Action) -> Color {
         | Action::ShowAnimalBook
         | Action::BackToMenu
         | Action::ContinueDay => Color::srgb(0.22, 0.38, 0.22),
+        Action::GoSanctuary
+        | Action::GoCoffeeField
+        | Action::GoRoastery
+        | Action::GoPaperworkOffice => Color::srgb(0.28, 0.18, 0.24),
         Action::DeliverOrder | Action::AcceptOrder => Color::srgb(0.33, 0.34, 0.12),
         Action::DeclineOrder => Color::srgb(0.32, 0.16, 0.12),
         Action::BuildLegalOffice
@@ -356,7 +368,21 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::FeedSelectedCivet => "Feed fruit tray".to_string(),
         Action::PetSelectedCivet => "Pet gently".to_string(),
         Action::InspectSelectedCivet => "Inspect notes".to_string(),
+        Action::GoSanctuary => room_label("Sanctuary", PlantationRoom::Sanctuary, state),
+        Action::GoCoffeeField => room_label("Coffee Field", PlantationRoom::CoffeeField, state),
+        Action::GoRoastery => room_label("Roastery", PlantationRoom::Roastery, state),
+        Action::GoPaperworkOffice => {
+            room_label("Paperwork Office", PlantationRoom::PaperworkOffice, state)
+        }
         _ => "Action".to_string(),
+    }
+}
+
+fn room_label(name: &str, room: PlantationRoom, state: &GameState) -> String {
+    if state.current_room == room {
+        format!("{name} *")
+    } else {
+        name.to_string()
     }
 }
 
@@ -398,6 +424,10 @@ fn can_run(action: Action, state: &GameState) -> bool {
         Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
             state.selected_civet.is_some()
         }
+        Action::GoSanctuary
+        | Action::GoCoffeeField
+        | Action::GoRoastery
+        | Action::GoPaperworkOffice => state.screen == GameScreen::Playing,
         Action::AcceptOrder | Action::DeclineOrder => state.pending_order.is_some(),
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => state.event.is_some(),
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => state.inspection,

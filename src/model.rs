@@ -8,6 +8,8 @@ const SAVE_PATH: &str = "euther_civet_save.json";
 pub struct GameState {
     #[serde(default)]
     pub screen: GameScreen,
+    #[serde(default)]
+    pub current_room: PlantationRoom,
     pub day: u32,
     pub coffee_plants: u32,
     pub civets: u32,
@@ -117,10 +119,20 @@ pub enum GameScreen {
     Playing,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PlantationRoom {
+    #[default]
+    Sanctuary,
+    CoffeeField,
+    Roastery,
+    PaperworkOffice,
+}
+
 impl Default for GameState {
     fn default() -> Self {
         Self {
             screen: GameScreen::MainMenu,
+            current_room: PlantationRoom::Sanctuary,
             day: 1,
             coffee_plants: 6,
             civets: 3,
@@ -393,6 +405,10 @@ pub enum Action {
     PetSelectedCivet,
     InspectSelectedCivet,
     CloseAnimalPanel,
+    GoSanctuary,
+    GoCoffeeField,
+    GoRoastery,
+    GoPaperworkOffice,
     StartGame,
     ShowIntro,
     ShowAnimalBook,

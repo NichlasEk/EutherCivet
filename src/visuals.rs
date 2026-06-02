@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::actions::select_civet_by_index;
 use crate::model::{
-    CivetClickTarget, GameScreen, GameState, Helicopter, SuspicionGlow, WorldVisual,
+    CivetClickTarget, GameScreen, GameState, Helicopter, PlantationRoom, SuspicionGlow, WorldVisual,
 };
 
 pub fn spawn_world(commands: &mut Commands) {
@@ -37,24 +37,6 @@ pub fn spawn_world(commands: &mut Commands) {
         ),
         Transform::from_xyz(0.0, -55.0, 8.0),
         SuspicionGlow,
-    ));
-    commands.spawn((
-        Text2d::new("EUTHERCIVET COFFEE ESTATE"),
-        TextFont {
-            font_size: 24.0,
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 0.84, 0.42)),
-        Transform::from_xyz(-160.0, 315.0, 2.0),
-    ));
-    commands.spawn((
-        Text2d::new("Fair-trade sanctuary. Legally boring. Visually indefensible."),
-        TextFont {
-            font_size: 18.0,
-            ..default()
-        },
-        TextColor(Color::srgb(0.94, 0.86, 0.62)),
-        Transform::from_xyz(-160.0, 285.0, 2.0),
     ));
 }
 
@@ -97,6 +79,64 @@ pub fn refresh_world_visuals(
         commands.entity(entity).despawn();
     }
 
+    spawn_room_title(&mut commands, &state);
+    match state.current_room {
+        PlantationRoom::Sanctuary => spawn_sanctuary_room(&mut commands, &state),
+        PlantationRoom::CoffeeField => spawn_coffee_field_room(&mut commands, &state),
+        PlantationRoom::Roastery => spawn_roastery_room(&mut commands, &state),
+        PlantationRoom::PaperworkOffice => spawn_paperwork_office_room(&mut commands, &state),
+    }
+
+    state.dirty_visuals = false;
+}
+
+fn spawn_room_title(commands: &mut Commands, state: &GameState) {
+    let (title, subtitle, color) = match state.current_room {
+        PlantationRoom::Sanctuary => (
+            "SANCTUARY ROOM",
+            "Soft paws, snack trays, and welfare optics.",
+            Color::srgb(1.0, 0.76, 0.64),
+        ),
+        PlantationRoom::CoffeeField => (
+            "COFFEE FIELD",
+            "Fruit grows fast. So do questions.",
+            Color::srgb(0.78, 1.0, 0.46),
+        ),
+        PlantationRoom::Roastery => (
+            "ROASTERY",
+            "Artisanal smoke with unfortunate silhouettes.",
+            Color::srgb(1.0, 0.72, 0.38),
+        ),
+        PlantationRoom::PaperworkOffice => (
+            "PAPERWORK OFFICE",
+            "Receipts, permits, hoofprints, and strategic calm.",
+            Color::srgb(0.78, 0.92, 1.0),
+        ),
+    };
+
+    commands.spawn((
+        Text2d::new(title),
+        TextFont {
+            font_size: 26.0,
+            ..default()
+        },
+        TextColor(color),
+        Transform::from_xyz(-160.0, 315.0, 2.0),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Text2d::new(subtitle),
+        TextFont {
+            font_size: 18.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.94, 0.86, 0.62)),
+        Transform::from_xyz(-160.0, 285.0, 2.0),
+        WorldVisual,
+    ));
+}
+
+fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
     let plant_count = state.coffee_plants.min(36);
     for i in 0..plant_count {
         let x = -250.0 + (i % 12) as f32 * 42.0;
@@ -118,6 +158,47 @@ pub fn refresh_world_visuals(
         ));
     }
 
+    for i in 0..5 {
+        let x = -460.0 + i as f32 * 92.0;
+        commands.spawn((
+            Sprite::from_color(Color::srgb(0.58, 0.38, 0.16), Vec2::new(54.0, 30.0)),
+            Transform::from_xyz(x, 105.0 + (i % 2) as f32 * 22.0, 2.0),
+            WorldVisual,
+        ));
+        commands.spawn((
+            Text2d::new("fruit"),
+            TextFont {
+                font_size: 12.0,
+                ..default()
+            },
+            TextColor(Color::srgb(1.0, 0.78, 0.52)),
+            Transform::from_xyz(x, 105.0 + (i % 2) as f32 * 22.0, 3.0),
+            WorldVisual,
+        ));
+    }
+
+    commands.spawn((
+        Text2d::new(format!("Coffee fruit on hand: {:.0}", state.coffee_fruit)),
+        TextFont {
+            font_size: 20.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.95, 1.0, 0.74)),
+        Transform::from_xyz(235.0, 125.0, 3.0),
+        WorldVisual,
+    ));
+
+    if state.goat_present {
+        spawn_goat(commands, 420.0, -95.0, "field goat?");
+    }
+
+    spawn_room_hint(
+        commands,
+        "Best buttons here: Plant coffee, Harvest fruit, Feed civets.",
+    );
+}
+
+fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState) {
     commands.spawn((
         Sprite::from_color(Color::srgb(0.67, 0.44, 0.22), Vec2::new(320.0, 8.0)),
         Transform::from_xyz(430.0, -170.0, 2.0),
@@ -216,48 +297,137 @@ pub fn refresh_world_visuals(
     }
 
     if state.goat_present {
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.93, 0.89, 0.78), Vec2::new(42.0, 28.0)),
-            Transform::from_xyz(190.0, 115.0, 3.0),
-            WorldVisual,
-        ));
-        commands.spawn((
-            Text2d::new("goat?"),
-            TextFont {
-                font_size: 14.0,
-                ..default()
-            },
-            TextColor(Color::srgb(0.17, 0.12, 0.08)),
-            Transform::from_xyz(190.0, 116.0, 4.0),
-            WorldVisual,
-        ));
+        spawn_goat(commands, 190.0, 115.0, "goat?");
     }
 
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.58, 0.39, 0.18), Vec2::new(84.0, 62.0)),
-        Transform::from_xyz(-420.0, 145.0, 2.0),
+        Sprite::from_color(Color::srgb(0.95, 0.58, 0.48), Vec2::new(118.0, 58.0)),
+        Transform::from_xyz(-285.0, -130.0, 2.0),
         WorldVisual,
     ));
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.70, 0.49, 0.24), Vec2::new(72.0, 50.0)),
-        Transform::from_xyz(-345.0, 130.0, 2.0),
-        WorldVisual,
-    ));
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.46, 0.28, 0.10), Vec2::new(110.0, 14.0)),
-        Transform::from_xyz(-385.0, 100.0, 2.0),
-        WorldVisual,
-    ));
-    commands.spawn((
-        Text2d::new("ROASTED COFFEE"),
+        Text2d::new("snack trays"),
         TextFont {
-            font_size: 14.0,
+            font_size: 15.0,
             ..default()
         },
-        TextColor(Color::srgb(0.20, 0.12, 0.05)),
-        Transform::from_xyz(-420.0, 145.0, 3.0),
+        TextColor(Color::srgb(0.22, 0.11, 0.08)),
+        Transform::from_xyz(-285.0, -130.0, 3.0),
         WorldVisual,
     ));
+
+    spawn_room_hint(
+        commands,
+        "Click a civet to feed, pet, inspect notes, and build affection.",
+    );
+}
+
+fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
+    commands.spawn((
+        Sprite::from_color(Color::srgb(0.22, 0.13, 0.08), Vec2::new(360.0, 145.0)),
+        Transform::from_xyz(-175.0, -92.0, 2.0),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Sprite::from_color(Color::srgb(0.56, 0.30, 0.12), Vec2::new(185.0, 78.0)),
+        Transform::from_xyz(-175.0, -60.0, 3.0),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Text2d::new("ROASTER"),
+        TextFont {
+            font_size: 22.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.78, 0.45)),
+        Transform::from_xyz(-175.0, -60.0, 4.0),
+        WorldVisual,
+    ));
+    for i in 0..6 {
+        let x = 140.0 + (i % 3) as f32 * 76.0;
+        let y = -140.0 + (i / 3) as f32 * 74.0;
+        commands.spawn((
+            Sprite::from_color(Color::srgb(0.58, 0.39, 0.18), Vec2::new(62.0, 48.0)),
+            Transform::from_xyz(x, y, 2.0),
+            WorldVisual,
+        ));
+        commands.spawn((
+            Text2d::new("coffee"),
+            TextFont {
+                font_size: 11.0,
+                ..default()
+            },
+            TextColor(Color::srgb(0.22, 0.12, 0.05)),
+            Transform::from_xyz(x, y, 3.0),
+            WorldVisual,
+        ));
+    }
+    commands.spawn((
+        Text2d::new(format!(
+            "Processed beans {:.1}  |  Roasted bags {:.1}",
+            state.processed_beans, state.roasted_coffee
+        )),
+        TextFont {
+            font_size: 20.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.84, 0.58)),
+        Transform::from_xyz(100.0, 95.0, 3.0),
+        WorldVisual,
+    ));
+
+    spawn_room_hint(
+        commands,
+        "Best buttons here: Collect beans, Roast coffee, Sell coffee.",
+    );
+}
+
+fn spawn_paperwork_office_room(commands: &mut Commands, state: &GameState) {
+    commands.spawn((
+        Sprite::from_color(Color::srgb(0.15, 0.18, 0.18), Vec2::new(620.0, 245.0)),
+        Transform::from_xyz(25.0, -45.0, 1.5),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Sprite::from_color(Color::srgb(0.45, 0.32, 0.18), Vec2::new(410.0, 92.0)),
+        Transform::from_xyz(-120.0, -160.0, 2.0),
+        WorldVisual,
+    ));
+    for i in 0..7 {
+        let x = -290.0 + i as f32 * 54.0;
+        commands.spawn((
+            Sprite::from_color(Color::srgb(0.92, 0.86, 0.70), Vec2::new(34.0, 44.0)),
+            Transform::from_xyz(x, -135.0 + (i % 2) as f32 * 10.0, 3.0),
+            WorldVisual,
+        ));
+    }
+    commands.spawn((
+        Text2d::new(format!(
+            "Paperwork level {}  |  Suspicion {:.0}%",
+            state.paperwork_level, state.suspicion
+        )),
+        TextFont {
+            font_size: 20.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.82, 0.96, 1.0)),
+        Transform::from_xyz(-90.0, 15.0, 3.0),
+        WorldVisual,
+    ));
+
+    spawn_upgrade_buildings(commands, state);
+    spawn_helicopter(commands);
+    if state.goat_present {
+        spawn_goat(commands, 360.0, -150.0, "witness");
+    }
+
+    spawn_room_hint(
+        commands,
+        "Best buttons here: Show paperwork, build office upgrades, stay calm.",
+    );
+}
+
+fn spawn_helicopter(commands: &mut Commands) {
     commands.spawn((
         Sprite::from_color(Color::srgb(0.12, 0.13, 0.16), Vec2::new(86.0, 22.0)),
         Transform::from_xyz(325.0, 245.0, 3.0),
@@ -292,10 +462,37 @@ pub fn refresh_world_visuals(
         Transform::from_xyz(325.0, 220.0, 4.0),
         WorldVisual,
     ));
+}
 
-    spawn_upgrade_buildings(&mut commands, &state);
+fn spawn_goat(commands: &mut Commands, x: f32, y: f32, label: &str) {
+    commands.spawn((
+        Sprite::from_color(Color::srgb(0.93, 0.89, 0.78), Vec2::new(42.0, 28.0)),
+        Transform::from_xyz(x, y, 3.0),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Text2d::new(label),
+        TextFont {
+            font_size: 14.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.17, 0.12, 0.08)),
+        Transform::from_xyz(x, y + 1.0, 4.0),
+        WorldVisual,
+    ));
+}
 
-    state.dirty_visuals = false;
+fn spawn_room_hint(commands: &mut Commands, text: &str) {
+    commands.spawn((
+        Text2d::new(text),
+        TextFont {
+            font_size: 15.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.90, 0.66)),
+        Transform::from_xyz(-20.0, -315.0, 3.0),
+        WorldVisual,
+    ));
 }
 
 fn select_civet_on_click(

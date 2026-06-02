@@ -38,7 +38,9 @@ src/
 - Buyable upgrades: Legal Office, Caretaker, Fruit Sorter, Roasting Shed, and Visitor Tasting Room.
 - Premium order contracts with accept/decline choices, delivery deadlines, payouts, reputation rewards, and missed-order penalties.
 - First scene flow: main menu, company/mission presentation, and animal book before entering the plantation.
+- In-game room flow with Sanctuary, Coffee Field, Roastery, and Paperwork Office views.
 - Named civets with in-world name labels.
+- Clickable civets with a care panel for feeding, petting, and inspecting animal notes.
 - Dynamic action buttons that show costs/requirements and dim when unavailable.
 - Warm plantation visuals with red suspicion UI and placeholder shapes for plants, civets, binturong, goat, helicopter, and coffee bags.
 - Polished first-pass UI with status bars, two-column controls, animated helicopter, enclosure staging, and suspicion glow.
@@ -46,7 +48,8 @@ src/
 
 ## Expansion Points
 
-- Add new animals by extending `GameState` and `refresh_world_visuals`.
+- Add new rooms by extending `PlantationRoom` and adding a room renderer in `visuals.rs`.
+- Add new animals by extending `GameState` and the Sanctuary room renderer.
 - Add buildings/upgrades by adding new `Action` variants and action handlers.
 - Add new events in `random_event`.
 - Replace placeholder shapes with original sprites later without changing the game model.
