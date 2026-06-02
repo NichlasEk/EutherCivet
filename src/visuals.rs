@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 
-use crate::actions::select_civet_by_index;
+use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
-    CivetClickTarget, GameScreen, GameState, Helicopter, PlantationRoom, SuspicionGlow, WorldVisual,
+    Action, CivetClickTarget, GameScreen, GameState, Helicopter, PlantationRoom, SuspicionGlow,
+    WorldActionTarget, WorldVisual,
 };
 
 pub fn spawn_world(commands: &mut Commands) {
@@ -146,11 +147,17 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
             Transform::from_xyz(x, y - 18.0, 0.9),
             WorldVisual,
         ));
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.05, 0.48, 0.19), Vec2::new(22.0, 32.0)),
-            Transform::from_xyz(x, y, 1.0),
-            WorldVisual,
-        ));
+        commands
+            .spawn((
+                Sprite::from_color(Color::srgb(0.05, 0.48, 0.19), Vec2::new(22.0, 32.0)),
+                Transform::from_xyz(x, y, 1.0),
+                Pickable::default(),
+                WorldActionTarget(Action::HarvestFruit),
+                WorldVisual,
+            ))
+            .observe(world_action_on_click)
+            .observe(tint_sprite_on_hover(Color::srgb(0.10, 0.64, 0.25)))
+            .observe(tint_sprite_on_out(Color::srgb(0.05, 0.48, 0.19)));
         commands.spawn((
             Sprite::from_color(Color::srgb(0.88, 0.12, 0.08), Vec2::new(7.0, 7.0)),
             Transform::from_xyz(x + 6.0, y + 6.0, 2.0),
@@ -160,11 +167,17 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
 
     for i in 0..5 {
         let x = -460.0 + i as f32 * 92.0;
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.58, 0.38, 0.16), Vec2::new(54.0, 30.0)),
-            Transform::from_xyz(x, 105.0 + (i % 2) as f32 * 22.0, 2.0),
-            WorldVisual,
-        ));
+        commands
+            .spawn((
+                Sprite::from_color(Color::srgb(0.58, 0.38, 0.16), Vec2::new(54.0, 30.0)),
+                Transform::from_xyz(x, 105.0 + (i % 2) as f32 * 22.0, 2.0),
+                Pickable::default(),
+                WorldActionTarget(Action::FeedCivets),
+                WorldVisual,
+            ))
+            .observe(world_action_on_click)
+            .observe(tint_sprite_on_hover(Color::srgb(0.72, 0.48, 0.20)))
+            .observe(tint_sprite_on_out(Color::srgb(0.58, 0.38, 0.16)));
         commands.spawn((
             Text2d::new("fruit"),
             TextFont {
@@ -176,6 +189,28 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
             WorldVisual,
         ));
     }
+
+    commands
+        .spawn((
+            Sprite::from_color(Color::srgb(0.28, 0.42, 0.18), Vec2::new(110.0, 46.0)),
+            Transform::from_xyz(410.0, 72.0, 2.0),
+            Pickable::default(),
+            WorldActionTarget(Action::PlantCoffee),
+            WorldVisual,
+        ))
+        .observe(world_action_on_click)
+        .observe(tint_sprite_on_hover(Color::srgb(0.36, 0.55, 0.22)))
+        .observe(tint_sprite_on_out(Color::srgb(0.28, 0.42, 0.18)));
+    commands.spawn((
+        Text2d::new("seedlings"),
+        TextFont {
+            font_size: 15.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.92, 1.0, 0.72)),
+        Transform::from_xyz(410.0, 72.0, 3.0),
+        WorldVisual,
+    ));
 
     commands.spawn((
         Text2d::new(format!("Coffee fruit on hand: {:.0}", state.coffee_fruit)),
@@ -328,11 +363,17 @@ fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
         Transform::from_xyz(-175.0, -92.0, 2.0),
         WorldVisual,
     ));
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.56, 0.30, 0.12), Vec2::new(185.0, 78.0)),
-        Transform::from_xyz(-175.0, -60.0, 3.0),
-        WorldVisual,
-    ));
+    commands
+        .spawn((
+            Sprite::from_color(Color::srgb(0.56, 0.30, 0.12), Vec2::new(185.0, 78.0)),
+            Transform::from_xyz(-175.0, -60.0, 3.0),
+            Pickable::default(),
+            WorldActionTarget(Action::RoastCoffee),
+            WorldVisual,
+        ))
+        .observe(world_action_on_click)
+        .observe(tint_sprite_on_hover(Color::srgb(0.70, 0.39, 0.16)))
+        .observe(tint_sprite_on_out(Color::srgb(0.56, 0.30, 0.12)));
     commands.spawn((
         Text2d::new("ROASTER"),
         TextFont {
@@ -346,11 +387,17 @@ fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
     for i in 0..6 {
         let x = 140.0 + (i % 3) as f32 * 76.0;
         let y = -140.0 + (i / 3) as f32 * 74.0;
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.58, 0.39, 0.18), Vec2::new(62.0, 48.0)),
-            Transform::from_xyz(x, y, 2.0),
-            WorldVisual,
-        ));
+        commands
+            .spawn((
+                Sprite::from_color(Color::srgb(0.58, 0.39, 0.18), Vec2::new(62.0, 48.0)),
+                Transform::from_xyz(x, y, 2.0),
+                Pickable::default(),
+                WorldActionTarget(Action::SellCoffee),
+                WorldVisual,
+            ))
+            .observe(world_action_on_click)
+            .observe(tint_sprite_on_hover(Color::srgb(0.72, 0.49, 0.24)))
+            .observe(tint_sprite_on_out(Color::srgb(0.58, 0.39, 0.18)));
         commands.spawn((
             Text2d::new("coffee"),
             TextFont {
@@ -362,6 +409,28 @@ fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
             WorldVisual,
         ));
     }
+    commands
+        .spawn((
+            Sprite::from_color(Color::srgb(0.20, 0.12, 0.07), Vec2::new(116.0, 54.0)),
+            Transform::from_xyz(-390.0, 45.0, 2.0),
+            Pickable::default(),
+            WorldActionTarget(Action::CollectBeans),
+            WorldVisual,
+        ))
+        .observe(world_action_on_click)
+        .observe(tint_sprite_on_hover(Color::srgb(0.28, 0.16, 0.09)))
+        .observe(tint_sprite_on_out(Color::srgb(0.20, 0.12, 0.07)));
+    commands.spawn((
+        Text2d::new("bean crate"),
+        TextFont {
+            font_size: 14.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.78, 0.54)),
+        Transform::from_xyz(-390.0, 45.0, 3.0),
+        WorldVisual,
+    ));
+
     commands.spawn((
         Text2d::new(format!(
             "Processed beans {:.1}  |  Roasted bags {:.1}",
@@ -395,11 +464,17 @@ fn spawn_paperwork_office_room(commands: &mut Commands, state: &GameState) {
     ));
     for i in 0..7 {
         let x = -290.0 + i as f32 * 54.0;
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.92, 0.86, 0.70), Vec2::new(34.0, 44.0)),
-            Transform::from_xyz(x, -135.0 + (i % 2) as f32 * 10.0, 3.0),
-            WorldVisual,
-        ));
+        commands
+            .spawn((
+                Sprite::from_color(Color::srgb(0.92, 0.86, 0.70), Vec2::new(34.0, 44.0)),
+                Transform::from_xyz(x, -135.0 + (i % 2) as f32 * 10.0, 3.0),
+                Pickable::default(),
+                WorldActionTarget(Action::ShowPaperwork),
+                WorldVisual,
+            ))
+            .observe(world_action_on_click)
+            .observe(tint_sprite_on_hover(Color::srgb(1.0, 0.96, 0.78)))
+            .observe(tint_sprite_on_out(Color::srgb(0.92, 0.86, 0.70)));
     }
     commands.spawn((
         Text2d::new(format!(
@@ -515,6 +590,43 @@ fn select_civet_on_click(
     };
     select_civet_by_index(&mut state, target.index);
     state.dirty_visuals = true;
+}
+
+fn world_action_on_click(
+    click: On<Pointer<Click>>,
+    targets: Query<&WorldActionTarget>,
+    mut state: ResMut<GameState>,
+) {
+    if state.screen != GameScreen::Playing
+        || state.inspection
+        || state.event.is_some()
+        || state.pending_order.is_some()
+        || state.day_report.is_some()
+        || state.game_result.is_some()
+    {
+        return;
+    }
+
+    let Ok(target) = targets.get(click.event_target()) else {
+        return;
+    };
+    run_action(&mut state, target.0);
+}
+
+fn tint_sprite_on_hover(color: Color) -> impl Fn(On<Pointer<Over>>, Query<&mut Sprite>) {
+    move |event, mut sprites| {
+        if let Ok(mut sprite) = sprites.get_mut(event.event_target()) {
+            sprite.color = color;
+        }
+    }
+}
+
+fn tint_sprite_on_out(color: Color) -> impl Fn(On<Pointer<Out>>, Query<&mut Sprite>) {
+    move |event, mut sprites| {
+        if let Ok(mut sprite) = sprites.get_mut(event.event_target()) {
+            sprite.color = color;
+        }
+    }
 }
 
 fn tint_civet_on_hover(color: Color) -> impl Fn(On<Pointer<Over>>, Query<&mut Sprite>) {

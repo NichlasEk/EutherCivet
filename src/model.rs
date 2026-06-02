@@ -352,6 +352,9 @@ pub struct CivetClickTarget {
     pub index: usize,
 }
 
+#[derive(Component)]
+pub struct WorldActionTarget(pub Action);
+
 #[derive(Component, Clone, Copy)]
 pub struct ActionButton(pub Action);
 

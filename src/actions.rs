@@ -149,6 +149,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
             let gained = state.coffee_plants as f32 * 1.6;
             state.coffee_fruit += gained;
             state.civet_happiness -= 0.8;
+            state.dirty_visuals = true;
             state.log_line(format!("Harvested {gained:.0} coffee fruit."));
         }
         Action::FeedCivets => {
@@ -160,6 +161,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 let sorter_bonus = if state.fruit_sorter { 4.0 } else { 0.0 };
                 state.civet_happiness += 8.0 + sorter_bonus + fed * 0.25;
                 state.suspicion -= 1.0;
+                state.dirty_visuals = true;
                 state.log_line("Civets receive fruit. Morale improves. Optics remain complex.");
             } else {
                 state.civet_happiness -= 5.0;
@@ -171,6 +173,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
             let found = 1.0 + state.civets as f32 * 0.35;
             state.processed_beans += found;
             state.suspicion += 0.7;
+            state.dirty_visuals = true;
             state.log_line(format!(
                 "Collected {found:.1} processed beans from the civet area."
             ));
@@ -183,6 +186,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.roasted_coffee += batch * yield_rate;
                 state.money -= if state.roasting_shed { 1 } else { 2 };
                 state.suspicion += if state.roasting_shed { 0.4 } else { 0.8 };
+                state.dirty_visuals = true;
                 state.log_line("Roasted a premium batch. Smoke plume described as theatrical.");
             } else {
                 state.log_line("Not enough processed beans to roast.");
@@ -203,6 +207,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 } else {
                     1.2
                 };
+                state.dirty_visuals = true;
                 state.log_line(format!(
                     "Sold {sold:.1} bags of civet coffee for ${earned}."
                 ));
@@ -241,6 +246,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 let legal_bonus = if state.legal_office { 8.0 } else { 0.0 };
                 state.suspicion -= 18.0 + legal_bonus + state.paperwork_level as f32;
                 state.reputation += 1;
+                state.dirty_visuals = true;
                 state.log_line(
                     "Presented receipts, permits, civet dental charts, and bean custody forms.",
                 );

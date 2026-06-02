@@ -41,6 +41,7 @@ src/
 - In-game room flow with Sanctuary, Coffee Field, Roastery, and Paperwork Office views.
 - Named civets with in-world name labels.
 - Clickable civets with a care panel for feeding, petting, and inspecting animal notes.
+- Clickable room objects that trigger core actions: plants, fruit baskets, roaster, coffee bags, bean crate, and paperwork stacks.
 - Dynamic action buttons that show costs/requirements and dim when unavailable.
 - Warm plantation visuals with red suspicion UI and placeholder shapes for plants, civets, binturong, goat, helicopter, and coffee bags.
 - Polished first-pass UI with status bars, two-column controls, animated helicopter, enclosure staging, and suspicion glow.
