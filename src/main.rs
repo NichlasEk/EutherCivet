@@ -10,7 +10,8 @@ use model::*;
 use simulation::{advance_day, generate_order_offers, tick_game, trigger_random_events};
 use ui::{
     handle_buttons, refresh_day_modal, refresh_event_modal, refresh_inspection_modal,
-    refresh_order_modal, spawn_ui, update_log, update_stats, update_status_bars,
+    refresh_order_modal, refresh_screen_modal, spawn_ui, update_button_labels, update_log,
+    update_stats, update_status_bars,
 };
 use visuals::{animate_world, refresh_world_visuals, spawn_world};
 
@@ -39,6 +40,7 @@ fn main() {
                 trigger_random_events,
                 generate_order_offers,
                 advance_day,
+                update_button_labels,
                 update_stats,
                 update_status_bars,
                 update_log,
@@ -48,6 +50,7 @@ fn main() {
                 refresh_event_modal,
                 refresh_order_modal,
                 refresh_day_modal,
+                refresh_screen_modal,
             ),
         )
         .run();

@@ -130,10 +130,38 @@ pub fn spawn_ui(commands: &mut Commands) {
                             ("Save", Action::Save),
                             ("Load", Action::Load),
                         ] {
-                            spawn_button(buttons, label, action);
+                            spawn_dynamic_button(buttons, label, action);
                         }
                     });
             });
+        });
+}
+
+fn spawn_dynamic_button(parent: &mut ChildSpawnerCommands, label: &str, action: Action) {
+    parent
+        .spawn((
+            Button,
+            Node {
+                width: px(218),
+                height: px(42),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                padding: UiRect::horizontal(px(8)),
+                ..default()
+            },
+            BackgroundColor(button_base_color(action)),
+            ActionButton(action),
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(label),
+                TextFont {
+                    font_size: 13.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.92, 0.72)),
+                DynamicButtonText(action),
+            ));
         });
 }
 
@@ -212,7 +240,11 @@ fn button_base_color(action: Action) -> Color {
             Color::srgb(0.48, 0.31, 0.10)
         }
         Action::Save | Action::Load => Color::srgb(0.18, 0.18, 0.18),
-        Action::ContinueDay => Color::srgb(0.22, 0.38, 0.22),
+        Action::StartGame
+        | Action::ShowIntro
+        | Action::ShowAnimalBook
+        | Action::BackToMenu
+        | Action::ContinueDay => Color::srgb(0.22, 0.38, 0.22),
         Action::DeliverOrder | Action::AcceptOrder => Color::srgb(0.33, 0.34, 0.12),
         Action::DeclineOrder => Color::srgb(0.32, 0.16, 0.12),
         Action::BuildLegalOffice
@@ -236,6 +268,14 @@ pub fn handle_buttons(
     mut state: ResMut<GameState>,
 ) {
     for (interaction, button, mut color) in &mut interactions {
+        if !can_run(button.0, &state) {
+            *color = BackgroundColor(Color::srgba(0.12, 0.11, 0.09, 0.82));
+            if matches!(*interaction, Interaction::Pressed) {
+                let reason = unavailable_reason(button.0, &state);
+                state.log_line(reason);
+            }
+            continue;
+        }
         match *interaction {
             Interaction::Pressed => {
                 *color = BackgroundColor(Color::srgb(0.78, 0.32, 0.18));
@@ -248,6 +288,128 @@ pub fn handle_buttons(
                 *color = BackgroundColor(button_base_color(button.0));
             }
         }
+    }
+}
+
+pub fn update_button_labels(
+    state: Res<GameState>,
+    mut labels: Query<(&DynamicButtonText, &mut Text)>,
+    mut buttons: Query<(&ActionButton, &mut BackgroundColor), With<Button>>,
+) {
+    if !state.is_changed() {
+        return;
+    }
+
+    for (dynamic, mut text) in &mut labels {
+        **text = action_label(dynamic.0, &state);
+    }
+
+    for (button, mut color) in &mut buttons {
+        color.0 = if can_run(button.0, &state) {
+            button_base_color(button.0)
+        } else {
+            Color::srgba(0.12, 0.11, 0.09, 0.82)
+        };
+    }
+}
+
+fn action_label(action: Action, state: &GameState) -> String {
+    match action {
+        Action::PlantCoffee => "Plant coffee ($14)".to_string(),
+        Action::HarvestFruit => format!("Harvest fruit (+{:.0})", state.coffee_plants as f32 * 1.6),
+        Action::FeedCivets => format!("Feed civets (needs fruit)"),
+        Action::CollectBeans => "Collect beans".to_string(),
+        Action::RoastCoffee => {
+            let rate = if state.roasting_shed { "96%" } else { "82%" };
+            format!("Roast coffee ({rate} yield)")
+        }
+        Action::SellCoffee => {
+            let bonus = if state.tasting_room { "+ tasting" } else { "" };
+            format!("Sell coffee {bonus}")
+        }
+        Action::DeliverOrder => "Deliver order".to_string(),
+        Action::ImproveEnclosure => {
+            format!(
+                "Improve enclosure (${})",
+                45 + state.enclosure_level as i32 * 20
+            )
+        }
+        Action::ShowPaperwork => {
+            let cost = if state.legal_office {
+                8 + state.paperwork_level as i32 * 2
+            } else {
+                16 + state.paperwork_level as i32 * 3
+            };
+            format!("Show paperwork (${cost})")
+        }
+        Action::BuildLegalOffice => upgrade_label("Legal office", 110, state.legal_office),
+        Action::HireCaretaker => upgrade_label("Caretaker", 85, state.caretaker),
+        Action::BuildFruitSorter => upgrade_label("Fruit sorter", 95, state.fruit_sorter),
+        Action::BuildRoastingShed => upgrade_label("Roasting shed", 125, state.roasting_shed),
+        Action::BuildTastingRoom => upgrade_label("Tasting room", 140, state.tasting_room),
+        Action::Save => "Save".to_string(),
+        Action::Load => "Load".to_string(),
+        _ => "Action".to_string(),
+    }
+}
+
+fn upgrade_label(name: &str, cost: i32, bought: bool) -> String {
+    if bought {
+        format!("{name} (built)")
+    } else {
+        format!("{name} (${cost})")
+    }
+}
+
+fn can_run(action: Action, state: &GameState) -> bool {
+    match action {
+        Action::PlantCoffee => state.money >= 14,
+        Action::HarvestFruit => state.coffee_plants > 0,
+        Action::FeedCivets => state.coffee_fruit > 0.0,
+        Action::CollectBeans => true,
+        Action::RoastCoffee => state.processed_beans >= 1.0,
+        Action::SellCoffee => state.roasted_coffee >= 1.0,
+        Action::DeliverOrder => state
+            .active_order
+            .as_ref()
+            .is_some_and(|order| state.roasted_coffee >= order.bags),
+        Action::ImproveEnclosure => state.money >= 45 + state.enclosure_level as i32 * 20,
+        Action::ShowPaperwork => {
+            let cost = if state.legal_office {
+                8 + state.paperwork_level as i32 * 2
+            } else {
+                16 + state.paperwork_level as i32 * 3
+            };
+            state.money >= cost
+        }
+        Action::BuildLegalOffice => !state.legal_office && state.money >= 110,
+        Action::HireCaretaker => !state.caretaker && state.money >= 85,
+        Action::BuildFruitSorter => !state.fruit_sorter && state.money >= 95,
+        Action::BuildRoastingShed => !state.roasting_shed && state.money >= 125,
+        Action::BuildTastingRoom => !state.tasting_room && state.money >= 140,
+        Action::AcceptOrder | Action::DeclineOrder => state.pending_order.is_some(),
+        Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => state.event.is_some(),
+        Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => state.inspection,
+        _ => true,
+    }
+}
+
+fn unavailable_reason(action: Action, state: &GameState) -> &'static str {
+    match action {
+        Action::PlantCoffee => "Not enough money to plant coffee.",
+        Action::FeedCivets => "No coffee fruit available for feeding.",
+        Action::RoastCoffee => "Not enough processed beans to roast.",
+        Action::SellCoffee => "No roasted coffee ready to sell.",
+        Action::DeliverOrder if state.active_order.is_none() => "No active order to deliver.",
+        Action::DeliverOrder => "Not enough roasted coffee for the active order.",
+        Action::ShowPaperwork => "Not enough money for paperwork.",
+        Action::ImproveEnclosure => "Not enough money for enclosure work.",
+        Action::BuildLegalOffice
+        | Action::HireCaretaker
+        | Action::BuildFruitSorter
+        | Action::BuildRoastingShed
+        | Action::BuildTastingRoom => "Upgrade is unavailable or already built.",
+        _ => "That action is unavailable right now.",
     }
 }
 
@@ -666,6 +828,149 @@ pub fn refresh_order_modal(
             commands.entity(entity).despawn();
         }
     }
+}
+
+pub fn refresh_screen_modal(
+    mut commands: Commands,
+    state: Res<GameState>,
+    modal: Query<Entity, With<ScreenModal>>,
+) {
+    let should_show = state.screen != GameScreen::Playing;
+    let exists = !modal.is_empty();
+
+    if should_show && exists && state.is_changed() {
+        for entity in &modal {
+            commands.entity(entity).despawn();
+        }
+        return;
+    }
+
+    if should_show && !exists {
+        commands
+            .spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: percent(18),
+                    top: percent(10),
+                    width: percent(64),
+                    padding: UiRect::all(px(24)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(14),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.99, 0.83, 0.79, 0.97)),
+                GlobalZIndex(20),
+                ScreenModal,
+            ))
+            .with_children(|modal| match state.screen {
+                GameScreen::MainMenu => spawn_main_menu(modal),
+                GameScreen::Intro => spawn_intro(modal),
+                GameScreen::AnimalBook => spawn_animal_book(modal, &state),
+                GameScreen::Playing => {}
+            });
+    } else if !should_show && exists {
+        for entity in &modal {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn spawn_main_menu(parent: &mut ChildSpawnerCommands) {
+    parent.spawn((
+        Text::new("EutherCivet"),
+        TextFont {
+            font_size: 48.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.25, 0.18, 0.11)),
+    ));
+    parent.spawn((
+        Text::new("A cute civet coffee sanctuary with excellent beans, soft paws, and extremely suspicious paperwork."),
+        TextFont {
+            font_size: 19.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.36, 0.23, 0.18)),
+    ));
+    spawn_button(parent, "Start plantation", Action::StartGame);
+    spawn_button(parent, "What is this company?", Action::ShowIntro);
+    spawn_button(parent, "Meet the animals", Action::ShowAnimalBook);
+}
+
+fn spawn_intro(parent: &mut ChildSpawnerCommands) {
+    parent.spawn((
+        Text::new("What EutherCivet Stands For"),
+        TextFont {
+            font_size: 36.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.25, 0.18, 0.11)),
+    ));
+    parent.spawn((
+        Text::new(
+            "You run a fair-trade palm civet coffee plantation. The mission is simple: grow coffee fruit, care for the animals, collect processed beans, roast premium coffee, and prove every day that a sweet wildlife sanctuary is not an international criminal enterprise.",
+        ),
+        TextFont {
+            font_size: 18.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.36, 0.23, 0.18)),
+    ));
+    parent.spawn((
+        Text::new(
+            "The tone is gentle on the animals, dry about bureaucracy, and deadly serious about good coffee.",
+        ),
+        TextFont {
+            font_size: 17.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.40, 0.28, 0.20)),
+    ));
+    spawn_button(parent, "Start plantation", Action::StartGame);
+    spawn_button(parent, "Meet the animals", Action::ShowAnimalBook);
+    spawn_button(parent, "Back to menu", Action::BackToMenu);
+}
+
+fn spawn_animal_book(parent: &mut ChildSpawnerCommands, state: &GameState) {
+    parent.spawn((
+        Text::new("Meet the Animals"),
+        TextFont {
+            font_size: 36.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.25, 0.18, 0.11)),
+    ));
+    let names = if state.civet_names.is_empty() {
+        default_civet_names()
+    } else {
+        state.civet_names.clone()
+    };
+    for (idx, name) in names.iter().enumerate() {
+        let trait_line = match idx {
+            0 => "chief fruit critic",
+            1 => "night-shift bean philosopher",
+            _ => "small paws, large opinions",
+        };
+        parent.spawn((
+            Text::new(format!("{name}: {trait_line}")),
+            TextFont {
+                font_size: 20.0,
+                ..default()
+            },
+            TextColor(Color::srgb(0.36, 0.23, 0.18)),
+        ));
+    }
+    parent.spawn((
+        Text::new("Binturong: sleeps like a board member. Goat: appears without portfolio."),
+        TextFont {
+            font_size: 18.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.40, 0.28, 0.20)),
+    ));
+    spawn_button(parent, "Start plantation", Action::StartGame);
+    spawn_button(parent, "Company mission", Action::ShowIntro);
+    spawn_button(parent, "Back to menu", Action::BackToMenu);
 }
 
 fn event_option_labels(kind: RandomEventKind) -> (&'static str, &'static str, &'static str) {

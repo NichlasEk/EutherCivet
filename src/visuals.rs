@@ -4,24 +4,24 @@ use crate::model::{GameState, Helicopter, SuspicionGlow, WorldVisual};
 
 pub fn spawn_world(commands: &mut Commands) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.12, 0.32, 0.20), Vec2::new(2400.0, 1000.0)),
+        Sprite::from_color(Color::srgb(0.54, 0.72, 0.48), Vec2::new(2400.0, 1000.0)),
         Transform::from_xyz(0.0, -80.0, -10.0),
     ));
     commands.spawn((
         Sprite::from_color(
-            Color::srgba(0.88, 0.63, 0.25, 0.18),
+            Color::srgba(1.0, 0.80, 0.68, 0.22),
             Vec2::new(2400.0, 260.0),
         ),
         Transform::from_xyz(0.0, 250.0, -9.0),
     ));
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.42, 0.28, 0.12), Vec2::new(2400.0, 150.0)),
+        Sprite::from_color(Color::srgb(0.70, 0.52, 0.32), Vec2::new(2400.0, 150.0)),
         Transform::from_xyz(0.0, -360.0, -8.0),
     ));
     for i in 0..8 {
         commands.spawn((
             Sprite::from_color(
-                Color::srgba(0.07, 0.20, 0.10, 0.42),
+                Color::srgba(0.24, 0.46, 0.22, 0.42),
                 Vec2::new(2400.0, 18.0),
             ),
             Transform::from_xyz(0.0, -245.0 + i as f32 * 54.0, -7.0),
@@ -164,6 +164,18 @@ pub fn refresh_world_visuals(
             Transform::from_xyz(x + 27.0, y + 8.0, 5.0),
             WorldVisual,
         ));
+        if let Some(name) = state.civet_names.get(i as usize) {
+            commands.spawn((
+                Text2d::new(name.clone()),
+                TextFont {
+                    font_size: 11.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.86, 0.64)),
+                Transform::from_xyz(x, y - 21.0, 5.0),
+                WorldVisual,
+            ));
+        }
     }
 
     if state.binturong_home {

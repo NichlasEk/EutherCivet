@@ -1,6 +1,29 @@
 use crate::model::{Action, GameState, RandomEventKind};
 
 pub fn run_action(state: &mut GameState, action: Action) {
+    match action {
+        Action::StartGame => {
+            state.screen = crate::model::GameScreen::Playing;
+            state.log_line(
+                "The plantation opens for business. Everyone looks adorable and audited.",
+            );
+            return;
+        }
+        Action::ShowIntro => {
+            state.screen = crate::model::GameScreen::Intro;
+            return;
+        }
+        Action::ShowAnimalBook => {
+            state.screen = crate::model::GameScreen::AnimalBook;
+            return;
+        }
+        Action::BackToMenu => {
+            state.screen = crate::model::GameScreen::MainMenu;
+            return;
+        }
+        _ => {}
+    }
+
     if matches!(action, Action::ContinueDay) {
         state.day_report = None;
         if state.game_result.is_none() {
@@ -254,6 +277,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => {}
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {}
         Action::AcceptOrder | Action::DeclineOrder => {}
+        Action::StartGame | Action::ShowIntro | Action::ShowAnimalBook | Action::BackToMenu => {}
         Action::ContinueDay => {}
     }
 

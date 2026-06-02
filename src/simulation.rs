@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 
 use crate::model::{
-    DayReport, DayTick, EventState, EventTick, GameResult, GameState, GameTick, OrderOffer,
-    OrderTick, RandomEventKind,
+    DayReport, DayTick, EventState, EventTick, GameResult, GameScreen, GameState, GameTick,
+    OrderOffer, OrderTick, RandomEventKind,
 };
 
 pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut<GameState>) {
     if !timer.0.tick(time.delta()).just_finished()
+        || state.screen != GameScreen::Playing
         || state.inspection
         || state.event.is_some()
         || state.pending_order.is_some()
@@ -46,6 +47,7 @@ pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut
 
 pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMut<GameState>) {
     if !timer.0.tick(time.delta()).just_finished()
+        || state.screen != GameScreen::Playing
         || state.inspection
         || state.event.is_some()
         || state.pending_order.is_some()
@@ -65,6 +67,7 @@ pub fn generate_order_offers(
     mut state: ResMut<GameState>,
 ) {
     if !timer.0.tick(time.delta()).just_finished()
+        || state.screen != GameScreen::Playing
         || state.inspection
         || state.event.is_some()
         || state.pending_order.is_some()
@@ -228,6 +231,7 @@ pub fn trigger_random_events(
     mut state: ResMut<GameState>,
 ) {
     if !timer.0.tick(time.delta()).just_finished()
+        || state.screen != GameScreen::Playing
         || state.inspection
         || state.event.is_some()
         || state.day_report.is_some()

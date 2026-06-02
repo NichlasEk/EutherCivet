@@ -6,9 +6,13 @@ const SAVE_PATH: &str = "euther_civet_save.json";
 
 #[derive(Resource, Serialize, Deserialize, Clone)]
 pub struct GameState {
+    #[serde(default)]
+    pub screen: GameScreen,
     pub day: u32,
     pub coffee_plants: u32,
     pub civets: u32,
+    #[serde(default = "default_civet_names")]
+    pub civet_names: Vec<String>,
     pub coffee_fruit: f32,
     pub civet_feed: f32,
     pub processed_beans: f32,
@@ -91,12 +95,23 @@ pub struct OrderOffer {
     pub due_day: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GameScreen {
+    #[default]
+    MainMenu,
+    Intro,
+    AnimalBook,
+    Playing,
+}
+
 impl Default for GameState {
     fn default() -> Self {
         Self {
+            screen: GameScreen::MainMenu,
             day: 1,
             coffee_plants: 6,
             civets: 3,
+            civet_names: default_civet_names(),
             coffee_fruit: 8.0,
             civet_feed: 0.0,
             processed_beans: 0.0,
@@ -130,6 +145,13 @@ impl Default for GameState {
             dirty_visuals: true,
         }
     }
+}
+
+pub fn default_civet_names() -> Vec<String> {
+    ["Miso", "Kanel", "Beanie"]
+        .into_iter()
+        .map(str::to_string)
+        .collect()
 }
 
 impl GameState {
@@ -224,8 +246,14 @@ pub struct EventModal;
 #[derive(Component)]
 pub struct OrderModal;
 
+#[derive(Component)]
+pub struct ScreenModal;
+
 #[derive(Component, Clone, Copy)]
 pub struct ActionButton(pub Action);
+
+#[derive(Component, Clone, Copy)]
+pub struct DynamicButtonText(pub Action);
 
 #[derive(Clone, Copy)]
 pub enum StatKind {
@@ -270,6 +298,10 @@ pub enum Action {
     DeliverOrder,
     Save,
     Load,
+    StartGame,
+    ShowIntro,
+    ShowAnimalBook,
+    BackToMenu,
     ContinueDay,
     EventOptionA,
     EventOptionB,
