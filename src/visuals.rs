@@ -308,14 +308,23 @@ pub fn move_player(
     };
     state.player_x += step.x;
 
-    if state.player_x < -525.0 {
+    let floor = walkable_floor(state.current_room);
+    if state.player_x < floor.min_x {
         let next_room = exit_left(state.current_room);
-        walk_to_room(&mut state, next_room, 500.0);
-    } else if state.player_x > 525.0 {
+        walk_to_room(
+            &mut state,
+            next_room,
+            walkable_floor(next_room).max_x - 20.0,
+        );
+    } else if state.player_x > floor.max_x {
         let next_room = exit_right(state.current_room);
-        walk_to_room(&mut state, next_room, -500.0);
+        walk_to_room(
+            &mut state,
+            next_room,
+            walkable_floor(next_room).min_x + 20.0,
+        );
     } else {
-        state.player_x = state.player_x.clamp(-525.0, 525.0);
+        state.player_x = state.player_x.clamp(floor.min_x, floor.max_x);
     }
     clamp_player_to_floor(&mut state);
 
@@ -384,6 +393,7 @@ fn room_name(room: PlantationRoom) -> &'static str {
     }
 }
 
+#[derive(Clone, Copy)]
 struct WalkableFloor {
     min_x: f32,
     max_x: f32,
@@ -391,37 +401,141 @@ struct WalkableFloor {
     max_y: f32,
 }
 
-fn walkable_floor(room: PlantationRoom) -> WalkableFloor {
+#[derive(Clone, Copy)]
+struct SurfaceAnchor {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+}
+
+#[derive(Clone, Copy)]
+struct RoomLayout {
+    floor: WalkableFloor,
+    left_sign: Vec2,
+    right_sign: Vec2,
+    main_table: SurfaceAnchor,
+    side_table: SurfaceAnchor,
+    perch: SurfaceAnchor,
+}
+
+#[derive(Clone, Copy)]
+enum AnchorId {
+    MainTable,
+    SideTable,
+    Perch,
+}
+
+fn room_layout(room: PlantationRoom) -> RoomLayout {
+    let floor = WalkableFloor {
+        min_x: -520.0,
+        max_x: 520.0,
+        min_y: -252.0,
+        max_y: -240.0,
+    };
     match room {
-        PlantationRoom::Sanctuary => WalkableFloor {
-            min_x: -525.0,
-            max_x: 525.0,
-            min_y: -252.0,
-            max_y: -240.0,
+        PlantationRoom::Sanctuary => RoomLayout {
+            floor,
+            left_sign: Vec2::new(-455.0, -260.0),
+            right_sign: Vec2::new(430.0, -260.0),
+            main_table: SurfaceAnchor {
+                x: 0.0,
+                y: -203.0,
+                width: 430.0,
+                height: 28.0,
+            },
+            side_table: SurfaceAnchor {
+                x: -330.0,
+                y: -225.0,
+                width: 170.0,
+                height: 32.0,
+            },
+            perch: SurfaceAnchor {
+                x: -6.0,
+                y: -151.0,
+                width: 300.0,
+                height: 24.0,
+            },
         },
-        PlantationRoom::CoffeeField => WalkableFloor {
-            min_x: -525.0,
-            max_x: 525.0,
-            min_y: -252.0,
-            max_y: -240.0,
+        PlantationRoom::CoffeeField => RoomLayout {
+            floor,
+            left_sign: Vec2::new(-455.0, -260.0),
+            right_sign: Vec2::new(430.0, -260.0),
+            main_table: SurfaceAnchor {
+                x: -246.0,
+                y: -212.0,
+                width: 455.0,
+                height: 24.0,
+            },
+            side_table: SurfaceAnchor {
+                x: 390.0,
+                y: -185.0,
+                width: 170.0,
+                height: 30.0,
+            },
+            perch: SurfaceAnchor {
+                x: -250.0,
+                y: -174.0,
+                width: 455.0,
+                height: 30.0,
+            },
         },
-        PlantationRoom::Roastery => WalkableFloor {
-            min_x: -525.0,
-            max_x: 525.0,
-            min_y: -252.0,
-            max_y: -240.0,
+        PlantationRoom::Roastery => RoomLayout {
+            floor,
+            left_sign: Vec2::new(-455.0, -260.0),
+            right_sign: Vec2::new(430.0, -260.0),
+            main_table: SurfaceAnchor {
+                x: -185.0,
+                y: -170.0,
+                width: 500.0,
+                height: 42.0,
+            },
+            side_table: SurfaceAnchor {
+                x: 235.0,
+                y: -160.0,
+                width: 260.0,
+                height: 34.0,
+            },
+            perch: SurfaceAnchor {
+                x: -330.0,
+                y: -74.0,
+                width: 190.0,
+                height: 26.0,
+            },
         },
-        PlantationRoom::PaperworkOffice => WalkableFloor {
-            min_x: -525.0,
-            max_x: 525.0,
-            min_y: -252.0,
-            max_y: -240.0,
+        PlantationRoom::PaperworkOffice => RoomLayout {
+            floor,
+            left_sign: Vec2::new(-455.0, -260.0),
+            right_sign: Vec2::new(430.0, -260.0),
+            main_table: SurfaceAnchor {
+                x: -110.0,
+                y: -165.0,
+                width: 520.0,
+                height: 42.0,
+            },
+            side_table: SurfaceAnchor {
+                x: 250.0,
+                y: -150.0,
+                width: 220.0,
+                height: 32.0,
+            },
+            perch: SurfaceAnchor {
+                x: -320.0,
+                y: -72.0,
+                width: 190.0,
+                height: 26.0,
+            },
         },
     }
 }
 
-fn default_ground_y(_room: PlantationRoom) -> f32 {
-    -244.0
+fn walkable_floor(room: PlantationRoom) -> WalkableFloor {
+    room_layout(room).floor
+}
+
+fn default_ground_y(room: PlantationRoom) -> f32 {
+    let floor = walkable_floor(room);
+    (floor.min_y + floor.max_y) * 0.5
 }
 
 fn clamp_player_to_floor(state: &mut GameState) {
@@ -432,6 +546,26 @@ fn clamp_player_to_floor(state: &mut GameState) {
 
 fn ground_z(y: f32) -> f32 {
     3.0 + (-y + 280.0) * 0.006
+}
+
+fn anchor(room: PlantationRoom, id: AnchorId) -> SurfaceAnchor {
+    let layout = room_layout(room);
+    match id {
+        AnchorId::MainTable => layout.main_table,
+        AnchorId::SideTable => layout.side_table,
+        AnchorId::Perch => layout.perch,
+    }
+}
+
+fn anchor_slot(surface: SurfaceAnchor, index: u32, count: u32, y_offset: f32) -> Vec2 {
+    let count = count.max(1);
+    let spacing = if count == 1 {
+        0.0
+    } else {
+        surface.width * 0.74 / (count - 1) as f32
+    };
+    let x = surface.x - surface.width * 0.37 + spacing * index as f32;
+    Vec2::new(x, surface.y + surface.height * 0.45 + y_offset)
 }
 
 fn backdrop_alpha(cycle: f32, phase: usize) -> f32 {
@@ -502,7 +636,11 @@ fn prop_sprite(props: &PropAssets, index: usize) -> Sprite {
 fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &GameState) {
     commands.spawn((
         Sprite::from_color(Color::srgba(0.05, 0.035, 0.02, 0.26), Vec2::new(86.0, 28.0)),
-        Transform::from_xyz(state.player_x, state.player_y - 68.0, 4.0),
+        Transform::from_xyz(
+            state.player_x,
+            state.player_y - 68.0,
+            ground_z(state.player_y) - 0.3,
+        ),
         PlayerShadow,
         WorldVisual,
     ));
@@ -514,7 +652,12 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
                 index: 3,
             },
         ),
-        Transform::from_xyz(state.player_x, state.player_y, 5.0).with_scale(Vec3::splat(0.26)),
+        Transform::from_xyz(
+            state.player_x,
+            state.player_y,
+            ground_z(state.player_y) + 0.8,
+        )
+        .with_scale(Vec3::splat(0.26)),
         PlayerAvatar {
             facing: 1.0,
             moving: false,
@@ -529,13 +672,18 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.88, 0.62)),
-        Transform::from_xyz(state.player_x, state.player_y - 94.0, 6.0),
+        Transform::from_xyz(
+            state.player_x,
+            state.player_y - 94.0,
+            ground_z(state.player_y) + 1.2,
+        ),
         PlayerLabel,
         WorldVisual,
     ));
 }
 
 fn spawn_walkable_floor(commands: &mut Commands, room: PlantationRoom) {
+    let floor = walkable_floor(room);
     let warmth = match room {
         PlantationRoom::Sanctuary => Color::srgba(0.55, 0.34, 0.12, 0.08),
         PlantationRoom::CoffeeField => Color::srgba(0.20, 0.45, 0.16, 0.07),
@@ -543,17 +691,19 @@ fn spawn_walkable_floor(commands: &mut Commands, room: PlantationRoom) {
         PlantationRoom::PaperworkOffice => Color::srgba(0.50, 0.32, 0.17, 0.07),
     };
 
-    for (x, shade_y, width, height, alpha) in [
-        (-270.0, -254.0, 430.0, 16.0, 0.10),
-        (100.0, -244.0, 620.0, 22.0, 0.10),
-        (402.0, -233.0, 310.0, 14.0, 0.07),
-    ] {
-        commands.spawn((
-            Sprite::from_color(warmth.with_alpha(alpha), Vec2::new(width, height)),
-            Transform::from_xyz(x, shade_y, -3.6).with_rotation(Quat::from_rotation_z(-0.035)),
-            WorldVisual,
-        ));
-    }
+    let center_x = (floor.min_x + floor.max_x) * 0.5;
+    let center_y = (floor.min_y + floor.max_y) * 0.5;
+    commands.spawn((
+        Sprite::from_color(
+            warmth,
+            Vec2::new(
+                floor.max_x - floor.min_x + 70.0,
+                floor.max_y - floor.min_y + 32.0,
+            ),
+        ),
+        Transform::from_xyz(center_x, center_y, -3.6).with_rotation(Quat::from_rotation_z(-0.015)),
+        WorldVisual,
+    ));
 }
 
 fn spawn_room_title(commands: &mut Commands, state: &GameState) {
@@ -603,19 +753,20 @@ fn spawn_room_title(commands: &mut Commands, state: &GameState) {
 }
 
 fn spawn_room_exits(commands: &mut Commands, state: &GameState) {
+    let layout = room_layout(state.current_room);
     let left = exit_left(state.current_room);
     let right = exit_right(state.current_room);
     spawn_exit_sign(
         commands,
-        -455.0,
-        -260.0,
+        layout.left_sign.x,
+        layout.left_sign.y,
         format!("< {}", room_name(left)),
         room_action(left),
     );
     spawn_exit_sign(
         commands,
-        430.0,
-        -260.0,
+        layout.right_sign.x,
+        layout.right_sign.y,
         format!("{} >", room_name(right)),
         room_action(right),
     );
@@ -690,29 +841,40 @@ fn room_action(room: PlantationRoom) -> Action {
 }
 
 fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &PropAssets) {
+    let field = anchor(PlantationRoom::CoffeeField, AnchorId::Perch);
+    let pots = anchor(PlantationRoom::CoffeeField, AnchorId::MainTable);
+    let seedlings = anchor(PlantationRoom::CoffeeField, AnchorId::SideTable);
     spawn_wood_platform(
         commands,
-        -250.0,
-        -174.0,
-        455.0,
-        30.0,
-        ground_z(-174.0) - 0.3,
+        field.x,
+        field.y,
+        field.width,
+        field.height,
+        ground_z(field.y) - 0.3,
     );
     spawn_wood_platform(
         commands,
-        -246.0,
-        -212.0,
-        455.0,
-        24.0,
-        ground_z(-212.0) - 0.3,
+        pots.x,
+        pots.y,
+        pots.width,
+        pots.height,
+        ground_z(pots.y) - 0.3,
     );
-    spawn_wood_platform(commands, 390.0, -185.0, 170.0, 30.0, ground_z(-185.0) - 0.3);
+    spawn_wood_platform(
+        commands,
+        seedlings.x,
+        seedlings.y,
+        seedlings.width,
+        seedlings.height,
+        ground_z(seedlings.y) - 0.3,
+    );
 
     let plant_count = state.coffee_plants.min(12);
     for i in 0..plant_count {
-        let x = -450.0 + i as f32 * 38.0;
-        let y = -192.0;
-        spawn_contact_shadow(commands, x, -207.0, 34.0, 9.0, ground_z(y) - 0.35);
+        let slot = anchor_slot(pots, i, plant_count, 0.0);
+        let x = slot.x;
+        let y = slot.y;
+        spawn_contact_shadow(commands, x, y - 15.0, 34.0, 9.0, ground_z(y) - 0.35);
         commands
             .spawn((
                 prop_sprite(props, 1),
@@ -732,8 +894,9 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
     }
 
     for i in 0..5 {
-        let x = -430.0 + i as f32 * 82.0;
-        let y = -156.0 + (i % 2) as f32 * 7.0;
+        let slot = anchor_slot(field, i, 5, 0.0);
+        let x = slot.x;
+        let y = slot.y + (i % 2) as f32 * 4.0;
         spawn_contact_shadow(commands, x, y - 20.0, 70.0, 16.0, ground_z(y) - 0.35);
         commands
             .spawn((
@@ -758,11 +921,20 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
         ));
     }
 
-    spawn_contact_shadow(commands, 410.0, -174.0, 76.0, 18.0, ground_z(-156.0) - 0.35);
+    let seed_slot = anchor_slot(seedlings, 0, 1, 0.0);
+    spawn_contact_shadow(
+        commands,
+        seed_slot.x,
+        seed_slot.y - 18.0,
+        76.0,
+        18.0,
+        ground_z(seed_slot.y) - 0.35,
+    );
     commands
         .spawn((
             prop_sprite(props, 0),
-            Transform::from_xyz(410.0, -156.0, ground_z(-156.0)).with_scale(Vec3::splat(0.26)),
+            Transform::from_xyz(seed_slot.x, seed_slot.y, ground_z(seed_slot.y))
+                .with_scale(Vec3::splat(0.26)),
             Pickable::default(),
             WorldActionTarget(Action::PlantCoffee),
             WorldVisual,
@@ -777,7 +949,7 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
             ..default()
         },
         TextColor(Color::srgb(0.92, 1.0, 0.72)),
-        Transform::from_xyz(410.0, -156.0, ground_z(-156.0) + 0.6),
+        Transform::from_xyz(seed_slot.x, seed_slot.y, ground_z(seed_slot.y) + 0.6),
         WorldVisual,
     ));
 
@@ -811,10 +983,15 @@ fn spawn_sanctuary_room(
     _skin: &UiSkinAssets,
 ) {
     spawn_civet_perch(commands);
+    let main_perch = anchor(PlantationRoom::Sanctuary, AnchorId::MainTable);
+    let high_perch = anchor(PlantationRoom::Sanctuary, AnchorId::Perch);
+    let snack_table = anchor(PlantationRoom::Sanctuary, AnchorId::SideTable);
 
     for i in 0..14 {
-        let x = -185.0 + (i % 7) as f32 * 55.0;
-        let y = -178.0 + (i / 7) as f32 * 34.0 + (i % 2) as f32 * 5.0;
+        let surface = if i < 7 { main_perch } else { high_perch };
+        let slot = anchor_slot(surface, i % 7, 7, 0.0);
+        let x = slot.x;
+        let y = slot.y + (i / 7) as f32 * 6.0 + (i % 2) as f32 * 4.0;
         spawn_prop(commands, props, 15, x, y, 0.18, ground_z(y) - 0.2);
     }
     for (x, y) in [
@@ -837,8 +1014,10 @@ fn spawn_sanctuary_room(
     ));
 
     for i in 0..state.civets.min(10) {
-        let x = -116.0 + (i % 5) as f32 * 58.0;
-        let y = -196.0 + (i / 5) as f32 * 44.0;
+        let surface = if i < 5 { main_perch } else { high_perch };
+        let slot = anchor_slot(surface, i % 5, 5, -2.0);
+        let x = slot.x;
+        let y = slot.y + (i / 5) as f32 * 4.0;
         spawn_contact_shadow(commands, x, y - 13.0, 45.0, 14.0, 2.7);
         commands
             .spawn((
@@ -912,7 +1091,16 @@ fn spawn_sanctuary_room(
         spawn_goat(commands, props, -292.0, -224.0, "goat?");
     }
 
-    spawn_prop(commands, props, 12, -330.0, -228.0, 0.42, ground_z(-228.0));
+    let snack_slot = anchor_slot(snack_table, 0, 1, 0.0);
+    spawn_prop(
+        commands,
+        props,
+        12,
+        snack_slot.x,
+        snack_slot.y,
+        0.42,
+        ground_z(snack_slot.y),
+    );
     commands.spawn((
         Text2d::new("snack trays"),
         TextFont {
@@ -920,7 +1108,7 @@ fn spawn_sanctuary_room(
             ..default()
         },
         TextColor(Color::srgb(0.22, 0.11, 0.08)),
-        Transform::from_xyz(-330.0, -228.0, 5.0),
+        Transform::from_xyz(snack_slot.x, snack_slot.y, 5.0),
         WorldVisual,
     ));
 
@@ -936,31 +1124,77 @@ fn spawn_roastery_room(
     props: &PropAssets,
     _skin: &UiSkinAssets,
 ) {
+    let main_table = anchor(PlantationRoom::Roastery, AnchorId::MainTable);
+    let bag_table = anchor(PlantationRoom::Roastery, AnchorId::SideTable);
+    let bean_table = anchor(PlantationRoom::Roastery, AnchorId::Perch);
     spawn_wood_platform(
         commands,
-        -185.0,
-        -170.0,
-        500.0,
-        42.0,
-        ground_z(-170.0) - 0.3,
+        main_table.x,
+        main_table.y,
+        main_table.width,
+        main_table.height,
+        ground_z(main_table.y) - 0.3,
     );
-    spawn_wood_platform(commands, 235.0, -160.0, 260.0, 34.0, ground_z(-160.0) - 0.3);
-    spawn_wood_platform(commands, -330.0, -74.0, 190.0, 26.0, ground_z(-74.0) - 0.3);
-    spawn_prop(commands, props, 4, -330.0, -52.0, 0.22, ground_z(-52.0));
-    spawn_prop(commands, props, 3, -35.0, -145.0, 0.20, ground_z(-145.0));
-    spawn_prop(commands, props, 14, -18.0, -115.0, 0.24, ground_z(-115.0));
+    spawn_wood_platform(
+        commands,
+        bag_table.x,
+        bag_table.y,
+        bag_table.width,
+        bag_table.height,
+        ground_z(bag_table.y) - 0.3,
+    );
+    spawn_wood_platform(
+        commands,
+        bean_table.x,
+        bean_table.y,
+        bean_table.width,
+        bean_table.height,
+        ground_z(bean_table.y) - 0.3,
+    );
+    let bean_slot = anchor_slot(bean_table, 0, 1, 0.0);
+    let accessory_a = anchor_slot(main_table, 2, 5, 0.0);
+    let accessory_b = anchor_slot(main_table, 3, 5, 16.0);
+    spawn_prop(
+        commands,
+        props,
+        4,
+        bean_slot.x,
+        bean_slot.y,
+        0.22,
+        ground_z(bean_slot.y),
+    );
+    spawn_prop(
+        commands,
+        props,
+        3,
+        accessory_a.x,
+        accessory_a.y,
+        0.20,
+        ground_z(accessory_a.y),
+    );
+    spawn_prop(
+        commands,
+        props,
+        14,
+        accessory_b.x,
+        accessory_b.y,
+        0.24,
+        ground_z(accessory_b.y),
+    );
+    let roaster_slot = anchor_slot(main_table, 1, 5, 0.0);
     spawn_contact_shadow(
         commands,
-        -185.0,
-        -158.0,
+        roaster_slot.x,
+        roaster_slot.y - 20.0,
         112.0,
         22.0,
-        ground_z(-150.0) - 0.35,
+        ground_z(roaster_slot.y) - 0.35,
     );
     commands
         .spawn((
             prop_sprite(props, 6),
-            Transform::from_xyz(-185.0, -138.0, ground_z(-138.0)).with_scale(Vec3::splat(0.42)),
+            Transform::from_xyz(roaster_slot.x, roaster_slot.y, ground_z(roaster_slot.y))
+                .with_scale(Vec3::splat(0.42)),
             Pickable::default(),
             WorldActionTarget(Action::RoastCoffee),
             WorldVisual,
@@ -975,12 +1209,17 @@ fn spawn_roastery_room(
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.78, 0.45)),
-        Transform::from_xyz(-185.0, -138.0, ground_z(-138.0) + 0.4),
+        Transform::from_xyz(
+            roaster_slot.x,
+            roaster_slot.y,
+            ground_z(roaster_slot.y) + 0.4,
+        ),
         WorldVisual,
     ));
     for i in 0..6 {
-        let x = 140.0 + (i % 3) as f32 * 72.0;
-        let y = -143.0 + (i / 3) as f32 * 32.0;
+        let slot = anchor_slot(bag_table, i % 3, 3, (i / 3) as f32 * 22.0);
+        let x = slot.x;
+        let y = slot.y;
         spawn_contact_shadow(commands, x, y - 16.0, 42.0, 12.0, ground_z(y) - 0.35);
         commands
             .spawn((
@@ -1004,11 +1243,19 @@ fn spawn_roastery_room(
             WorldVisual,
         ));
     }
-    spawn_contact_shadow(commands, -390.0, -54.0, 74.0, 16.0, ground_z(-42.0) - 0.35);
+    spawn_contact_shadow(
+        commands,
+        bean_slot.x,
+        bean_slot.y - 16.0,
+        74.0,
+        16.0,
+        ground_z(bean_slot.y) - 0.35,
+    );
     commands
         .spawn((
             prop_sprite(props, 3),
-            Transform::from_xyz(-390.0, -42.0, ground_z(-42.0)).with_scale(Vec3::splat(0.30)),
+            Transform::from_xyz(bean_slot.x, bean_slot.y, ground_z(bean_slot.y))
+                .with_scale(Vec3::splat(0.30)),
             Pickable::default(),
             WorldActionTarget(Action::CollectBeans),
             WorldVisual,
@@ -1023,7 +1270,7 @@ fn spawn_roastery_room(
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.78, 0.54)),
-        Transform::from_xyz(-390.0, -42.0, ground_z(-42.0) + 0.4),
+        Transform::from_xyz(bean_slot.x, bean_slot.y, ground_z(bean_slot.y) + 0.4),
         WorldVisual,
     ));
 
@@ -1053,22 +1300,67 @@ fn spawn_paperwork_office_room(
     props: &PropAssets,
     _skin: &UiSkinAssets,
 ) {
+    let desk = anchor(PlantationRoom::PaperworkOffice, AnchorId::MainTable);
+    let office_table = anchor(PlantationRoom::PaperworkOffice, AnchorId::SideTable);
+    let plant_shelf = anchor(PlantationRoom::PaperworkOffice, AnchorId::Perch);
     spawn_wood_platform(
         commands,
-        -110.0,
-        -165.0,
-        520.0,
-        42.0,
-        ground_z(-165.0) - 0.3,
+        desk.x,
+        desk.y,
+        desk.width,
+        desk.height,
+        ground_z(desk.y) - 0.3,
     );
-    spawn_wood_platform(commands, 250.0, -150.0, 220.0, 32.0, ground_z(-150.0) - 0.3);
-    spawn_wood_platform(commands, -320.0, -72.0, 190.0, 26.0, ground_z(-72.0) - 0.3);
-    spawn_prop(commands, props, 15, -330.0, -48.0, 0.24, ground_z(-48.0));
-    spawn_prop(commands, props, 15, 270.0, -126.0, 0.22, ground_z(-126.0));
-    spawn_prop(commands, props, 13, 310.0, -122.0, 0.22, ground_z(-122.0));
+    spawn_wood_platform(
+        commands,
+        office_table.x,
+        office_table.y,
+        office_table.width,
+        office_table.height,
+        ground_z(office_table.y) - 0.3,
+    );
+    spawn_wood_platform(
+        commands,
+        plant_shelf.x,
+        plant_shelf.y,
+        plant_shelf.width,
+        plant_shelf.height,
+        ground_z(plant_shelf.y) - 0.3,
+    );
+    let shelf_slot = anchor_slot(plant_shelf, 0, 1, 0.0);
+    let office_plant = anchor_slot(office_table, 0, 2, 0.0);
+    let clipboard = anchor_slot(office_table, 1, 2, 0.0);
+    spawn_prop(
+        commands,
+        props,
+        15,
+        shelf_slot.x,
+        shelf_slot.y,
+        0.24,
+        ground_z(shelf_slot.y),
+    );
+    spawn_prop(
+        commands,
+        props,
+        15,
+        office_plant.x,
+        office_plant.y,
+        0.22,
+        ground_z(office_plant.y),
+    );
+    spawn_prop(
+        commands,
+        props,
+        13,
+        clipboard.x,
+        clipboard.y,
+        0.22,
+        ground_z(clipboard.y),
+    );
     for i in 0..7 {
-        let x = -280.0 + i as f32 * 52.0;
-        let y = -139.0 + (i % 2) as f32 * 8.0;
+        let slot = anchor_slot(desk, i, 7, (i % 2) as f32 * 8.0);
+        let x = slot.x;
+        let y = slot.y;
         spawn_contact_shadow(commands, x, y - 15.0, 38.0, 10.0, ground_z(y) - 0.35);
         commands
             .spawn((
@@ -1096,7 +1388,16 @@ fn spawn_paperwork_office_room(
         WorldVisual,
     ));
 
-    spawn_prop(commands, props, 8, 178.0, -128.0, 0.28, ground_z(-128.0));
+    let stamp_slot = anchor_slot(desk, 6, 7, 0.0);
+    spawn_prop(
+        commands,
+        props,
+        8,
+        stamp_slot.x + 48.0,
+        stamp_slot.y,
+        0.28,
+        ground_z(stamp_slot.y),
+    );
     spawn_upgrade_buildings(commands, state);
     spawn_helicopter(commands, props);
     if state.goat_present {
@@ -1216,8 +1517,8 @@ fn spawn_contact_shadow(commands: &mut Commands, x: f32, y: f32, width: f32, hei
 }
 
 fn spawn_goat(commands: &mut Commands, props: &PropAssets, x: f32, y: f32, label: &str) {
-    spawn_contact_shadow(commands, x, y - 18.0, 66.0, 18.0, 2.7);
-    spawn_prop(commands, props, 10, x, y, 0.25, 3.0);
+    spawn_contact_shadow(commands, x, y - 18.0, 66.0, 18.0, ground_z(y) - 0.35);
+    spawn_prop(commands, props, 10, x, y, 0.25, ground_z(y));
     commands.spawn((
         Text2d::new(label),
         TextFont {
@@ -1225,7 +1526,7 @@ fn spawn_goat(commands: &mut Commands, props: &PropAssets, x: f32, y: f32, label
             ..default()
         },
         TextColor(Color::srgb(0.17, 0.12, 0.08)),
-        Transform::from_xyz(x, y + 1.0, 4.0),
+        Transform::from_xyz(x, y + 1.0, ground_z(y) + 0.5),
         WorldVisual,
     ));
 }
