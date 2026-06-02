@@ -4,10 +4,8 @@ use crate::actions::run_action;
 use crate::model::*;
 
 const PANEL_DARK: Color = Color::srgba(0.08, 0.065, 0.045, 0.18);
-const PANEL_WOOD: Color = Color::srgba(0.15, 0.095, 0.055, 0.16);
 const PANEL_PAPER: Color = Color::srgba(0.98, 0.84, 0.70, 0.10);
 const SKIN_STATS_PANEL: usize = 0;
-const SKIN_TOOL_PANEL: usize = 1;
 const SKIN_PAPER_PANEL: usize = 2;
 const SKIN_BUTTON: usize = 3;
 
@@ -124,9 +122,8 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                             border_radius: BorderRadius::all(px(12)),
                             ..default()
                         },
-                        BackgroundColor(PANEL_WOOD),
-                        ui_skin_node(skin, SKIN_TOOL_PANEL, Color::srgba(1.0, 1.0, 1.0, 0.95)),
-                        BorderColor::all(Color::srgba(0.88, 0.66, 0.34, 0.45)),
+                        BackgroundColor(Color::NONE),
+                        BorderColor::all(Color::NONE),
                     ))
                     .with_children(|buttons| {
                         for (label, action) in [
@@ -212,9 +209,8 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                     border_radius: BorderRadius::all(px(12)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.08, 0.055, 0.03, 0.20)),
-                ui_skin_node(skin, SKIN_BUTTON, Color::srgba(0.95, 0.78, 0.52, 0.86)),
-                BorderColor::all(Color::srgba(1.0, 0.80, 0.42, 0.42)),
+                BackgroundColor(Color::NONE),
+                BorderColor::all(Color::NONE),
             ))
             .with_children(|inventory| {
                 spawn_dynamic_button(

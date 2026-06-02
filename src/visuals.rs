@@ -9,7 +9,6 @@ use crate::model::{
 };
 
 const SKIN_STATS_PANEL: usize = 0;
-const SKIN_TOOL_PANEL: usize = 1;
 const SKIN_BUTTON: usize = 3;
 
 pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
@@ -29,25 +28,6 @@ pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
         ));
     }
 
-    commands.spawn((
-        Sprite::from_color(
-            Color::srgba(0.12, 0.22, 0.10, 0.24),
-            Vec2::new(2400.0, 90.0),
-        ),
-        Transform::from_xyz(0.0, -332.0, -6.0),
-        ParallaxLayer {
-            base: Vec3::new(0.0, -332.0, -6.0),
-            speed: 1.1,
-            amplitude: 18.0,
-        },
-    ));
-    commands.spawn((
-        Sprite::from_color(
-            Color::srgba(0.78, 0.50, 0.23, 0.50),
-            Vec2::new(2400.0, 150.0),
-        ),
-        Transform::from_xyz(0.0, -365.0, -5.0),
-    ));
     commands.spawn((
         Sprite::from_color(
             Color::srgba(0.76, 0.05, 0.04, 0.0),
@@ -541,64 +521,21 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
 }
 
 fn spawn_walkable_floor(commands: &mut Commands, room: PlantationRoom) {
-    let (main, edge, path, y, h) = match room {
-        PlantationRoom::Sanctuary => (
-            Color::srgba(0.47, 0.33, 0.18, 0.72),
-            Color::srgba(0.23, 0.14, 0.07, 0.48),
-            Color::srgba(0.72, 0.47, 0.24, 0.34),
-            -150.0,
-            305.0,
-        ),
-        PlantationRoom::CoffeeField => (
-            Color::srgba(0.31, 0.52, 0.21, 0.56),
-            Color::srgba(0.13, 0.24, 0.10, 0.36),
-            Color::srgba(0.77, 0.52, 0.25, 0.28),
-            -145.0,
-            355.0,
-        ),
-        PlantationRoom::Roastery => (
-            Color::srgba(0.38, 0.22, 0.13, 0.64),
-            Color::srgba(0.17, 0.09, 0.05, 0.44),
-            Color::srgba(0.75, 0.49, 0.26, 0.23),
-            -153.0,
-            270.0,
-        ),
-        PlantationRoom::PaperworkOffice => (
-            Color::srgba(0.39, 0.27, 0.17, 0.62),
-            Color::srgba(0.17, 0.10, 0.06, 0.42),
-            Color::srgba(0.89, 0.70, 0.44, 0.22),
-            -150.0,
-            285.0,
-        ),
+    let (warmth, y, h) = match room {
+        PlantationRoom::Sanctuary => (Color::srgba(0.55, 0.34, 0.12, 0.08), -150.0, 305.0),
+        PlantationRoom::CoffeeField => (Color::srgba(0.20, 0.45, 0.16, 0.07), -145.0, 355.0),
+        PlantationRoom::Roastery => (Color::srgba(0.42, 0.22, 0.10, 0.08), -153.0, 270.0),
+        PlantationRoom::PaperworkOffice => (Color::srgba(0.50, 0.32, 0.17, 0.07), -150.0, 285.0),
     };
 
-    commands.spawn((
-        Sprite::from_color(main, Vec2::new(1180.0, h)),
-        Transform::from_xyz(40.0, y, -4.2),
-        WorldVisual,
-    ));
-    commands.spawn((
-        Sprite::from_color(edge, Vec2::new(1180.0, 20.0)),
-        Transform::from_xyz(40.0, y + h * 0.5, -3.8),
-        WorldVisual,
-    ));
-    commands.spawn((
-        Sprite::from_color(path, Vec2::new(760.0, 72.0)),
-        Transform::from_xyz(25.0, y - h * 0.10, -3.6).with_rotation(Quat::from_rotation_z(-0.04)),
-        WorldVisual,
-    ));
-
-    for (x, stripe_y, alpha) in [
-        (-360.0, y - h * 0.34, 0.16),
-        (70.0, y - h * 0.12, 0.13),
-        (360.0, y + h * 0.18, 0.10),
+    for (x, shade_y, width, height, alpha) in [
+        (-300.0, y - h * 0.26, 420.0, 24.0, 0.09),
+        (80.0, y - h * 0.04, 520.0, 28.0, 0.075),
+        (345.0, y + h * 0.24, 360.0, 18.0, 0.055),
     ] {
         commands.spawn((
-            Sprite::from_color(
-                Color::srgba(0.06, 0.04, 0.02, alpha),
-                Vec2::new(330.0, 12.0),
-            ),
-            Transform::from_xyz(x, stripe_y, -3.4),
+            Sprite::from_color(warmth.with_alpha(alpha), Vec2::new(width, height)),
+            Transform::from_xyz(x, shade_y, -3.6).with_rotation(Quat::from_rotation_z(-0.035)),
             WorldVisual,
         ));
     }
@@ -631,11 +568,11 @@ fn spawn_room_title(commands: &mut Commands, state: &GameState) {
     commands.spawn((
         Text2d::new(title),
         TextFont {
-            font_size: 26.0,
+            font_size: 23.0,
             ..default()
         },
         TextColor(color),
-        Transform::from_xyz(-160.0, 315.0, 2.0),
+        Transform::from_xyz(10.0, 300.0, 2.0),
         WorldVisual,
     ));
     commands.spawn((
@@ -644,8 +581,8 @@ fn spawn_room_title(commands: &mut Commands, state: &GameState) {
             font_size: 18.0,
             ..default()
         },
-        TextColor(Color::srgb(0.94, 0.86, 0.62)),
-        Transform::from_xyz(-160.0, 285.0, 2.0),
+        TextColor(Color::srgba(0.94, 0.86, 0.62, 0.86)),
+        Transform::from_xyz(10.0, 270.0, 2.0),
         WorldVisual,
     ));
 }
@@ -809,53 +746,35 @@ fn spawn_sanctuary_room(
     state: &GameState,
     characters: &CharacterAssets,
     props: &PropAssets,
-    skin: &UiSkinAssets,
+    _skin: &UiSkinAssets,
 ) {
-    commands.spawn((
-        skin_sprite(skin, SKIN_TOOL_PANEL, Color::srgba(1.0, 0.86, 0.66, 0.86)),
-        Transform::from_xyz(60.0, -84.0, 1.0),
-        WorldVisual,
-    ));
-    for i in 0..9 {
-        let x = -110.0 + i as f32 * 43.0;
-        spawn_prop(
-            commands,
-            props,
-            15,
-            x,
-            4.0 + (i % 2) as f32 * 8.0,
-            0.20,
-            2.0,
-        );
-        spawn_prop(
-            commands,
-            props,
-            15,
-            x,
-            -174.0 + (i % 2) as f32 * 7.0,
-            0.18,
-            2.0,
-        );
+    for i in 0..14 {
+        let x = -185.0 + (i % 7) as f32 * 55.0;
+        let y = -214.0 + (i / 7) as f32 * 34.0 + (i % 2) as f32 * 5.0;
+        spawn_prop(commands, props, 15, x, y, 0.18, ground_z(y) - 0.2);
     }
-    for i in 0..4 {
-        let y = -152.0 + i as f32 * 48.0;
-        spawn_prop(commands, props, 0, -116.0, y, 0.13, 2.0);
-        spawn_prop(commands, props, 0, 218.0, y + 8.0, 0.13, 2.0);
+    for (x, y) in [
+        (-245.0, -190.0),
+        (-220.0, -235.0),
+        (245.0, -192.0),
+        (220.0, -236.0),
+    ] {
+        spawn_prop(commands, props, 0, x, y, 0.13, ground_z(y) - 0.1);
     }
     commands.spawn((
-        Text2d::new("CIVET ENCLOSURE"),
+        Text2d::new("civet garden"),
         TextFont {
-            font_size: 17.0,
+            font_size: 14.0,
             ..default()
         },
-        TextColor(Color::srgb(1.0, 0.82, 0.44)),
-        Transform::from_xyz(60.0, 20.0, 4.0),
+        TextColor(Color::srgb(1.0, 0.86, 0.56)),
+        Transform::from_xyz(40.0, -160.0, 5.0),
         WorldVisual,
     ));
 
     for i in 0..state.civets.min(10) {
-        let x = -40.0 + (i % 5) as f32 * 48.0;
-        let y = -120.0 + (i / 5) as f32 * 44.0;
+        let x = -70.0 + (i % 5) as f32 * 54.0;
+        let y = -214.0 + (i / 5) as f32 * 34.0;
         spawn_contact_shadow(commands, x, y - 13.0, 45.0, 14.0, 2.7);
         commands
             .spawn((
@@ -870,7 +789,7 @@ fn spawn_sanctuary_room(
                 Pickable::default(),
                 CivetClickTarget { index: i as usize },
                 MovingCivet {
-                    base: Vec3::new(x, y + 2.0, 3.0),
+                    base: Vec3::new(x, y + 2.0, ground_z(y) + 0.2),
                     phase: i as f32 * 1.7,
                 },
                 WorldVisual,
@@ -903,8 +822,16 @@ fn spawn_sanctuary_room(
     }
 
     if state.binturong_home {
-        spawn_contact_shadow(commands, 85.0, 0.0, 88.0, 24.0, 2.7);
-        spawn_prop(commands, props, 11, 85.0, 10.0, 0.28, 3.0);
+        spawn_contact_shadow(commands, 120.0, -178.0, 88.0, 24.0, 2.7);
+        spawn_prop(
+            commands,
+            props,
+            11,
+            120.0,
+            -168.0,
+            0.28,
+            ground_z(-168.0) + 0.1,
+        );
         commands.spawn((
             Text2d::new("binturong"),
             TextFont {
@@ -912,16 +839,16 @@ fn spawn_sanctuary_room(
                 ..default()
             },
             TextColor(Color::srgb(0.95, 0.87, 0.68)),
-            Transform::from_xyz(85.0, 38.0, 4.0),
+            Transform::from_xyz(120.0, -139.0, 5.0),
             WorldVisual,
         ));
     }
 
     if state.goat_present {
-        spawn_goat(commands, props, -175.0, 115.0, "goat?");
+        spawn_goat(commands, props, -292.0, -198.0, "goat?");
     }
 
-    spawn_prop(commands, props, 12, -285.0, -130.0, 0.42, 2.0);
+    spawn_prop(commands, props, 12, -330.0, -228.0, 0.42, ground_z(-228.0));
     commands.spawn((
         Text2d::new("snack trays"),
         TextFont {
@@ -929,7 +856,7 @@ fn spawn_sanctuary_room(
             ..default()
         },
         TextColor(Color::srgb(0.22, 0.11, 0.08)),
-        Transform::from_xyz(-285.0, -130.0, 3.0),
+        Transform::from_xyz(-330.0, -228.0, 5.0),
         WorldVisual,
     ));
 
@@ -1169,10 +1096,10 @@ fn spawn_room_hint(commands: &mut Commands, text: &str) {
     commands.spawn((
         Text2d::new(text),
         TextFont {
-            font_size: 15.0,
+            font_size: 14.0,
             ..default()
         },
-        TextColor(Color::srgb(1.0, 0.90, 0.66)),
+        TextColor(Color::srgba(1.0, 0.90, 0.66, 0.80)),
         Transform::from_xyz(-20.0, -315.0, 3.0),
         WorldVisual,
     ));
