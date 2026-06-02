@@ -17,7 +17,7 @@ use visuals::{animate_world, move_player, refresh_world_visuals, spawn_world};
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::srgb(0.39, 0.32, 0.19)))
+        .insert_resource(ClearColor(Color::srgb(0.10, 0.21, 0.17)))
         .insert_resource(GameState::load().unwrap_or_default())
         .insert_resource(GameTick(Timer::from_seconds(1.0, TimerMode::Repeating)))
         .insert_resource(EventTick(Timer::from_seconds(9.0, TimerMode::Repeating)))

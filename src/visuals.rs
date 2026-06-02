@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 
 use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
@@ -10,6 +11,8 @@ use crate::model::{
 
 const SKIN_STATS_PANEL: usize = 0;
 const SKIN_BUTTON: usize = 3;
+const BACKDROP_TILE_SIZE: f32 = 627.0;
+const BACKDROP_OVERSCAN: f32 = 1.04;
 
 pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
     spawn_retro_sky(commands, backgrounds);
@@ -85,8 +88,9 @@ fn spawn_parallax_image_strip(
 pub fn animate_world(
     time: Res<Time>,
     state: Res<GameState>,
+    windows: Query<&Window, With<PrimaryWindow>>,
     mut backdrops: Query<
-        (&EnvironmentBackdrop, &mut Sprite),
+        (&EnvironmentBackdrop, &mut Sprite, &mut Transform),
         (Without<SuspicionGlow>, Without<PlayerAvatar>),
     >,
     mut parallax: Query<
@@ -168,9 +172,17 @@ pub fn animate_world(
     }
 
     let cycle = (t / 96.0).fract();
-    for (backdrop, mut sprite) in &mut backdrops {
+    let backdrop_scale = windows
+        .single()
+        .map(|window| {
+            (window.width() / BACKDROP_TILE_SIZE).max(window.height() / BACKDROP_TILE_SIZE)
+                * BACKDROP_OVERSCAN
+        })
+        .unwrap_or(2.38);
+    for (backdrop, mut sprite, mut transform) in &mut backdrops {
         let alpha = backdrop_alpha(cycle, backdrop.phase);
         sprite.color = Color::srgba(1.0, 1.0, 1.0, alpha);
+        transform.scale = Vec3::splat(backdrop_scale);
     }
 
     for (layer, mut transform) in &mut parallax {
