@@ -1,4 +1,4 @@
-use crate::model::{Action, GameState, PlantationRoom, RandomEventKind, ToolGroup};
+use crate::model::{Action, GameState, Language, PlantationRoom, RandomEventKind, ToolGroup};
 
 pub fn run_action(state: &mut GameState, action: Action) {
     match action {
@@ -19,6 +19,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         }
         Action::BackToMenu => {
             state.screen = crate::model::GameScreen::MainMenu;
+            state.settings_open = false;
             return;
         }
         Action::GoSanctuary
@@ -77,6 +78,32 @@ pub fn run_action(state: &mut GameState, action: Action) {
             "Inventory tray folds back into a coffee sack."
         });
         return;
+    }
+
+    match action {
+        Action::ShowSettings => {
+            state.settings_open = true;
+            state.log_line("Settings notebook opened.");
+            return;
+        }
+        Action::CloseSettings => {
+            state.settings_open = false;
+            state.log_line("Settings notebook closed.");
+            return;
+        }
+        Action::SetLanguageEnglish => {
+            state.language = Language::English;
+            state.settings_open = false;
+            state.log_line("Language set to English.");
+            return;
+        }
+        Action::SetLanguageSwedish => {
+            state.language = Language::Swedish;
+            state.settings_open = false;
+            state.log_line("Sprak satt till svenska.");
+            return;
+        }
+        _ => {}
     }
 
     if matches!(
@@ -330,6 +357,10 @@ pub fn run_action(state: &mut GameState, action: Action) {
         | Action::ShowComplianceTools
         | Action::ShowUpgradeTools
         | Action::ShowSystemTools => {}
+        Action::ShowSettings
+        | Action::CloseSettings
+        | Action::SetLanguageEnglish
+        | Action::SetLanguageSwedish => {}
         Action::StartGame | Action::ShowIntro | Action::ShowAnimalBook | Action::BackToMenu => {}
         Action::ContinueDay => {}
     }

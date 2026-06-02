@@ -29,6 +29,10 @@ pub struct GameState {
     pub player_y: f32,
     #[serde(default)]
     pub inventory_open: bool,
+    #[serde(default)]
+    pub settings_open: bool,
+    #[serde(default)]
+    pub language: Language,
     pub coffee_fruit: f32,
     pub civet_feed: f32,
     pub processed_beans: f32,
@@ -158,6 +162,13 @@ pub enum ToolGroup {
     System,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Language {
+    #[default]
+    English,
+    Swedish,
+}
+
 impl Default for GameState {
     fn default() -> Self {
         Self {
@@ -174,6 +185,8 @@ impl Default for GameState {
             player_x: default_player_x(),
             player_y: default_player_y(),
             inventory_open: false,
+            settings_open: false,
+            language: Language::English,
             coffee_fruit: 8.0,
             civet_feed: 0.0,
             processed_beans: 0.0,
@@ -453,6 +466,9 @@ pub struct EventModal;
 pub struct OrderModal;
 
 #[derive(Component)]
+pub struct SettingsModal;
+
+#[derive(Component)]
 pub struct ScreenModal;
 
 #[derive(Component)]
@@ -543,6 +559,10 @@ pub enum Action {
     GiveFruitFromInventory,
     PickUpBeansToInventory,
     ToggleInventory,
+    ShowSettings,
+    CloseSettings,
+    SetLanguageEnglish,
+    SetLanguageSwedish,
     Save,
     Load,
     FeedSelectedCivet,

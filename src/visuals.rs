@@ -712,17 +712,25 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
         30.0,
         ground_z(-174.0) - 0.3,
     );
+    spawn_wood_platform(
+        commands,
+        -246.0,
+        -212.0,
+        455.0,
+        24.0,
+        ground_z(-212.0) - 0.3,
+    );
     spawn_wood_platform(commands, 390.0, -185.0, 170.0, 30.0, ground_z(-185.0) - 0.3);
 
-    let plant_count = state.coffee_plants.min(36);
+    let plant_count = state.coffee_plants.min(12);
     for i in 0..plant_count {
-        let x = -235.0 + (i % 12) as f32 * 42.0;
-        let y = -222.0 + (i / 12) as f32 * 26.0;
-        spawn_contact_shadow(commands, x, y - 16.0, 38.0, 10.0, ground_z(y) - 0.35);
+        let x = -450.0 + i as f32 * 38.0;
+        let y = -192.0;
+        spawn_contact_shadow(commands, x, -207.0, 34.0, 9.0, ground_z(y) - 0.35);
         commands
             .spawn((
                 prop_sprite(props, 1),
-                Transform::from_xyz(x, y, ground_z(y)).with_scale(Vec3::splat(0.16)),
+                Transform::from_xyz(x, y, ground_z(y)).with_scale(Vec3::splat(0.13)),
                 Pickable::default(),
                 WorldActionTarget(Action::HarvestFruit),
                 WorldVisual,

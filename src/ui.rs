@@ -193,6 +193,7 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                     ),
                     ("Save", Action::Save, ToolGroup::System),
                     ("Load", Action::Load, ToolGroup::System),
+                    ("Settings", Action::ShowSettings, ToolGroup::System),
                 ] {
                     spawn_grouped_dynamic_button(buttons, skin, label, action, group);
                 }
@@ -429,7 +430,12 @@ fn button_base_color(action: Action) -> Color {
         Action::SellCoffee | Action::RoastCoffee | Action::InspectTasting => {
             Color::srgb(0.48, 0.31, 0.10)
         }
-        Action::Save | Action::Load => Color::srgb(0.18, 0.18, 0.18),
+        Action::Save
+        | Action::Load
+        | Action::ShowSettings
+        | Action::CloseSettings
+        | Action::SetLanguageEnglish
+        | Action::SetLanguageSwedish => Color::srgb(0.18, 0.18, 0.18),
         Action::FeedSelectedCivet | Action::PetSelectedCivet | Action::InspectSelectedCivet => {
             Color::srgb(0.24, 0.34, 0.18)
         }
@@ -483,7 +489,12 @@ fn button_border_color(action: Action) -> Color {
         | Action::ShowComplianceTools
         | Action::ShowUpgradeTools
         | Action::ShowSystemTools => Color::srgba(0.78, 1.0, 0.64, 0.45),
-        Action::Save | Action::Load => Color::srgba(0.88, 0.88, 0.78, 0.30),
+        Action::Save
+        | Action::Load
+        | Action::ShowSettings
+        | Action::CloseSettings
+        | Action::SetLanguageEnglish
+        | Action::SetLanguageSwedish => Color::srgba(0.88, 0.88, 0.78, 0.30),
         _ => Color::srgba(1.0, 0.76, 0.42, 0.50),
     }
 }
@@ -519,7 +530,7 @@ fn button_phase(action: Action) -> f32 {
         Action::ShowProductionTools => 1.5,
         Action::ShowComplianceTools => 2.1,
         Action::ShowUpgradeTools => 2.7,
-        Action::ShowSystemTools => 3.3,
+        Action::ShowSystemTools | Action::ShowSettings => 3.3,
         Action::PlantCoffee => 0.2,
         Action::HarvestFruit => 0.8,
         Action::FeedCivets => 1.2,
@@ -710,6 +721,10 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::BuildTastingRoom => upgrade_label("Tasting room", 140, state.tasting_room),
         Action::Save => "Save".to_string(),
         Action::Load => "Load".to_string(),
+        Action::ShowSettings => "Settings".to_string(),
+        Action::CloseSettings => "Close".to_string(),
+        Action::SetLanguageEnglish => "English".to_string(),
+        Action::SetLanguageSwedish => "Svenska".to_string(),
         Action::FeedSelectedCivet => "Feed fruit tray".to_string(),
         Action::PetSelectedCivet => "Pet gently".to_string(),
         Action::InspectSelectedCivet => "Inspect notes".to_string(),
@@ -804,6 +819,8 @@ fn can_run(action: Action, state: &GameState) -> bool {
         | Action::ShowComplianceTools
         | Action::ShowUpgradeTools
         | Action::ShowSystemTools => state.screen == GameScreen::Playing,
+        Action::ShowSettings => state.screen == GameScreen::Playing,
+        Action::CloseSettings | Action::SetLanguageEnglish | Action::SetLanguageSwedish => true,
         Action::AcceptOrder | Action::DeclineOrder => state.pending_order.is_some(),
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => state.event.is_some(),
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => state.inspection,
@@ -1041,7 +1058,8 @@ pub fn refresh_day_modal(
     skin: Res<UiSkinAssets>,
     modal: Query<(Entity, &DayModalKind), With<DayModal>>,
 ) {
-    let should_show = state.day_report.is_some() || state.game_result.is_some();
+    let should_show = state.screen == GameScreen::Playing
+        && (state.day_report.is_some() || state.game_result.is_some());
     let desired_kind = if state.day_report.is_some() {
         Some(DayModalKind::DayReport)
     } else if state.game_result.is_some() {
@@ -1156,6 +1174,7 @@ pub fn refresh_day_modal(
                         },
                         TextColor(Color::srgb(0.78, 0.88, 0.70)),
                     ));
+                    spawn_button(modal, &skin, "Back to menu", Action::BackToMenu);
                 }
             });
     } else {
@@ -1236,6 +1255,7 @@ pub fn refresh_order_modal(
 ) {
     let should_show = state.screen == GameScreen::Playing
         && state.current_room == PlantationRoom::PaperworkOffice
+        && state.event.is_none()
         && state.pending_order.is_some();
     let exists = !modal.is_empty();
 
@@ -1296,6 +1316,72 @@ pub fn refresh_order_modal(
                 ));
                 spawn_button(modal, &skin, "Accept contract", Action::AcceptOrder);
                 spawn_button(modal, &skin, "Decline politely", Action::DeclineOrder);
+            });
+    } else if !should_show && exists {
+        for entity in &modal {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+pub fn refresh_settings_modal(
+    mut commands: Commands,
+    state: Res<GameState>,
+    skin: Res<UiSkinAssets>,
+    modal: Query<Entity, With<SettingsModal>>,
+) {
+    let should_show = state.screen == GameScreen::Playing && state.settings_open;
+    let exists = !modal.is_empty();
+
+    if should_show && !exists {
+        commands
+            .spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    right: percent(8),
+                    top: percent(16),
+                    width: percent(32),
+                    padding: UiRect::all(px(18)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(12),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(14)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.05, 0.06, 0.045, 0.92)),
+                ui_skin_node(
+                    &skin,
+                    SKIN_STATS_PANEL,
+                    Color::srgba(0.86, 0.96, 0.74, 0.82),
+                ),
+                BorderColor::all(Color::srgba(0.84, 1.0, 0.62, 0.48)),
+                GlobalZIndex(10),
+                SettingsModal,
+            ))
+            .with_children(|modal| {
+                modal.spawn((
+                    Text::new("Settings"),
+                    TextFont {
+                        font_size: 30.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(1.0, 0.84, 0.42)),
+                ));
+                let language = match state.language {
+                    Language::English => "Language: English",
+                    Language::Swedish => "Sprak: Svenska",
+                };
+                modal.spawn((
+                    Text::new(language),
+                    TextFont {
+                        font_size: 16.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.94, 0.91, 0.75)),
+                ));
+                spawn_button(modal, &skin, "English", Action::SetLanguageEnglish);
+                spawn_button(modal, &skin, "Svenska", Action::SetLanguageSwedish);
+                spawn_button(modal, &skin, "Close", Action::CloseSettings);
             });
     } else if !should_show && exists {
         for entity in &modal {
