@@ -32,6 +32,8 @@ pub struct GameState {
     #[serde(default)]
     pub settings_open: bool,
     #[serde(default)]
+    pub show_layout_guides: bool,
+    #[serde(default)]
     pub language: Language,
     pub coffee_fruit: f32,
     pub civet_feed: f32,
@@ -186,6 +188,7 @@ impl Default for GameState {
             player_y: default_player_y(),
             inventory_open: false,
             settings_open: false,
+            show_layout_guides: false,
             language: Language::English,
             coffee_fruit: 8.0,
             civet_feed: 0.0,
@@ -561,6 +564,7 @@ pub enum Action {
     ToggleInventory,
     ShowSettings,
     CloseSettings,
+    ToggleLayoutGuides,
     SetLanguageEnglish,
     SetLanguageSwedish,
     Save,

@@ -104,6 +104,16 @@ pub fn run_action(state: &mut GameState, action: Action) {
             state.log_line("Settings notebook closed.");
             return;
         }
+        Action::ToggleLayoutGuides => {
+            state.show_layout_guides = !state.show_layout_guides;
+            state.dirty_visuals = true;
+            state.log_line(if state.show_layout_guides {
+                "Layout guides enabled."
+            } else {
+                "Layout guides hidden."
+            });
+            return;
+        }
         Action::SetLanguageEnglish => {
             state.language = Language::English;
             state.settings_open = false;
@@ -372,6 +382,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         | Action::ShowSystemTools => {}
         Action::ShowSettings
         | Action::CloseSettings
+        | Action::ToggleLayoutGuides
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish => {}
         Action::StartGame

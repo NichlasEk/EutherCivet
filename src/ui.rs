@@ -435,6 +435,7 @@ fn button_base_color(action: Action) -> Color {
         | Action::StartNewRun
         | Action::ShowSettings
         | Action::CloseSettings
+        | Action::ToggleLayoutGuides
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish => Color::srgb(0.18, 0.18, 0.18),
         Action::FeedSelectedCivet | Action::PetSelectedCivet | Action::InspectSelectedCivet => {
@@ -495,6 +496,7 @@ fn button_border_color(action: Action) -> Color {
         | Action::StartNewRun
         | Action::ShowSettings
         | Action::CloseSettings
+        | Action::ToggleLayoutGuides
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish => Color::srgba(0.88, 0.88, 0.78, 0.30),
         _ => Color::srgba(1.0, 0.76, 0.42, 0.50),
@@ -726,6 +728,13 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::StartNewRun => "Start new run".to_string(),
         Action::ShowSettings => "Settings".to_string(),
         Action::CloseSettings => "Close".to_string(),
+        Action::ToggleLayoutGuides => {
+            if state.show_layout_guides {
+                "Hide layout guides".to_string()
+            } else {
+                "Show layout guides".to_string()
+            }
+        }
         Action::SetLanguageEnglish => "English".to_string(),
         Action::SetLanguageSwedish => "Svenska".to_string(),
         Action::FeedSelectedCivet => "Feed fruit tray".to_string(),
@@ -824,6 +833,7 @@ fn can_run(action: Action, state: &GameState) -> bool {
         | Action::ShowSystemTools => state.screen == GameScreen::Playing,
         Action::ShowSettings => state.screen == GameScreen::Playing,
         Action::CloseSettings
+        | Action::ToggleLayoutGuides
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish
         | Action::StartNewRun => true,
@@ -1387,6 +1397,12 @@ pub fn refresh_settings_modal(
                 ));
                 spawn_button(modal, &skin, "English", Action::SetLanguageEnglish);
                 spawn_button(modal, &skin, "Svenska", Action::SetLanguageSwedish);
+                let guide_label = if state.show_layout_guides {
+                    "Hide layout guides"
+                } else {
+                    "Show layout guides"
+                };
+                spawn_button(modal, &skin, guide_label, Action::ToggleLayoutGuides);
                 spawn_button(modal, &skin, "Close", Action::CloseSettings);
             });
     } else if !should_show && exists {

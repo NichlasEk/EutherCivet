@@ -608,7 +608,6 @@ pub fn refresh_world_visuals(
     spawn_room_title(&mut commands, &state);
     spawn_walkable_floor(&mut commands, state.current_room);
     spawn_room_exits(&mut commands, &state);
-    spawn_player(&mut commands, &characters, &state);
     match state.current_room {
         PlantationRoom::Sanctuary => {
             spawn_sanctuary_room(&mut commands, &state, &characters, &props, &skin)
@@ -619,6 +618,10 @@ pub fn refresh_world_visuals(
             spawn_paperwork_office_room(&mut commands, &state, &props, &skin)
         }
     }
+    if state.show_layout_guides {
+        spawn_layout_guides(&mut commands, state.current_room);
+    }
+    spawn_player(&mut commands, &characters, &state);
 
     state.dirty_visuals = false;
 }
@@ -693,17 +696,16 @@ fn spawn_walkable_floor(commands: &mut Commands, room: PlantationRoom) {
 
     let center_x = (floor.min_x + floor.max_x) * 0.5;
     let center_y = (floor.min_y + floor.max_y) * 0.5;
-    commands.spawn((
-        Sprite::from_color(
-            warmth,
-            Vec2::new(
-                floor.max_x - floor.min_x + 70.0,
-                floor.max_y - floor.min_y + 32.0,
-            ),
-        ),
-        Transform::from_xyz(center_x, center_y, -3.6).with_rotation(Quat::from_rotation_z(-0.015)),
-        WorldVisual,
-    ));
+    let width = floor.max_x - floor.min_x + 70.0;
+    let height = floor.max_y - floor.min_y + 32.0;
+    for (dy, alpha, scale) in [(-4.0, 0.05, 1.08), (0.0, 0.10, 1.0), (5.0, 0.06, 0.92)] {
+        commands.spawn((
+            Sprite::from_color(warmth.with_alpha(alpha), Vec2::new(width * scale, height)),
+            Transform::from_xyz(center_x, center_y + dy, -3.6)
+                .with_rotation(Quat::from_rotation_z(-0.015)),
+            WorldVisual,
+        ));
+    }
 }
 
 fn spawn_room_title(commands: &mut Commands, state: &GameState) {
@@ -748,6 +750,74 @@ fn spawn_room_title(commands: &mut Commands, state: &GameState) {
         },
         TextColor(Color::srgba(0.94, 0.86, 0.62, 0.86)),
         Transform::from_xyz(10.0, 270.0, 2.0),
+        WorldVisual,
+    ));
+}
+
+fn spawn_layout_guides(commands: &mut Commands, room: PlantationRoom) {
+    let layout = room_layout(room);
+    let floor = layout.floor;
+    let center_x = (floor.min_x + floor.max_x) * 0.5;
+    let center_y = (floor.min_y + floor.max_y) * 0.5;
+    spawn_debug_rect(
+        commands,
+        center_x,
+        center_y,
+        floor.max_x - floor.min_x,
+        floor.max_y - floor.min_y + 8.0,
+        Color::srgba(0.20, 0.72, 1.0, 0.16),
+        "walk lane",
+        -2.4,
+    );
+    for (surface, label, color) in [
+        (
+            layout.main_table,
+            "main surface",
+            Color::srgba(1.0, 0.78, 0.22, 0.18),
+        ),
+        (
+            layout.side_table,
+            "side surface",
+            Color::srgba(0.52, 1.0, 0.42, 0.16),
+        ),
+        (layout.perch, "perch", Color::srgba(1.0, 0.42, 0.82, 0.16)),
+    ] {
+        spawn_debug_rect(
+            commands,
+            surface.x,
+            surface.y + surface.height * 0.38,
+            surface.width * 0.82,
+            surface.height + 12.0,
+            color,
+            label,
+            ground_z(surface.y) + 0.55,
+        );
+    }
+}
+
+fn spawn_debug_rect(
+    commands: &mut Commands,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    color: Color,
+    label: &str,
+    z: f32,
+) {
+    commands.spawn((
+        Sprite::from_color(color, Vec2::new(width, height)),
+        Transform::from_xyz(x, y, z),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Text2d::new(label),
+        TextFont {
+            font_size: 10.0,
+            ..default()
+        },
+        TextColor(Color::srgba(0.96, 0.98, 0.84, 0.72)),
+        Transform::from_xyz(x, y + height * 0.5 + 9.0, z + 0.05),
         WorldVisual,
     ));
 }
@@ -1451,10 +1521,11 @@ fn spawn_wood_platform(commands: &mut Commands, x: f32, y: f32, width: f32, heig
     let shadow = Color::srgba(0.05, 0.03, 0.015, 0.24);
     let dark = Color::srgba(0.30, 0.16, 0.06, 0.92);
     let wood = Color::srgba(0.52, 0.29, 0.10, 0.95);
+    let wood_mid = Color::srgba(0.60, 0.34, 0.13, 0.86);
     let trim = Color::srgba(0.86, 0.58, 0.22, 0.76);
     let surface = Color::srgba(0.96, 0.72, 0.34, 0.42);
     commands.spawn((
-        Sprite::from_color(shadow, Vec2::new(width + 34.0, 22.0)),
+        Sprite::from_color(shadow, Vec2::new(width + 42.0, 25.0)),
         Transform::from_xyz(x + 6.0, y - height * 0.5 - 16.0, z - 0.25),
         WorldVisual,
     ));
@@ -1481,6 +1552,23 @@ fn spawn_wood_platform(commands: &mut Commands, x: f32, y: f32, width: f32, heig
         WorldVisual,
     ));
     commands.spawn((
+        Sprite::from_color(wood_mid, Vec2::new(width - 16.0, (height * 0.48).max(10.0))),
+        Transform::from_xyz(x, y + height * 0.05, z + 0.12),
+        WorldVisual,
+    ));
+    for dx in [-(width * 0.5), width * 0.5] {
+        commands.spawn((
+            Sprite::from_color(dark, Vec2::new(8.0, height + 12.0)),
+            Transform::from_xyz(x + dx, y - 2.0, z + 0.16),
+            WorldVisual,
+        ));
+        commands.spawn((
+            Sprite::from_color(trim, Vec2::new(5.0, height + 6.0)),
+            Transform::from_xyz(x + dx * 0.995, y + 1.0, z + 0.22),
+            WorldVisual,
+        ));
+    }
+    commands.spawn((
         Sprite::from_color(trim, Vec2::new(width - 22.0, 4.0)),
         Transform::from_xyz(x, y + height * 0.28, z + 0.2),
         WorldVisual,
@@ -1490,6 +1578,20 @@ fn spawn_wood_platform(commands: &mut Commands, x: f32, y: f32, width: f32, heig
         Transform::from_xyz(x, y + height * 0.48, z + 0.3),
         WorldVisual,
     ));
+    let cap_count = (width / 82.0).round().clamp(2.0, 8.0) as u32;
+    for i in 0..cap_count {
+        let t = if cap_count == 1 {
+            0.5
+        } else {
+            i as f32 / (cap_count - 1) as f32
+        };
+        let cap_x = x - width * 0.42 + width * 0.84 * t;
+        commands.spawn((
+            Sprite::from_color(Color::srgba(0.90, 0.62, 0.25, 0.58), Vec2::new(4.0, 7.0)),
+            Transform::from_xyz(cap_x, y + height * 0.28, z + 0.32),
+            WorldVisual,
+        ));
+    }
 }
 
 fn spawn_civet_perch(commands: &mut Commands) {
