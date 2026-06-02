@@ -39,6 +39,7 @@ src/
 - Premium order contracts with accept/decline choices, delivery deadlines, payouts, reputation rewards, and missed-order penalties.
 - First scene flow: main menu, company/mission presentation, and animal book before entering the plantation.
 - In-game room flow with Sanctuary, Coffee Field, Roastery, and Paperwork Office views.
+- Compact right-side tool panel with collapsible action groups for Care, Field, Production, Compliance, Upgrades, and System.
 - Named civets with in-world name labels.
 - Clickable civets with a care panel for feeding, petting, and inspecting animal notes.
 - Generated original character sprite sheet for three palm civets and the plantation owner.

@@ -101,11 +101,11 @@ pub fn spawn_ui(commands: &mut Commands) {
                 right
                     .spawn((
                         Node {
-                            width: px(460),
+                            width: px(320),
                             flex_direction: FlexDirection::Row,
                             flex_wrap: FlexWrap::Wrap,
-                            row_gap: px(8),
-                            column_gap: px(8),
+                            row_gap: px(7),
+                            column_gap: px(7),
                             padding: UiRect::all(px(12)),
                             ..default()
                         },
@@ -118,39 +118,78 @@ pub fn spawn_ui(commands: &mut Commands) {
                             ("Roastery", Action::GoRoastery),
                             ("Paperwork Office", Action::GoPaperworkOffice),
                         ] {
-                            spawn_dynamic_button(buttons, label, action);
+                            spawn_dynamic_button(buttons, label, action, 145.0);
                         }
                         for (label, action) in [
-                            ("Plant coffee", Action::PlantCoffee),
-                            ("Harvest fruit", Action::HarvestFruit),
-                            ("Feed civets", Action::FeedCivets),
-                            ("Collect beans", Action::CollectBeans),
-                            ("Roast coffee", Action::RoastCoffee),
-                            ("Sell coffee", Action::SellCoffee),
-                            ("Deliver order", Action::DeliverOrder),
-                            ("Improve enclosure", Action::ImproveEnclosure),
-                            ("Show paperwork to authorities", Action::ShowPaperwork),
-                            ("Build legal office", Action::BuildLegalOffice),
-                            ("Hire caretaker", Action::HireCaretaker),
-                            ("Build fruit sorter", Action::BuildFruitSorter),
-                            ("Build roasting shed", Action::BuildRoastingShed),
-                            ("Open tasting room", Action::BuildTastingRoom),
-                            ("Save", Action::Save),
-                            ("Load", Action::Load),
+                            ("Care", Action::ShowCareTools),
+                            ("Field", Action::ShowFieldTools),
+                            ("Production", Action::ShowProductionTools),
+                            ("Compliance", Action::ShowComplianceTools),
+                            ("Upgrades", Action::ShowUpgradeTools),
+                            ("System", Action::ShowSystemTools),
                         ] {
-                            spawn_dynamic_button(buttons, label, action);
+                            spawn_dynamic_button(buttons, label, action, 95.0);
+                        }
+                        for (label, action, group) in [
+                            ("Feed civets", Action::FeedCivets, ToolGroup::Care),
+                            (
+                                "Improve enclosure",
+                                Action::ImproveEnclosure,
+                                ToolGroup::Care,
+                            ),
+                            ("Plant coffee", Action::PlantCoffee, ToolGroup::Field),
+                            ("Harvest fruit", Action::HarvestFruit, ToolGroup::Field),
+                            ("Collect beans", Action::CollectBeans, ToolGroup::Production),
+                            ("Roast coffee", Action::RoastCoffee, ToolGroup::Production),
+                            ("Sell coffee", Action::SellCoffee, ToolGroup::Production),
+                            ("Deliver order", Action::DeliverOrder, ToolGroup::Production),
+                            (
+                                "Show paperwork to authorities",
+                                Action::ShowPaperwork,
+                                ToolGroup::Compliance,
+                            ),
+                            (
+                                "Build legal office",
+                                Action::BuildLegalOffice,
+                                ToolGroup::Upgrades,
+                            ),
+                            ("Hire caretaker", Action::HireCaretaker, ToolGroup::Upgrades),
+                            (
+                                "Build fruit sorter",
+                                Action::BuildFruitSorter,
+                                ToolGroup::Upgrades,
+                            ),
+                            (
+                                "Build roasting shed",
+                                Action::BuildRoastingShed,
+                                ToolGroup::Upgrades,
+                            ),
+                            (
+                                "Open tasting room",
+                                Action::BuildTastingRoom,
+                                ToolGroup::Upgrades,
+                            ),
+                            ("Save", Action::Save, ToolGroup::System),
+                            ("Load", Action::Load, ToolGroup::System),
+                        ] {
+                            spawn_grouped_dynamic_button(buttons, label, action, group);
                         }
                     });
             });
         });
 }
 
-fn spawn_dynamic_button(parent: &mut ChildSpawnerCommands, label: &str, action: Action) {
+fn spawn_dynamic_button(
+    parent: &mut ChildSpawnerCommands,
+    label: &str,
+    action: Action,
+    width: f32,
+) {
     parent
         .spawn((
             Button,
             Node {
-                width: px(218),
+                width: px(width),
                 height: px(42),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
@@ -159,6 +198,40 @@ fn spawn_dynamic_button(parent: &mut ChildSpawnerCommands, label: &str, action: 
             },
             BackgroundColor(button_base_color(action)),
             ActionButton(action),
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(label),
+                TextFont {
+                    font_size: 13.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.92, 0.72)),
+                DynamicButtonText(action),
+            ));
+        });
+}
+
+fn spawn_grouped_dynamic_button(
+    parent: &mut ChildSpawnerCommands,
+    label: &str,
+    action: Action,
+    group: ToolGroup,
+) {
+    parent
+        .spawn((
+            Button,
+            Node {
+                width: px(296),
+                height: px(42),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                padding: UiRect::horizontal(px(8)),
+                ..default()
+            },
+            BackgroundColor(button_base_color(action)),
+            ActionButton(action),
+            ToolActionGroup(group),
         ))
         .with_children(|button| {
             button.spawn((
@@ -261,6 +334,12 @@ fn button_base_color(action: Action) -> Color {
         | Action::GoCoffeeField
         | Action::GoRoastery
         | Action::GoPaperworkOffice => Color::srgb(0.28, 0.18, 0.24),
+        Action::ShowCareTools
+        | Action::ShowFieldTools
+        | Action::ShowProductionTools
+        | Action::ShowComplianceTools
+        | Action::ShowUpgradeTools
+        | Action::ShowSystemTools => Color::srgb(0.16, 0.22, 0.16),
         Action::DeliverOrder | Action::AcceptOrder => Color::srgb(0.33, 0.34, 0.12),
         Action::DeclineOrder => Color::srgb(0.32, 0.16, 0.12),
         Action::BuildLegalOffice
@@ -311,6 +390,7 @@ pub fn update_button_labels(
     state: Res<GameState>,
     mut labels: Query<(&DynamicButtonText, &mut Text)>,
     mut buttons: Query<(&ActionButton, &mut BackgroundColor), With<Button>>,
+    mut grouped_actions: Query<(&ToolActionGroup, &mut Node)>,
 ) {
     if !state.is_changed() {
         return;
@@ -322,11 +402,35 @@ pub fn update_button_labels(
 
     for (button, mut color) in &mut buttons {
         color.0 = if can_run(button.0, &state) {
-            button_base_color(button.0)
+            if is_active_group_action(button.0, &state) {
+                Color::srgb(0.34, 0.25, 0.15)
+            } else {
+                button_base_color(button.0)
+            }
         } else {
             Color::srgba(0.12, 0.11, 0.09, 0.82)
         };
     }
+
+    for (group, mut node) in &mut grouped_actions {
+        node.display = if group.0 == state.active_tool_group {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+}
+
+fn is_active_group_action(action: Action, state: &GameState) -> bool {
+    matches!(
+        (action, state.active_tool_group),
+        (Action::ShowCareTools, ToolGroup::Care)
+            | (Action::ShowFieldTools, ToolGroup::Field)
+            | (Action::ShowProductionTools, ToolGroup::Production)
+            | (Action::ShowComplianceTools, ToolGroup::Compliance)
+            | (Action::ShowUpgradeTools, ToolGroup::Upgrades)
+            | (Action::ShowSystemTools, ToolGroup::System)
+    )
 }
 
 fn action_label(action: Action, state: &GameState) -> String {
@@ -374,6 +478,12 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::GoPaperworkOffice => {
             room_label("Paperwork Office", PlantationRoom::PaperworkOffice, state)
         }
+        Action::ShowCareTools => group_label("Care", ToolGroup::Care, state),
+        Action::ShowFieldTools => group_label("Field", ToolGroup::Field, state),
+        Action::ShowProductionTools => group_label("Production", ToolGroup::Production, state),
+        Action::ShowComplianceTools => group_label("Compliance", ToolGroup::Compliance, state),
+        Action::ShowUpgradeTools => group_label("Upgrades", ToolGroup::Upgrades, state),
+        Action::ShowSystemTools => group_label("System", ToolGroup::System, state),
         _ => "Action".to_string(),
     }
 }
@@ -383,6 +493,14 @@ fn room_label(name: &str, room: PlantationRoom, state: &GameState) -> String {
         format!("{name} *")
     } else {
         name.to_string()
+    }
+}
+
+fn group_label(name: &str, group: ToolGroup, state: &GameState) -> String {
+    if state.active_tool_group == group {
+        format!("v {name}")
+    } else {
+        format!("> {name}")
     }
 }
 
@@ -428,6 +546,12 @@ fn can_run(action: Action, state: &GameState) -> bool {
         | Action::GoCoffeeField
         | Action::GoRoastery
         | Action::GoPaperworkOffice => state.screen == GameScreen::Playing,
+        Action::ShowCareTools
+        | Action::ShowFieldTools
+        | Action::ShowProductionTools
+        | Action::ShowComplianceTools
+        | Action::ShowUpgradeTools
+        | Action::ShowSystemTools => state.screen == GameScreen::Playing,
         Action::AcceptOrder | Action::DeclineOrder => state.pending_order.is_some(),
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => state.event.is_some(),
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => state.inspection,

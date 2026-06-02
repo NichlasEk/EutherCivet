@@ -1,4 +1,4 @@
-use crate::model::{Action, GameState, PlantationRoom, RandomEventKind};
+use crate::model::{Action, GameState, PlantationRoom, RandomEventKind, ToolGroup};
 
 pub fn run_action(state: &mut GameState, action: Action) {
     match action {
@@ -26,6 +26,15 @@ pub fn run_action(state: &mut GameState, action: Action) {
         | Action::GoRoastery
         | Action::GoPaperworkOffice => {
             switch_room(state, action);
+            return;
+        }
+        Action::ShowCareTools
+        | Action::ShowFieldTools
+        | Action::ShowProductionTools
+        | Action::ShowComplianceTools
+        | Action::ShowUpgradeTools
+        | Action::ShowSystemTools => {
+            switch_tool_group(state, action);
             return;
         }
         _ => {}
@@ -305,6 +314,12 @@ pub fn run_action(state: &mut GameState, action: Action) {
         | Action::GoCoffeeField
         | Action::GoRoastery
         | Action::GoPaperworkOffice => {}
+        Action::ShowCareTools
+        | Action::ShowFieldTools
+        | Action::ShowProductionTools
+        | Action::ShowComplianceTools
+        | Action::ShowUpgradeTools
+        | Action::ShowSystemTools => {}
         Action::StartGame | Action::ShowIntro | Action::ShowAnimalBook | Action::BackToMenu => {}
         Action::ContinueDay => {}
     }
@@ -326,11 +341,30 @@ fn switch_room(state: &mut GameState, action: Action) {
     };
 
     state.current_room = room;
+    state.active_tool_group = match room {
+        PlantationRoom::Sanctuary => ToolGroup::Care,
+        PlantationRoom::CoffeeField => ToolGroup::Field,
+        PlantationRoom::Roastery => ToolGroup::Production,
+        PlantationRoom::PaperworkOffice => ToolGroup::Compliance,
+    };
     if room != PlantationRoom::Sanctuary {
         state.selected_civet = None;
     }
     state.dirty_visuals = true;
     state.log_line(format!("Moved to {label}. Everything is still legal."));
+}
+
+fn switch_tool_group(state: &mut GameState, action: Action) {
+    let group = match action {
+        Action::ShowCareTools => ToolGroup::Care,
+        Action::ShowFieldTools => ToolGroup::Field,
+        Action::ShowProductionTools => ToolGroup::Production,
+        Action::ShowComplianceTools => ToolGroup::Compliance,
+        Action::ShowUpgradeTools => ToolGroup::Upgrades,
+        Action::ShowSystemTools => ToolGroup::System,
+        _ => return,
+    };
+    state.active_tool_group = group;
 }
 
 pub fn select_civet_by_index(state: &mut GameState, index: usize) {

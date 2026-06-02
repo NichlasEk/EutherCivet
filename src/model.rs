@@ -10,6 +10,8 @@ pub struct GameState {
     pub screen: GameScreen,
     #[serde(default)]
     pub current_room: PlantationRoom,
+    #[serde(default)]
+    pub active_tool_group: ToolGroup,
     pub day: u32,
     pub coffee_plants: u32,
     pub civets: u32,
@@ -128,11 +130,23 @@ pub enum PlantationRoom {
     PaperworkOffice,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ToolGroup {
+    #[default]
+    Care,
+    Field,
+    Production,
+    Compliance,
+    Upgrades,
+    System,
+}
+
 impl Default for GameState {
     fn default() -> Self {
         Self {
             screen: GameScreen::MainMenu,
             current_room: PlantationRoom::Sanctuary,
+            active_tool_group: ToolGroup::Care,
             day: 1,
             coffee_plants: 6,
             civets: 3,
@@ -374,6 +388,9 @@ pub struct MovingCivet {
 pub struct WorldActionTarget(pub Action);
 
 #[derive(Component, Clone, Copy)]
+pub struct ToolActionGroup(pub ToolGroup);
+
+#[derive(Component, Clone, Copy)]
 pub struct ActionButton(pub Action);
 
 #[derive(Component, Clone, Copy)]
@@ -430,6 +447,12 @@ pub enum Action {
     GoCoffeeField,
     GoRoastery,
     GoPaperworkOffice,
+    ShowCareTools,
+    ShowFieldTools,
+    ShowProductionTools,
+    ShowComplianceTools,
+    ShowUpgradeTools,
+    ShowSystemTools,
     StartGame,
     ShowIntro,
     ShowAnimalBook,
