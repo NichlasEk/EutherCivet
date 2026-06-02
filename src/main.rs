@@ -57,7 +57,23 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    let atlas = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+        UVec2::new(627, 627),
+        2,
+        2,
+        None,
+        None,
+    ));
+    commands.insert_resource(CharacterAssets {
+        texture: asset_server.load("sprites/euther_civet_character_sheet.png"),
+        atlas,
+    });
+
     commands.spawn(Camera2d);
     spawn_world(&mut commands);
     spawn_ui(&mut commands);

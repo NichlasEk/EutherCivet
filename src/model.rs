@@ -309,6 +309,12 @@ pub struct DayTick(pub Timer);
 #[derive(Resource)]
 pub struct OrderTick(pub Timer);
 
+#[derive(Resource, Clone)]
+pub struct CharacterAssets {
+    pub texture: Handle<Image>,
+    pub atlas: Handle<TextureAtlasLayout>,
+}
+
 #[derive(Component)]
 pub struct StatText(pub StatKind);
 

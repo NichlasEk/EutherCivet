@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
-    Action, CivetClickTarget, GameScreen, GameState, Helicopter, PlantationRoom, SuspicionGlow,
-    WorldActionTarget, WorldVisual,
+    Action, CharacterAssets, CivetClickTarget, GameScreen, GameState, Helicopter, PlantationRoom,
+    SuspicionGlow, WorldActionTarget, WorldVisual,
 };
 
 pub fn spawn_world(commands: &mut Commands) {
@@ -71,6 +71,7 @@ pub fn animate_world(
 pub fn refresh_world_visuals(
     mut commands: Commands,
     mut state: ResMut<GameState>,
+    characters: Res<CharacterAssets>,
     visuals: Query<Entity, With<WorldVisual>>,
 ) {
     if !state.dirty_visuals {
@@ -81,14 +82,46 @@ pub fn refresh_world_visuals(
     }
 
     spawn_room_title(&mut commands, &state);
+    spawn_player(&mut commands, &characters, &state);
     match state.current_room {
-        PlantationRoom::Sanctuary => spawn_sanctuary_room(&mut commands, &state),
+        PlantationRoom::Sanctuary => spawn_sanctuary_room(&mut commands, &state, &characters),
         PlantationRoom::CoffeeField => spawn_coffee_field_room(&mut commands, &state),
         PlantationRoom::Roastery => spawn_roastery_room(&mut commands, &state),
         PlantationRoom::PaperworkOffice => spawn_paperwork_office_room(&mut commands, &state),
     }
 
     state.dirty_visuals = false;
+}
+
+fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &GameState) {
+    let (x, y) = match state.current_room {
+        PlantationRoom::Sanctuary => (-455.0, -112.0),
+        PlantationRoom::CoffeeField => (-505.0, -92.0),
+        PlantationRoom::Roastery => (-485.0, -118.0),
+        PlantationRoom::PaperworkOffice => (-465.0, -150.0),
+    };
+
+    commands.spawn((
+        Sprite::from_atlas_image(
+            characters.texture.clone(),
+            TextureAtlas {
+                layout: characters.atlas.clone(),
+                index: 3,
+            },
+        ),
+        Transform::from_xyz(x, y, 5.0).with_scale(Vec3::splat(0.26)),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Text2d::new("plantation owner"),
+        TextFont {
+            font_size: 13.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.88, 0.62)),
+        Transform::from_xyz(x, y - 94.0, 6.0),
+        WorldVisual,
+    ));
 }
 
 fn spawn_room_title(commands: &mut Commands, state: &GameState) {
@@ -233,7 +266,7 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
     );
 }
 
-fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState) {
+fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState, characters: &CharacterAssets) {
     commands.spawn((
         Sprite::from_color(Color::srgb(0.67, 0.44, 0.22), Vec2::new(320.0, 8.0)),
         Transform::from_xyz(430.0, -170.0, 2.0),
@@ -270,25 +303,21 @@ fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState) {
         let y = -120.0 + (i / 5) as f32 * 44.0;
         commands
             .spawn((
-                Sprite::from_color(Color::srgb(0.34, 0.25, 0.18), Vec2::new(38.0, 20.0)),
-                Transform::from_xyz(x, y, 3.0),
+                Sprite::from_atlas_image(
+                    characters.texture.clone(),
+                    TextureAtlas {
+                        layout: characters.atlas.clone(),
+                        index: i as usize % 3,
+                    },
+                ),
+                Transform::from_xyz(x, y + 2.0, 3.0).with_scale(Vec3::splat(0.105)),
                 Pickable::default(),
                 CivetClickTarget { index: i as usize },
                 WorldVisual,
             ))
             .observe(select_civet_on_click)
-            .observe(tint_civet_on_hover(Color::srgb(0.44, 0.33, 0.24)))
-            .observe(tint_civet_on_out(Color::srgb(0.34, 0.25, 0.18)));
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.90, 0.78, 0.56), Vec2::new(11.0, 11.0)),
-            Transform::from_xyz(x + 18.0, y + 4.0, 4.0),
-            WorldVisual,
-        ));
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.12, 0.08, 0.05), Vec2::new(8.0, 8.0)),
-            Transform::from_xyz(x + 27.0, y + 8.0, 5.0),
-            WorldVisual,
-        ));
+            .observe(tint_sprite_on_hover(Color::srgb(1.0, 0.92, 0.74)))
+            .observe(tint_sprite_on_out(Color::WHITE));
         if let Some(profile) = state.civet_profiles.get(i as usize) {
             let selected = state.selected_civet == Some(i as usize);
             let label = if selected {
@@ -622,22 +651,6 @@ fn tint_sprite_on_hover(color: Color) -> impl Fn(On<Pointer<Over>>, Query<&mut S
 }
 
 fn tint_sprite_on_out(color: Color) -> impl Fn(On<Pointer<Out>>, Query<&mut Sprite>) {
-    move |event, mut sprites| {
-        if let Ok(mut sprite) = sprites.get_mut(event.event_target()) {
-            sprite.color = color;
-        }
-    }
-}
-
-fn tint_civet_on_hover(color: Color) -> impl Fn(On<Pointer<Over>>, Query<&mut Sprite>) {
-    move |event, mut sprites| {
-        if let Ok(mut sprite) = sprites.get_mut(event.event_target()) {
-            sprite.color = color;
-        }
-    }
-}
-
-fn tint_civet_on_out(color: Color) -> impl Fn(On<Pointer<Out>>, Query<&mut Sprite>) {
     move |event, mut sprites| {
         if let Ok(mut sprite) = sprites.get_mut(event.event_target()) {
             sprite.color = color;
