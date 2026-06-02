@@ -432,6 +432,7 @@ fn button_base_color(action: Action) -> Color {
         }
         Action::Save
         | Action::Load
+        | Action::StartNewRun
         | Action::ShowSettings
         | Action::CloseSettings
         | Action::SetLanguageEnglish
@@ -491,6 +492,7 @@ fn button_border_color(action: Action) -> Color {
         | Action::ShowSystemTools => Color::srgba(0.78, 1.0, 0.64, 0.45),
         Action::Save
         | Action::Load
+        | Action::StartNewRun
         | Action::ShowSettings
         | Action::CloseSettings
         | Action::SetLanguageEnglish
@@ -721,6 +723,7 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::BuildTastingRoom => upgrade_label("Tasting room", 140, state.tasting_room),
         Action::Save => "Save".to_string(),
         Action::Load => "Load".to_string(),
+        Action::StartNewRun => "Start new run".to_string(),
         Action::ShowSettings => "Settings".to_string(),
         Action::CloseSettings => "Close".to_string(),
         Action::SetLanguageEnglish => "English".to_string(),
@@ -820,7 +823,10 @@ fn can_run(action: Action, state: &GameState) -> bool {
         | Action::ShowUpgradeTools
         | Action::ShowSystemTools => state.screen == GameScreen::Playing,
         Action::ShowSettings => state.screen == GameScreen::Playing,
-        Action::CloseSettings | Action::SetLanguageEnglish | Action::SetLanguageSwedish => true,
+        Action::CloseSettings
+        | Action::SetLanguageEnglish
+        | Action::SetLanguageSwedish
+        | Action::StartNewRun => true,
         Action::AcceptOrder | Action::DeclineOrder => state.pending_order.is_some(),
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => state.event.is_some(),
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => state.inspection,
@@ -1167,13 +1173,17 @@ pub fn refresh_day_modal(
                         TextColor(Color::srgb(0.95, 0.91, 0.78)),
                     ));
                     modal.spawn((
-                        Text::new("Save the run or start a new one from a clean save file."),
+                        Text::new(
+                            "Archive the result, load a save, or begin again with clean ledgers.",
+                        ),
                         TextFont {
                             font_size: 15.0,
                             ..default()
                         },
                         TextColor(Color::srgb(0.78, 0.88, 0.70)),
                     ));
+                    spawn_button(modal, &skin, "Start new run", Action::StartNewRun);
+                    spawn_button(modal, &skin, "Load save", Action::Load);
                     spawn_button(modal, &skin, "Back to menu", Action::BackToMenu);
                 }
             });
@@ -1200,19 +1210,18 @@ pub fn refresh_event_modal(
             .spawn((
                 Node {
                     position_type: PositionType::Absolute,
-                    left: percent(4),
-                    top: percent(12),
-                    width: percent(42),
-                    padding: UiRect::all(px(16)),
+                    left: percent(2),
+                    top: percent(11),
+                    width: percent(32),
+                    padding: UiRect::all(px(14)),
                     flex_direction: FlexDirection::Column,
                     row_gap: px(10),
-                    border: UiRect::all(px(2)),
-                    border_radius: BorderRadius::all(px(12)),
+                    border: UiRect::all(px(1)),
+                    border_radius: BorderRadius::all(px(10)),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.05, 0.06, 0.04, 0.78)),
-                ui_skin_node(&skin, SKIN_STATS_PANEL, Color::srgba(0.86, 0.96, 0.74, 0.78)),
-                BorderColor::all(Color::srgba(0.86, 1.0, 0.58, 0.42)),
+                BackgroundColor(Color::srgba(0.04, 0.05, 0.035, 0.62)),
+                BorderColor::all(Color::srgba(0.92, 0.74, 0.38, 0.28)),
                 GlobalZIndex(8),
                 EventModal,
             ))
@@ -1220,14 +1229,14 @@ pub fn refresh_event_modal(
                 modal.spawn((
                     Text::new("Paperwork Inbox"),
                     TextFont {
-                        font_size: 28.0,
+                        font_size: 24.0,
                         ..default()
                     },
                     TextColor(Color::srgb(1.0, 0.82, 0.40)),
                 ));
 
                 if let Some(event) = state.event.as_ref() {
-                    spawn_inbox_card(modal, &skin, &event.title, &event.body, |card| {
+                    spawn_inbox_card(modal, &event.title, &event.body, |card| {
                         let (a, b, c) = event_option_labels(event.kind);
                         spawn_button(card, &skin, a, Action::EventOptionA);
                         spawn_button(card, &skin, b, Action::EventOptionB);
@@ -1245,7 +1254,7 @@ pub fn refresh_event_modal(
                         order.reputation_reward,
                         order.suspicion_risk
                     );
-                    spawn_inbox_card(modal, &skin, "Premium Coffee Contract", &body, |card| {
+                    spawn_inbox_card(modal, "Premium Coffee Contract", &body, |card| {
                         spawn_button(card, &skin, "Accept contract", Action::AcceptOrder);
                         spawn_button(card, &skin, "Decline politely", Action::DeclineOrder);
                     });
@@ -1271,7 +1280,6 @@ pub fn refresh_event_modal(
 
 fn spawn_inbox_card(
     parent: &mut ChildSpawnerCommands,
-    skin: &UiSkinAssets,
     title: &str,
     body: &str,
     add_buttons: impl FnOnce(&mut ChildSpawnerCommands),
@@ -1280,16 +1288,15 @@ fn spawn_inbox_card(
         .spawn((
             Node {
                 width: percent(100),
-                padding: UiRect::all(px(14)),
+                padding: UiRect::all(px(12)),
                 flex_direction: FlexDirection::Column,
                 row_gap: px(8),
                 border: UiRect::all(px(1)),
-                border_radius: BorderRadius::all(px(10)),
+                border_radius: BorderRadius::all(px(8)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.14, 0.10, 0.045, 0.68)),
-            ui_skin_node(skin, SKIN_PAPER_PANEL, Color::srgba(1.0, 0.91, 0.70, 0.76)),
-            BorderColor::all(Color::srgba(1.0, 0.78, 0.42, 0.34)),
+            BackgroundColor(Color::srgba(0.11, 0.075, 0.035, 0.52)),
+            BorderColor::all(Color::srgba(1.0, 0.78, 0.42, 0.24)),
         ))
         .with_children(|card| {
             card.spawn((

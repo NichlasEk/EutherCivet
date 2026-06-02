@@ -3,10 +3,23 @@ use crate::model::{Action, GameState, Language, PlantationRoom, RandomEventKind,
 pub fn run_action(state: &mut GameState, action: Action) {
     match action {
         Action::StartGame => {
+            if state.game_result.is_some() {
+                let language = state.language;
+                *state = GameState::default();
+                state.language = language;
+            }
             state.screen = crate::model::GameScreen::Playing;
             state.log_line(
                 "The plantation opens for business. Everyone looks adorable and audited.",
             );
+            return;
+        }
+        Action::StartNewRun => {
+            let language = state.language;
+            *state = GameState::default();
+            state.language = language;
+            state.screen = crate::model::GameScreen::Playing;
+            state.log_line("New run started. The paperwork is blank and already judgemental.");
             return;
         }
         Action::ShowIntro => {
@@ -361,7 +374,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
         | Action::CloseSettings
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish => {}
-        Action::StartGame | Action::ShowIntro | Action::ShowAnimalBook | Action::BackToMenu => {}
+        Action::StartGame
+        | Action::StartNewRun
+        | Action::ShowIntro
+        | Action::ShowAnimalBook
+        | Action::BackToMenu => {}
         Action::ContinueDay => {}
     }
 

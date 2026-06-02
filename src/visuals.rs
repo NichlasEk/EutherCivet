@@ -9,8 +9,6 @@ use crate::model::{
     WorldVisual,
 };
 
-const SKIN_STATS_PANEL: usize = 0;
-const SKIN_BUTTON: usize = 3;
 const BACKDROP_TILE_SIZE: f32 = 627.0;
 const BACKDROP_OVERSCAN: f32 = 1.04;
 
@@ -499,18 +497,6 @@ fn prop_sprite(props: &PropAssets, index: usize) -> Sprite {
             index,
         },
     )
-}
-
-fn skin_sprite(skin: &UiSkinAssets, index: usize, color: Color) -> Sprite {
-    let mut sprite = Sprite::from_atlas_image(
-        skin.texture.clone(),
-        TextureAtlas {
-            layout: skin.atlas.clone(),
-            index,
-        },
-    );
-    sprite.color = color;
-    sprite
 }
 
 fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &GameState) {
@@ -1065,28 +1051,29 @@ fn spawn_paperwork_office_room(
     commands: &mut Commands,
     state: &GameState,
     props: &PropAssets,
-    skin: &UiSkinAssets,
+    _skin: &UiSkinAssets,
 ) {
-    commands.spawn((
-        skin_sprite(skin, SKIN_STATS_PANEL, Color::srgba(0.74, 0.92, 0.94, 0.82)),
-        Transform::from_xyz(25.0, -45.0, 1.5),
-        WorldVisual,
-    ));
-    commands.spawn((
-        skin_sprite(skin, SKIN_BUTTON, Color::srgba(0.92, 0.72, 0.50, 0.88)),
-        Transform::from_xyz(-120.0, -160.0, 2.0),
-        WorldVisual,
-    ));
-    spawn_prop(commands, props, 15, -335.0, -34.0, 0.30, 2.0);
-    spawn_prop(commands, props, 15, 270.0, -34.0, 0.30, 2.0);
-    spawn_prop(commands, props, 13, 320.0, -158.0, 0.23, 3.0);
+    spawn_wood_platform(
+        commands,
+        -110.0,
+        -165.0,
+        520.0,
+        42.0,
+        ground_z(-165.0) - 0.3,
+    );
+    spawn_wood_platform(commands, 250.0, -150.0, 220.0, 32.0, ground_z(-150.0) - 0.3);
+    spawn_wood_platform(commands, -320.0, -72.0, 190.0, 26.0, ground_z(-72.0) - 0.3);
+    spawn_prop(commands, props, 15, -330.0, -48.0, 0.24, ground_z(-48.0));
+    spawn_prop(commands, props, 15, 270.0, -126.0, 0.22, ground_z(-126.0));
+    spawn_prop(commands, props, 13, 310.0, -122.0, 0.22, ground_z(-122.0));
     for i in 0..7 {
-        let x = -290.0 + i as f32 * 54.0;
+        let x = -280.0 + i as f32 * 52.0;
+        let y = -139.0 + (i % 2) as f32 * 8.0;
+        spawn_contact_shadow(commands, x, y - 15.0, 38.0, 10.0, ground_z(y) - 0.35);
         commands
             .spawn((
                 prop_sprite(props, 7),
-                Transform::from_xyz(x, -135.0 + (i % 2) as f32 * 10.0, 3.0)
-                    .with_scale(Vec3::splat(0.22)),
+                Transform::from_xyz(x, y, ground_z(y)).with_scale(Vec3::splat(0.20)),
                 Pickable::default(),
                 WorldActionTarget(Action::ShowPaperwork),
                 WorldVisual,
@@ -1105,11 +1092,11 @@ fn spawn_paperwork_office_room(
             ..default()
         },
         TextColor(Color::srgb(0.82, 0.96, 1.0)),
-        Transform::from_xyz(-90.0, 15.0, 3.0),
+        Transform::from_xyz(30.0, -84.0, 4.0),
         WorldVisual,
     ));
 
-    spawn_prop(commands, props, 8, 165.0, -140.0, 0.32, 3.0);
+    spawn_prop(commands, props, 8, 178.0, -128.0, 0.28, ground_z(-128.0));
     spawn_upgrade_buildings(commands, state);
     spawn_helicopter(commands, props);
     if state.goat_present {

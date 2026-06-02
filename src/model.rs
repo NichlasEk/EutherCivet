@@ -565,6 +565,7 @@ pub enum Action {
     SetLanguageSwedish,
     Save,
     Load,
+    StartNewRun,
     FeedSelectedCivet,
     PetSelectedCivet,
     InspectSelectedCivet,
