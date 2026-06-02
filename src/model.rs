@@ -417,6 +417,14 @@ pub struct ParallaxLayer {
 }
 
 #[derive(Component)]
+pub struct RetroSkyBand {
+    pub base: Vec3,
+    pub speed: f32,
+    pub wave: f32,
+    pub wrap_width: f32,
+}
+
+#[derive(Component)]
 pub struct Helicopter {
     pub offset: Vec3,
 }

@@ -4,7 +4,8 @@ use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
     Action, BackgroundAssets, CharacterAssets, CivetClickTarget, EnvironmentBackdrop, GameScreen,
     GameState, Helicopter, MovingCivet, ParallaxLayer, PlantationRoom, PlayerAvatar, PlayerLabel,
-    PlayerShadow, PropAssets, SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
+    PlayerShadow, PropAssets, RetroSkyBand, SuspicionGlow, UiSkinAssets, WorldActionTarget,
+    WorldVisual,
 };
 
 const SKIN_STATS_PANEL: usize = 0;
@@ -12,6 +13,8 @@ const SKIN_TOOL_PANEL: usize = 1;
 const SKIN_BUTTON: usize = 3;
 
 pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
+    spawn_retro_sky(commands);
+
     for phase in 0..4 {
         commands.spawn((
             Sprite::from_atlas_image(
@@ -21,7 +24,7 @@ pub fn spawn_world(commands: &mut Commands, backgrounds: &BackgroundAssets) {
                     index: phase,
                 },
             ),
-            Transform::from_xyz(0.0, -25.0, -30.0).with_scale(Vec3::splat(2.38)),
+            Transform::from_xyz(0.0, -25.0, -34.0).with_scale(Vec3::splat(2.38)),
             EnvironmentBackdrop { phase },
         ));
     }
@@ -68,7 +71,7 @@ fn spawn_cloud(commands: &mut Commands, x: f32, y: f32, speed: f32, amplitude: f
         let base = Vec3::new(x + dx, y, -14.0);
         commands.spawn((
             Sprite::from_color(
-                Color::srgba(1.0, 0.96, 0.86, alpha),
+                Color::srgba(1.0, 0.93, 0.76, alpha),
                 Vec2::new(width, height),
             ),
             Transform::from_translation(base),
@@ -76,6 +79,126 @@ fn spawn_cloud(commands: &mut Commands, x: f32, y: f32, speed: f32, amplitude: f
                 base,
                 speed,
                 amplitude,
+            },
+        ));
+    }
+}
+
+fn spawn_retro_sky(commands: &mut Commands) {
+    spawn_sky_panel(
+        commands,
+        0.0,
+        238.0,
+        1480.0,
+        370.0,
+        Color::srgba(0.08, 0.22, 0.58, 0.42),
+        -33.4,
+    );
+    for (y, height, color) in [
+        (356.0, 24.0, Color::srgba(0.12, 0.38, 0.90, 0.24)),
+        (304.0, 18.0, Color::srgba(0.46, 0.78, 1.00, 0.16)),
+        (246.0, 16.0, Color::srgba(1.00, 0.58, 0.30, 0.12)),
+        (193.0, 12.0, Color::srgba(0.99, 0.86, 0.42, 0.09)),
+    ] {
+        spawn_sky_panel(commands, 0.0, y, 1480.0, height, color, -33.0);
+    }
+
+    for (layer, y, speed, color, height) in [
+        (0, 266.0, 7.0, Color::srgba(0.08, 0.11, 0.26, 0.22), 78.0),
+        (1, 219.0, 12.0, Color::srgba(0.07, 0.18, 0.23, 0.18), 58.0),
+        (2, 174.0, 19.0, Color::srgba(0.12, 0.28, 0.18, 0.15), 46.0),
+    ] {
+        for tile in -1..=1 {
+            spawn_mountain_ridge(
+                commands,
+                tile as f32 * 620.0,
+                y,
+                height,
+                color,
+                -32.5 + layer as f32 * 0.3,
+                speed,
+                layer as f32 * 0.7,
+            );
+        }
+    }
+
+    for (x, y, speed, scale, alpha) in [
+        (-520.0, 324.0, 18.0, 1.0, 0.14),
+        (-80.0, 349.0, 13.0, 1.25, 0.11),
+        (430.0, 294.0, 23.0, 0.88, 0.13),
+    ] {
+        spawn_sky_wisp(commands, x, y, speed, scale, alpha);
+    }
+
+    for y in [169.0, 181.0, 197.0] {
+        spawn_sky_wisp(commands, -120.0, y, -7.0, 1.7, 0.045);
+    }
+}
+
+fn spawn_sky_panel(
+    commands: &mut Commands,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    color: Color,
+    z: f32,
+) {
+    commands.spawn((
+        Sprite::from_color(color, Vec2::new(width, height)),
+        Transform::from_xyz(x, y, z),
+    ));
+}
+
+fn spawn_mountain_ridge(
+    commands: &mut Commands,
+    x: f32,
+    y: f32,
+    height: f32,
+    color: Color,
+    z: f32,
+    speed: f32,
+    phase: f32,
+) {
+    for (i, peak) in [0.50, 0.76, 0.58, 0.84, 0.62, 0.70, 0.52]
+        .iter()
+        .enumerate()
+    {
+        let width = 108.0 + i as f32 * 7.0;
+        let x = x - 318.0 + i as f32 * 96.0;
+        let y = y - height * (1.0 - peak) * 0.40;
+        commands.spawn((
+            Sprite::from_color(color, Vec2::new(width, height * peak)),
+            Transform::from_xyz(x, y, z).with_rotation(Quat::from_rotation_z(0.70)),
+            RetroSkyBand {
+                base: Vec3::new(x, y, z),
+                speed,
+                wave: phase + i as f32 * 0.17,
+                wrap_width: 1860.0,
+            },
+        ));
+    }
+}
+
+fn spawn_sky_wisp(commands: &mut Commands, x: f32, y: f32, speed: f32, scale: f32, alpha: f32) {
+    for (dx, dy, w, h) in [
+        (-92.0, 0.0, 122.0, 8.0),
+        (-18.0, 10.0, 168.0, 10.0),
+        (86.0, 2.0, 116.0, 7.0),
+        (18.0, -9.0, 198.0, 6.0),
+    ] {
+        let base = Vec3::new(x + dx * scale, y + dy * scale, -30.8);
+        commands.spawn((
+            Sprite::from_color(
+                Color::srgba(1.0, 0.90, 0.72, alpha),
+                Vec2::new(w * scale, h * scale),
+            ),
+            Transform::from_translation(base).with_rotation(Quat::from_rotation_z(-0.015)),
+            RetroSkyBand {
+                base,
+                speed,
+                wave: dx * 0.01,
+                wrap_width: 1600.0,
             },
         ));
     }
@@ -96,6 +219,16 @@ pub fn animate_world(
             Without<PlayerAvatar>,
             Without<PlayerShadow>,
             Without<EnvironmentBackdrop>,
+        ),
+    >,
+    mut sky: Query<
+        (&RetroSkyBand, &mut Transform),
+        (
+            Without<ParallaxLayer>,
+            Without<Helicopter>,
+            Without<MovingCivet>,
+            Without<PlayerAvatar>,
+            Without<PlayerShadow>,
         ),
     >,
     mut helicopters: Query<
@@ -168,11 +301,18 @@ pub fn animate_world(
         transform.translation.y = layer.base.y + (t * layer.speed * 0.025).cos() * 3.0;
     }
 
+    for (band, mut transform) in &mut sky {
+        let offset = (t * band.speed + band.wave * 79.0).rem_euclid(band.wrap_width);
+        transform.translation.x = band.base.x + offset - band.wrap_width * 0.5;
+        transform.translation.y = band.base.y + (t * 0.55 + band.wave).sin() * 2.5;
+    }
+
     for (civet, mut transform) in &mut civets {
         let walk = (t * 1.35 + civet.phase).sin();
         let bob = (t * 2.7 + civet.phase).cos();
         transform.translation.x = civet.base.x + walk * 18.0;
         transform.translation.y = civet.base.y + bob * 4.0;
+        transform.translation.z = ground_z(transform.translation.y) + 0.2;
         transform.rotation = Quat::from_rotation_z(walk * 0.035);
     }
 
@@ -189,6 +329,7 @@ pub fn animate_world(
             0.0
         };
         transform.translation.y = state.player_y + lift;
+        transform.translation.z = ground_z(state.player_y) + 0.8;
         transform.rotation =
             Quat::from_rotation_z(if avatar.moving { stride * 0.025 } else { 0.0 });
         transform.scale = Vec3::new(0.26 * avatar.facing, 0.26 + squash, 0.26);
@@ -197,6 +338,7 @@ pub fn animate_world(
     for mut transform in &mut player_shadows {
         transform.translation.x = state.player_x;
         transform.translation.y = state.player_y - 68.0;
+        transform.translation.z = ground_z(state.player_y) - 0.3;
         let width = if state.player_y < -185.0 { 1.10 } else { 0.96 };
         transform.scale = Vec3::new(width, 0.78, 1.0);
     }
@@ -383,6 +525,10 @@ fn walkable_floor(room: PlantationRoom) -> WalkableFloor {
             max_y: 58.0,
         },
     }
+}
+
+fn ground_z(y: f32) -> f32 {
+    3.0 + (-y + 280.0) * 0.006
 }
 
 fn backdrop_alpha(cycle: f32, phase: usize) -> f32 {
