@@ -21,6 +21,8 @@ pub struct GameState {
     pub civet_profiles: Vec<CivetProfile>,
     #[serde(default)]
     pub selected_civet: Option<usize>,
+    #[serde(default = "default_inventory")]
+    pub inventory: Vec<InventoryItem>,
     pub coffee_fruit: f32,
     pub civet_feed: f32,
     pub processed_beans: f32,
@@ -91,6 +93,8 @@ pub struct EventState {
     pub kind: RandomEventKind,
     pub title: String,
     pub body: String,
+    #[serde(default)]
+    pub due_day: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -110,6 +114,13 @@ pub struct CivetProfile {
     pub mood: f32,
     pub favorite_fruit: String,
     pub note: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum InventoryItem {
+    TinyBrush,
+    RibbonCollar,
+    FruitPuzzle,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
@@ -153,6 +164,7 @@ impl Default for GameState {
             civet_names: default_civet_names(),
             civet_profiles: default_civet_profiles(),
             selected_civet: None,
+            inventory: default_inventory(),
             coffee_fruit: 8.0,
             civet_feed: 0.0,
             processed_beans: 0.0,
@@ -230,11 +242,27 @@ pub fn default_civet_profiles() -> Vec<CivetProfile> {
     .collect()
 }
 
+pub fn default_inventory() -> Vec<InventoryItem> {
+    vec![
+        InventoryItem::TinyBrush,
+        InventoryItem::RibbonCollar,
+        InventoryItem::FruitPuzzle,
+    ]
+}
+
 impl GameState {
     pub fn load() -> Option<Self> {
         let text = fs::read_to_string(SAVE_PATH).ok()?;
         let mut state: Self = serde_json::from_str(&text).ok()?;
         state.ensure_civet_profiles();
+        if state.inventory.is_empty() {
+            state.inventory = default_inventory();
+        }
+        if let Some(event) = &mut state.event {
+            if event.due_day == 0 {
+                event.due_day = (state.day + 2).min(7);
+            }
+        }
         state.log_line("Loaded plantation ledger from disk.");
         state.dirty_visuals = true;
         Some(state)
@@ -434,6 +462,7 @@ pub enum StatKind {
     Happiness,
     Reputation,
     Paperwork,
+    Mailbox,
     Upgrades,
     Order,
 }
@@ -466,6 +495,9 @@ pub enum Action {
     FeedSelectedCivet,
     PetSelectedCivet,
     InspectSelectedCivet,
+    UseTinyBrush,
+    UseRibbonCollar,
+    UseFruitPuzzle,
     CloseAnimalPanel,
     GoSanctuary,
     GoCoffeeField,

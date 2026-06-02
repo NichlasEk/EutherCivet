@@ -9,8 +9,6 @@ pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut
     if !timer.0.tick(time.delta()).just_finished()
         || state.screen != GameScreen::Playing
         || state.inspection
-        || state.event.is_some()
-        || state.pending_order.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
@@ -93,8 +91,6 @@ pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMu
     if !timer.0.tick(time.delta()).just_finished()
         || state.screen != GameScreen::Playing
         || state.inspection
-        || state.event.is_some()
-        || state.pending_order.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
@@ -113,7 +109,6 @@ pub fn generate_order_offers(
     if !timer.0.tick(time.delta()).just_finished()
         || state.screen != GameScreen::Playing
         || state.inspection
-        || state.event.is_some()
         || state.pending_order.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
@@ -136,7 +131,7 @@ pub fn generate_order_offers(
     let payout = (bags * base_price * tasting_bonus).round() as i32;
     let reputation_reward = 2 + (bags / 4.0) as i32;
     let suspicion_risk = 2.5 + bags * 0.55;
-    let due_day = (state.day + 1).min(7);
+    let due_day = (state.day + 3).min(7);
 
     state.pending_order = Some(OrderOffer {
         client: client.to_string(),
@@ -146,7 +141,7 @@ pub fn generate_order_offers(
         suspicion_risk,
         due_day,
     });
-    state.log_line("A premium buyer sends a contract that uses the word 'discreet' too often.");
+    state.log_line("New mailbox letter: a premium buyer sends a contract.");
 }
 
 fn settle_day(state: &mut GameState) -> DayReport {
@@ -205,6 +200,36 @@ fn settle_day(state: &mut GameState) -> DayReport {
         reputation_delta -= 3;
         suspicion_delta += 6.0;
         state.log_line("Missed a premium order. The buyer files a complaint with adjectives.");
+    }
+
+    if state
+        .pending_order
+        .as_ref()
+        .is_some_and(|order| order.due_day <= day)
+    {
+        state.pending_order = None;
+        reputation_delta -= 1;
+        suspicion_delta += 2.0;
+        state.log_line("An unopened contract expires in the mailbox. Mildly bad optics.");
+    }
+
+    if state
+        .event
+        .as_ref()
+        .is_some_and(|event| event.due_day <= day)
+    {
+        let title = state
+            .event
+            .as_ref()
+            .map(|event| event.title.clone())
+            .unwrap_or_else(|| "Mailbox incident".to_string());
+        state.event = None;
+        reputation_delta -= 1;
+        suspicion_delta += 2.5;
+        state.civet_happiness -= 1.5;
+        state.log_line(format!(
+            "{title} times out in the mailbox. The world keeps spinning."
+        ));
     }
 
     state.reputation += reputation_delta;
@@ -298,7 +323,9 @@ pub fn trigger_random_events(
         kind,
         title: event_title(kind).to_string(),
         body: event_body(kind).to_string(),
+        due_day: (state.day + 2).min(7),
     });
+    state.log_line("New mailbox letter: an incident needs attention in the office.");
 }
 
 fn event_title(kind: RandomEventKind) -> &'static str {

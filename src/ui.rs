@@ -74,6 +74,7 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                     StatKind::Happiness,
                     StatKind::Reputation,
                     StatKind::Paperwork,
+                    StatKind::Mailbox,
                     StatKind::Upgrades,
                     StatKind::Order,
                 ] {
@@ -373,6 +374,9 @@ fn button_base_color(action: Action) -> Color {
         Action::FeedSelectedCivet | Action::PetSelectedCivet | Action::InspectSelectedCivet => {
             Color::srgb(0.24, 0.34, 0.18)
         }
+        Action::UseTinyBrush | Action::UseRibbonCollar | Action::UseFruitPuzzle => {
+            Color::srgb(0.32, 0.28, 0.16)
+        }
         Action::CloseAnimalPanel => Color::srgb(0.18, 0.18, 0.14),
         Action::StartGame
         | Action::ShowIntro
@@ -626,6 +630,9 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::FeedSelectedCivet => "Feed fruit tray".to_string(),
         Action::PetSelectedCivet => "Pet gently".to_string(),
         Action::InspectSelectedCivet => "Inspect notes".to_string(),
+        Action::UseTinyBrush => "Tiny brush".to_string(),
+        Action::UseRibbonCollar => "Ribbon collar".to_string(),
+        Action::UseFruitPuzzle => "Fruit puzzle".to_string(),
         Action::GoSanctuary => room_label("Sanctuary", PlantationRoom::Sanctuary, state),
         Action::GoCoffeeField => room_label("Coffee Field", PlantationRoom::CoffeeField, state),
         Action::GoRoastery => room_label("Roastery", PlantationRoom::Roastery, state),
@@ -693,9 +700,12 @@ fn can_run(action: Action, state: &GameState) -> bool {
         Action::BuildRoastingShed => !state.roasting_shed && state.money >= 125,
         Action::BuildTastingRoom => !state.tasting_room && state.money >= 140,
         Action::FeedSelectedCivet => state.selected_civet.is_some() && state.coffee_fruit >= 2.0,
-        Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
-            state.selected_civet.is_some()
-        }
+        Action::PetSelectedCivet
+        | Action::InspectSelectedCivet
+        | Action::UseTinyBrush
+        | Action::UseRibbonCollar
+        | Action::UseFruitPuzzle
+        | Action::CloseAnimalPanel => state.selected_civet.is_some(),
         Action::GoSanctuary
         | Action::GoCoffeeField
         | Action::GoRoastery
@@ -733,6 +743,9 @@ fn unavailable_reason(action: Action, state: &GameState) -> &'static str {
         Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
             "Select a civet first."
         }
+        Action::UseTinyBrush | Action::UseRibbonCollar | Action::UseFruitPuzzle => {
+            "Select a civet first."
+        }
         _ => "That action is unavailable right now.",
     }
 }
@@ -764,6 +777,7 @@ pub fn update_stats(
             StatKind::Happiness => format!("Civet happiness: {:.0}%", state.civet_happiness),
             StatKind::Reputation => format!("Reputation: {}", state.reputation),
             StatKind::Paperwork => format!("Paperwork level: {}", state.paperwork_level),
+            StatKind::Mailbox => mailbox_summary(&state),
             StatKind::Upgrades => format!("Upgrades: {}", upgrade_summary(&state)),
             StatKind::Order => order_summary(&state),
         };
@@ -773,8 +787,26 @@ pub fn update_stats(
             StatKind::Suspicion if state.suspicion >= 45.0 => Color::srgb(1.0, 0.58, 0.24),
             StatKind::Happiness if state.civet_happiness < 40.0 => Color::srgb(1.0, 0.28, 0.18),
             StatKind::Money if state.money < 20 => Color::srgb(1.0, 0.38, 0.22),
+            StatKind::Mailbox if state.event.is_some() || state.pending_order.is_some() => {
+                Color::srgb(1.0, 0.82, 0.42)
+            }
             _ => Color::srgb(0.97, 0.92, 0.78),
         };
+    }
+}
+
+fn mailbox_summary(state: &GameState) -> String {
+    let mut letters = 0;
+    if state.event.is_some() {
+        letters += 1;
+    }
+    if state.pending_order.is_some() {
+        letters += 1;
+    }
+    if letters == 0 {
+        "Mailbox: empty".to_string()
+    } else {
+        format!("Mailbox: {letters} letter(s) in Paperwork Office")
     }
 }
 
@@ -1037,7 +1069,9 @@ pub fn refresh_event_modal(
     skin: Res<UiSkinAssets>,
     modal: Query<Entity, With<EventModal>>,
 ) {
-    let should_show = state.event.is_some();
+    let should_show = state.screen == GameScreen::Playing
+        && state.current_room == PlantationRoom::PaperworkOffice
+        && state.event.is_some();
     let exists = !modal.is_empty();
 
     if should_show && !exists {
@@ -1064,7 +1098,7 @@ pub fn refresh_event_modal(
             ))
             .with_children(|modal| {
                 modal.spawn((
-                    Text::new(event.title.clone()),
+                    Text::new(format!("Mailbox: {}", event.title)),
                     TextFont {
                         font_size: 31.0,
                         ..default()
@@ -1102,7 +1136,9 @@ pub fn refresh_order_modal(
     skin: Res<UiSkinAssets>,
     modal: Query<Entity, With<OrderModal>>,
 ) {
-    let should_show = state.pending_order.is_some();
+    let should_show = state.screen == GameScreen::Playing
+        && state.current_room == PlantationRoom::PaperworkOffice
+        && state.pending_order.is_some();
     let exists = !modal.is_empty();
 
     if should_show && !exists {
@@ -1111,8 +1147,8 @@ pub fn refresh_order_modal(
             .spawn((
                 Node {
                     position_type: PositionType::Absolute,
-                    left: percent(26),
-                    top: percent(18),
+                    left: percent(28),
+                    top: percent(47),
                     width: percent(48),
                     padding: UiRect::all(px(22)),
                     flex_direction: FlexDirection::Column,
@@ -1129,7 +1165,7 @@ pub fn refresh_order_modal(
             ))
             .with_children(|modal| {
                 modal.spawn((
-                    Text::new("Premium Coffee Contract"),
+                    Text::new("Mailbox: Premium Coffee Contract"),
                     TextFont {
                         font_size: 31.0,
                         ..default()
@@ -1138,7 +1174,7 @@ pub fn refresh_order_modal(
                 ));
                 modal.spawn((
                     Text::new(format!(
-                        "{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.",
+                        "{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\nThe letter waits in the mailbox until its due day.",
                         order.client,
                         order.bags,
                         order.due_day,
@@ -1183,8 +1219,6 @@ pub fn refresh_animal_panel(
     let should_show = state.screen == GameScreen::Playing
         && state.selected_civet.is_some()
         && !state.inspection
-        && state.event.is_none()
-        && state.pending_order.is_none()
         && state.day_report.is_none()
         && state.game_result.is_none();
     let exists = !panel.is_empty();
@@ -1254,6 +1288,9 @@ pub fn refresh_animal_panel(
                 spawn_button(panel, &skin, "Feed fruit tray", Action::FeedSelectedCivet);
                 spawn_button(panel, &skin, "Pet gently", Action::PetSelectedCivet);
                 spawn_button(panel, &skin, "Inspect notes", Action::InspectSelectedCivet);
+                spawn_button(panel, &skin, "Tiny brush", Action::UseTinyBrush);
+                spawn_button(panel, &skin, "Ribbon collar", Action::UseRibbonCollar);
+                spawn_button(panel, &skin, "Fruit puzzle", Action::UseFruitPuzzle);
                 spawn_button(panel, &skin, "Close", Action::CloseAnimalPanel);
             });
     } else if !should_show && exists {

@@ -82,16 +82,6 @@ pub fn run_action(state: &mut GameState, action: Action) {
         return;
     }
 
-    if state.event.is_some() {
-        state.log_line("An incident is waiting for a decision.");
-        return;
-    }
-
-    if state.pending_order.is_some() {
-        state.log_line("A premium contract is waiting for a decision.");
-        return;
-    }
-
     if state.day_report.is_some() || state.game_result.is_some() {
         state.log_line("The day report is waiting for acknowledgement.");
         return;
@@ -228,6 +218,13 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::FeedSelectedCivet => feed_selected_civet(state),
         Action::PetSelectedCivet => pet_selected_civet(state),
         Action::InspectSelectedCivet => inspect_selected_civet(state),
+        Action::UseTinyBrush => use_inventory_item(state, crate::model::InventoryItem::TinyBrush),
+        Action::UseRibbonCollar => {
+            use_inventory_item(state, crate::model::InventoryItem::RibbonCollar)
+        }
+        Action::UseFruitPuzzle => {
+            use_inventory_item(state, crate::model::InventoryItem::FruitPuzzle)
+        }
         Action::ImproveEnclosure => {
             let cost = 45 + state.enclosure_level as i32 * 20;
             if state.money >= cost {
@@ -447,6 +444,52 @@ fn inspect_selected_civet(state: &mut GameState) {
         "{}: favorite {}, mood {:.0}%, hunger {:.0}%. Note: {}.",
         profile.name, profile.favorite_fruit, profile.mood, profile.hunger, profile.note
     ));
+}
+
+fn use_inventory_item(state: &mut GameState, item: crate::model::InventoryItem) {
+    let Some(index) = selected_civet_index(state) else {
+        state.log_line("Select a civet first.");
+        return;
+    };
+
+    if !state.inventory.contains(&item) {
+        state.log_line("That item is not in the sanctuary basket.");
+        return;
+    }
+
+    let profile = &mut state.civet_profiles[index];
+    let name = profile.name.clone();
+    match item {
+        crate::model::InventoryItem::TinyBrush => {
+            profile.mood += 7.0;
+            profile.hunger += 0.5;
+            state.civet_happiness += 2.0;
+            state.reputation += 1;
+            state.log_line(format!(
+                "{name} gets brushed. The fur situation becomes investor-ready."
+            ));
+        }
+        crate::model::InventoryItem::RibbonCollar => {
+            profile.mood += 5.0;
+            state.civet_happiness += 1.5;
+            state.suspicion -= 0.7;
+            state.log_line(format!(
+                "{name} tries a ribbon collar and looks extremely non-cartel."
+            ));
+        }
+        crate::model::InventoryItem::FruitPuzzle => {
+            profile.mood += 8.0;
+            profile.hunger -= 4.0;
+            state.civet_happiness += 2.5;
+            state.suspicion -= 0.4;
+            state.log_line(format!(
+                "{name} works on a fruit puzzle with tiny, serious paws."
+            ));
+        }
+    }
+
+    state.dirty_visuals = true;
+    state.clamp();
 }
 
 fn resolve_pending_order(state: &mut GameState, action: Action) {

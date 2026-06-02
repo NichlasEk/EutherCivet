@@ -210,10 +210,10 @@ fn skin_sprite(skin: &UiSkinAssets, index: usize, color: Color) -> Sprite {
 
 fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &GameState) {
     let (x, y) = match state.current_room {
-        PlantationRoom::Sanctuary => (-455.0, -112.0),
-        PlantationRoom::CoffeeField => (-505.0, -92.0),
-        PlantationRoom::Roastery => (-485.0, -118.0),
-        PlantationRoom::PaperworkOffice => (-465.0, -150.0),
+        PlantationRoom::Sanctuary => (-310.0, -112.0),
+        PlantationRoom::CoffeeField => (-345.0, -92.0),
+        PlantationRoom::Roastery => (-330.0, -118.0),
+        PlantationRoom::PaperworkOffice => (-320.0, -150.0),
     };
 
     commands.spawn((
@@ -387,11 +387,11 @@ fn spawn_sanctuary_room(
 ) {
     commands.spawn((
         skin_sprite(skin, SKIN_TOOL_PANEL, Color::srgba(1.0, 0.86, 0.66, 0.86)),
-        Transform::from_xyz(430.0, -84.0, 1.0),
+        Transform::from_xyz(60.0, -84.0, 1.0),
         WorldVisual,
     ));
     for i in 0..9 {
-        let x = 260.0 + i as f32 * 43.0;
+        let x = -110.0 + i as f32 * 43.0;
         spawn_prop(
             commands,
             props,
@@ -413,8 +413,8 @@ fn spawn_sanctuary_room(
     }
     for i in 0..4 {
         let y = -152.0 + i as f32 * 48.0;
-        spawn_prop(commands, props, 0, 264.0, y, 0.13, 2.0);
-        spawn_prop(commands, props, 0, 588.0, y + 8.0, 0.13, 2.0);
+        spawn_prop(commands, props, 0, -116.0, y, 0.13, 2.0);
+        spawn_prop(commands, props, 0, 218.0, y + 8.0, 0.13, 2.0);
     }
     commands.spawn((
         Text2d::new("CIVET ENCLOSURE"),
@@ -423,12 +423,12 @@ fn spawn_sanctuary_room(
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.82, 0.44)),
-        Transform::from_xyz(430.0, 20.0, 4.0),
+        Transform::from_xyz(60.0, 20.0, 4.0),
         WorldVisual,
     ));
 
     for i in 0..state.civets.min(10) {
-        let x = 330.0 + (i % 5) as f32 * 48.0;
+        let x = -40.0 + (i % 5) as f32 * 48.0;
         let y = -120.0 + (i / 5) as f32 * 44.0;
         commands
             .spawn((
@@ -476,7 +476,7 @@ fn spawn_sanctuary_room(
     }
 
     if state.binturong_home {
-        spawn_prop(commands, props, 11, 455.0, 10.0, 0.28, 3.0);
+        spawn_prop(commands, props, 11, 85.0, 10.0, 0.28, 3.0);
         commands.spawn((
             Text2d::new("binturong"),
             TextFont {
@@ -484,13 +484,13 @@ fn spawn_sanctuary_room(
                 ..default()
             },
             TextColor(Color::srgb(0.95, 0.87, 0.68)),
-            Transform::from_xyz(455.0, 38.0, 4.0),
+            Transform::from_xyz(85.0, 38.0, 4.0),
             WorldVisual,
         ));
     }
 
     if state.goat_present {
-        spawn_goat(commands, props, 190.0, 115.0, "goat?");
+        spawn_goat(commands, props, -175.0, 115.0, "goat?");
     }
 
     spawn_prop(commands, props, 12, -285.0, -130.0, 0.42, 2.0);
@@ -745,8 +745,6 @@ fn select_civet_on_click(
 ) {
     if state.screen != GameScreen::Playing
         || state.inspection
-        || state.event.is_some()
-        || state.pending_order.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
@@ -767,8 +765,6 @@ fn world_action_on_click(
 ) {
     if state.screen != GameScreen::Playing
         || state.inspection
-        || state.event.is_some()
-        || state.pending_order.is_some()
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
