@@ -62,16 +62,27 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let atlas = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+    let character_atlas = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
         UVec2::new(627, 627),
         2,
         2,
         None,
         None,
     ));
+    let prop_atlas = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+        UVec2::new(256, 256),
+        4,
+        4,
+        None,
+        None,
+    ));
     commands.insert_resource(CharacterAssets {
         texture: asset_server.load("sprites/euther_civet_character_sheet.png"),
-        atlas,
+        atlas: character_atlas,
+    });
+    commands.insert_resource(PropAssets {
+        texture: asset_server.load("sprites/euther_civet_prop_sheet.png"),
+        atlas: prop_atlas,
     });
 
     commands.spawn(Camera2d);

@@ -315,6 +315,12 @@ pub struct CharacterAssets {
     pub atlas: Handle<TextureAtlasLayout>,
 }
 
+#[derive(Resource, Clone)]
+pub struct PropAssets {
+    pub texture: Handle<Image>,
+    pub atlas: Handle<TextureAtlasLayout>,
+}
+
 #[derive(Component)]
 pub struct StatText(pub StatKind);
 
@@ -356,6 +362,12 @@ pub struct AnimalPanel;
 #[derive(Component)]
 pub struct CivetClickTarget {
     pub index: usize,
+}
+
+#[derive(Component)]
+pub struct MovingCivet {
+    pub base: Vec3,
+    pub phase: f32,
 }
 
 #[derive(Component)]

@@ -42,6 +42,8 @@ src/
 - Named civets with in-world name labels.
 - Clickable civets with a care panel for feeding, petting, and inspecting animal notes.
 - Generated original character sprite sheet for three palm civets and the plantation owner.
+- Generated original prop sprite sheet for coffee plants, fruit, beans, bags, roaster, paperwork, helicopter, goat, binturong, and room decor.
+- Palm civets have simple wandering/bobbing motion in the Sanctuary.
 - Clickable room objects that trigger core actions: plants, fruit baskets, roaster, coffee bags, bean crate, and paperwork stacks.
 - Dynamic action buttons that show costs/requirements and dim when unavailable.
 - Warm plantation visuals with red suspicion UI and placeholder shapes for plants, civets, binturong, goat, helicopter, and coffee bags.

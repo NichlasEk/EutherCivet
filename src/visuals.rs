@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
-    Action, CharacterAssets, CivetClickTarget, GameScreen, GameState, Helicopter, PlantationRoom,
-    SuspicionGlow, WorldActionTarget, WorldVisual,
+    Action, CharacterAssets, CivetClickTarget, GameScreen, GameState, Helicopter, MovingCivet,
+    PlantationRoom, PropAssets, SuspicionGlow, WorldActionTarget, WorldVisual,
 };
 
 pub fn spawn_world(commands: &mut Commands) {
@@ -45,6 +45,7 @@ pub fn animate_world(
     time: Res<Time>,
     state: Res<GameState>,
     mut helicopters: Query<(&Helicopter, &mut Transform)>,
+    mut civets: Query<(&MovingCivet, &mut Transform), Without<Helicopter>>,
     mut glows: Query<&mut Sprite, With<SuspicionGlow>>,
 ) {
     let t = time.elapsed_secs();
@@ -55,6 +56,14 @@ pub fn animate_world(
     );
     for (helicopter, mut transform) in &mut helicopters {
         transform.translation = base + helicopter.offset;
+    }
+
+    for (civet, mut transform) in &mut civets {
+        let walk = (t * 1.35 + civet.phase).sin();
+        let bob = (t * 2.7 + civet.phase).cos();
+        transform.translation.x = civet.base.x + walk * 18.0;
+        transform.translation.y = civet.base.y + bob * 4.0;
+        transform.rotation = Quat::from_rotation_z(walk * 0.035);
     }
 
     let pulse = 0.5 + 0.5 * (t * 4.0).sin();
@@ -72,6 +81,7 @@ pub fn refresh_world_visuals(
     mut commands: Commands,
     mut state: ResMut<GameState>,
     characters: Res<CharacterAssets>,
+    props: Res<PropAssets>,
     visuals: Query<Entity, With<WorldVisual>>,
 ) {
     if !state.dirty_visuals {
@@ -84,13 +94,27 @@ pub fn refresh_world_visuals(
     spawn_room_title(&mut commands, &state);
     spawn_player(&mut commands, &characters, &state);
     match state.current_room {
-        PlantationRoom::Sanctuary => spawn_sanctuary_room(&mut commands, &state, &characters),
-        PlantationRoom::CoffeeField => spawn_coffee_field_room(&mut commands, &state),
-        PlantationRoom::Roastery => spawn_roastery_room(&mut commands, &state),
-        PlantationRoom::PaperworkOffice => spawn_paperwork_office_room(&mut commands, &state),
+        PlantationRoom::Sanctuary => {
+            spawn_sanctuary_room(&mut commands, &state, &characters, &props)
+        }
+        PlantationRoom::CoffeeField => spawn_coffee_field_room(&mut commands, &state, &props),
+        PlantationRoom::Roastery => spawn_roastery_room(&mut commands, &state, &props),
+        PlantationRoom::PaperworkOffice => {
+            spawn_paperwork_office_room(&mut commands, &state, &props)
+        }
     }
 
     state.dirty_visuals = false;
+}
+
+fn prop_sprite(props: &PropAssets, index: usize) -> Sprite {
+    Sprite::from_atlas_image(
+        props.texture.clone(),
+        TextureAtlas {
+            layout: props.atlas.clone(),
+            index,
+        },
+    )
 }
 
 fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &GameState) {
@@ -170,20 +194,15 @@ fn spawn_room_title(commands: &mut Commands, state: &GameState) {
     ));
 }
 
-fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
+fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &PropAssets) {
     let plant_count = state.coffee_plants.min(36);
     for i in 0..plant_count {
         let x = -250.0 + (i % 12) as f32 * 42.0;
         let y = -160.0 + (i / 12) as f32 * 48.0;
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.16, 0.25, 0.12), Vec2::new(28.0, 8.0)),
-            Transform::from_xyz(x, y - 18.0, 0.9),
-            WorldVisual,
-        ));
         commands
             .spawn((
-                Sprite::from_color(Color::srgb(0.05, 0.48, 0.19), Vec2::new(22.0, 32.0)),
-                Transform::from_xyz(x, y, 1.0),
+                prop_sprite(props, 1),
+                Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(0.18)),
                 Pickable::default(),
                 WorldActionTarget(Action::HarvestFruit),
                 WorldVisual,
@@ -202,8 +221,9 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
         let x = -460.0 + i as f32 * 92.0;
         commands
             .spawn((
-                Sprite::from_color(Color::srgb(0.58, 0.38, 0.16), Vec2::new(54.0, 30.0)),
-                Transform::from_xyz(x, 105.0 + (i % 2) as f32 * 22.0, 2.0),
+                prop_sprite(props, 2),
+                Transform::from_xyz(x, 105.0 + (i % 2) as f32 * 22.0, 2.0)
+                    .with_scale(Vec3::splat(0.30)),
                 Pickable::default(),
                 WorldActionTarget(Action::FeedCivets),
                 WorldVisual,
@@ -225,8 +245,8 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
 
     commands
         .spawn((
-            Sprite::from_color(Color::srgb(0.28, 0.42, 0.18), Vec2::new(110.0, 46.0)),
-            Transform::from_xyz(410.0, 72.0, 2.0),
+            prop_sprite(props, 0),
+            Transform::from_xyz(410.0, 72.0, 2.0).with_scale(Vec3::splat(0.34)),
             Pickable::default(),
             WorldActionTarget(Action::PlantCoffee),
             WorldVisual,
@@ -256,8 +276,9 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
         WorldVisual,
     ));
 
+    spawn_prop(commands, props, 15, 525.0, 80.0, 0.42, 2.0);
     if state.goat_present {
-        spawn_goat(commands, 420.0, -95.0, "field goat?");
+        spawn_goat(commands, props, 420.0, -95.0, "field goat?");
     }
 
     spawn_room_hint(
@@ -266,7 +287,12 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState) {
     );
 }
 
-fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState, characters: &CharacterAssets) {
+fn spawn_sanctuary_room(
+    commands: &mut Commands,
+    state: &GameState,
+    characters: &CharacterAssets,
+    props: &PropAssets,
+) {
     commands.spawn((
         Sprite::from_color(Color::srgb(0.67, 0.44, 0.22), Vec2::new(320.0, 8.0)),
         Transform::from_xyz(430.0, -170.0, 2.0),
@@ -313,6 +339,10 @@ fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState, characters: 
                 Transform::from_xyz(x, y + 2.0, 3.0).with_scale(Vec3::splat(0.105)),
                 Pickable::default(),
                 CivetClickTarget { index: i as usize },
+                MovingCivet {
+                    base: Vec3::new(x, y + 2.0, 3.0),
+                    phase: i as f32 * 1.7,
+                },
                 WorldVisual,
             ))
             .observe(select_civet_on_click)
@@ -343,11 +373,7 @@ fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState, characters: 
     }
 
     if state.binturong_home {
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.08, 0.07, 0.06), Vec2::new(58.0, 26.0)),
-            Transform::from_xyz(455.0, 10.0, 3.0),
-            WorldVisual,
-        ));
+        spawn_prop(commands, props, 11, 455.0, 10.0, 0.28, 3.0);
         commands.spawn((
             Text2d::new("binturong"),
             TextFont {
@@ -361,14 +387,10 @@ fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState, characters: 
     }
 
     if state.goat_present {
-        spawn_goat(commands, 190.0, 115.0, "goat?");
+        spawn_goat(commands, props, 190.0, 115.0, "goat?");
     }
 
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.95, 0.58, 0.48), Vec2::new(118.0, 58.0)),
-        Transform::from_xyz(-285.0, -130.0, 2.0),
-        WorldVisual,
-    ));
+    spawn_prop(commands, props, 12, -285.0, -130.0, 0.42, 2.0);
     commands.spawn((
         Text2d::new("snack trays"),
         TextFont {
@@ -386,7 +408,7 @@ fn spawn_sanctuary_room(commands: &mut Commands, state: &GameState, characters: 
     );
 }
 
-fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
+fn spawn_roastery_room(commands: &mut Commands, state: &GameState, props: &PropAssets) {
     commands.spawn((
         Sprite::from_color(Color::srgb(0.22, 0.13, 0.08), Vec2::new(360.0, 145.0)),
         Transform::from_xyz(-175.0, -92.0, 2.0),
@@ -394,8 +416,8 @@ fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
     ));
     commands
         .spawn((
-            Sprite::from_color(Color::srgb(0.56, 0.30, 0.12), Vec2::new(185.0, 78.0)),
-            Transform::from_xyz(-175.0, -60.0, 3.0),
+            prop_sprite(props, 6),
+            Transform::from_xyz(-175.0, -60.0, 3.0).with_scale(Vec3::splat(0.48)),
             Pickable::default(),
             WorldActionTarget(Action::RoastCoffee),
             WorldVisual,
@@ -418,8 +440,8 @@ fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
         let y = -140.0 + (i / 3) as f32 * 74.0;
         commands
             .spawn((
-                Sprite::from_color(Color::srgb(0.58, 0.39, 0.18), Vec2::new(62.0, 48.0)),
-                Transform::from_xyz(x, y, 2.0),
+                prop_sprite(props, 5),
+                Transform::from_xyz(x, y, 2.0).with_scale(Vec3::splat(0.27)),
                 Pickable::default(),
                 WorldActionTarget(Action::SellCoffee),
                 WorldVisual,
@@ -440,8 +462,8 @@ fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
     }
     commands
         .spawn((
-            Sprite::from_color(Color::srgb(0.20, 0.12, 0.07), Vec2::new(116.0, 54.0)),
-            Transform::from_xyz(-390.0, 45.0, 2.0),
+            prop_sprite(props, 3),
+            Transform::from_xyz(-390.0, 45.0, 2.0).with_scale(Vec3::splat(0.34)),
             Pickable::default(),
             WorldActionTarget(Action::CollectBeans),
             WorldVisual,
@@ -480,7 +502,7 @@ fn spawn_roastery_room(commands: &mut Commands, state: &GameState) {
     );
 }
 
-fn spawn_paperwork_office_room(commands: &mut Commands, state: &GameState) {
+fn spawn_paperwork_office_room(commands: &mut Commands, state: &GameState, props: &PropAssets) {
     commands.spawn((
         Sprite::from_color(Color::srgb(0.15, 0.18, 0.18), Vec2::new(620.0, 245.0)),
         Transform::from_xyz(25.0, -45.0, 1.5),
@@ -495,8 +517,9 @@ fn spawn_paperwork_office_room(commands: &mut Commands, state: &GameState) {
         let x = -290.0 + i as f32 * 54.0;
         commands
             .spawn((
-                Sprite::from_color(Color::srgb(0.92, 0.86, 0.70), Vec2::new(34.0, 44.0)),
-                Transform::from_xyz(x, -135.0 + (i % 2) as f32 * 10.0, 3.0),
+                prop_sprite(props, 7),
+                Transform::from_xyz(x, -135.0 + (i % 2) as f32 * 10.0, 3.0)
+                    .with_scale(Vec3::splat(0.22)),
                 Pickable::default(),
                 WorldActionTarget(Action::ShowPaperwork),
                 WorldVisual,
@@ -519,10 +542,11 @@ fn spawn_paperwork_office_room(commands: &mut Commands, state: &GameState) {
         WorldVisual,
     ));
 
+    spawn_prop(commands, props, 8, 165.0, -140.0, 0.32, 3.0);
     spawn_upgrade_buildings(commands, state);
-    spawn_helicopter(commands);
+    spawn_helicopter(commands, props);
     if state.goat_present {
-        spawn_goat(commands, 360.0, -150.0, "witness");
+        spawn_goat(commands, props, 360.0, -150.0, "witness");
     }
 
     spawn_room_hint(
@@ -531,30 +555,14 @@ fn spawn_paperwork_office_room(commands: &mut Commands, state: &GameState) {
     );
 }
 
-fn spawn_helicopter(commands: &mut Commands) {
+fn spawn_helicopter(commands: &mut Commands, props: &PropAssets) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.12, 0.13, 0.16), Vec2::new(86.0, 22.0)),
-        Transform::from_xyz(325.0, 245.0, 3.0),
-        WorldVisual,
+        prop_sprite(props, 9),
+        Transform::from_xyz(325.0, 245.0, 3.0).with_scale(Vec3::splat(0.38)),
         Helicopter {
             offset: Vec3::new(0.0, 0.0, 0.0),
         },
-    ));
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.75, 0.08, 0.07), Vec2::new(125.0, 5.0)),
-        Transform::from_xyz(325.0, 260.0, 4.0),
         WorldVisual,
-        Helicopter {
-            offset: Vec3::new(0.0, 15.0, 1.0),
-        },
-    ));
-    commands.spawn((
-        Sprite::from_color(Color::srgb(0.75, 0.08, 0.07), Vec2::new(5.0, 58.0)),
-        Transform::from_xyz(372.0, 245.0, 4.0),
-        WorldVisual,
-        Helicopter {
-            offset: Vec3::new(47.0, 0.0, 1.0),
-        },
     ));
     commands.spawn((
         Text2d::new("police helicopter"),
@@ -568,12 +576,24 @@ fn spawn_helicopter(commands: &mut Commands) {
     ));
 }
 
-fn spawn_goat(commands: &mut Commands, x: f32, y: f32, label: &str) {
+fn spawn_prop(
+    commands: &mut Commands,
+    props: &PropAssets,
+    index: usize,
+    x: f32,
+    y: f32,
+    scale: f32,
+    z: f32,
+) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.93, 0.89, 0.78), Vec2::new(42.0, 28.0)),
-        Transform::from_xyz(x, y, 3.0),
+        prop_sprite(props, index),
+        Transform::from_xyz(x, y, z).with_scale(Vec3::splat(scale)),
         WorldVisual,
     ));
+}
+
+fn spawn_goat(commands: &mut Commands, props: &PropAssets, x: f32, y: f32, label: &str) {
+    spawn_prop(commands, props, 10, x, y, 0.25, 3.0);
     commands.spawn((
         Text2d::new(label),
         TextFont {
