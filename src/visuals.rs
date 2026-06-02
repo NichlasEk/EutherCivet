@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::model::{GameState, Helicopter, SuspicionGlow, WorldVisual};
+use crate::actions::select_civet_by_index;
+use crate::model::{
+    CivetClickTarget, GameScreen, GameState, Helicopter, SuspicionGlow, WorldVisual,
+};
 
 pub fn spawn_world(commands: &mut Commands) {
     commands.spawn((
@@ -149,11 +152,17 @@ pub fn refresh_world_visuals(
     for i in 0..state.civets.min(10) {
         let x = 330.0 + (i % 5) as f32 * 48.0;
         let y = -120.0 + (i / 5) as f32 * 44.0;
-        commands.spawn((
-            Sprite::from_color(Color::srgb(0.34, 0.25, 0.18), Vec2::new(38.0, 20.0)),
-            Transform::from_xyz(x, y, 3.0),
-            WorldVisual,
-        ));
+        commands
+            .spawn((
+                Sprite::from_color(Color::srgb(0.34, 0.25, 0.18), Vec2::new(38.0, 20.0)),
+                Transform::from_xyz(x, y, 3.0),
+                Pickable::default(),
+                CivetClickTarget { index: i as usize },
+                WorldVisual,
+            ))
+            .observe(select_civet_on_click)
+            .observe(tint_civet_on_hover(Color::srgb(0.44, 0.33, 0.24)))
+            .observe(tint_civet_on_out(Color::srgb(0.34, 0.25, 0.18)));
         commands.spawn((
             Sprite::from_color(Color::srgb(0.90, 0.78, 0.56), Vec2::new(11.0, 11.0)),
             Transform::from_xyz(x + 18.0, y + 4.0, 4.0),
@@ -164,14 +173,24 @@ pub fn refresh_world_visuals(
             Transform::from_xyz(x + 27.0, y + 8.0, 5.0),
             WorldVisual,
         ));
-        if let Some(name) = state.civet_names.get(i as usize) {
+        if let Some(profile) = state.civet_profiles.get(i as usize) {
+            let selected = state.selected_civet == Some(i as usize);
+            let label = if selected {
+                format!("{}  mood {:.0}%", profile.name, profile.mood)
+            } else {
+                profile.name.clone()
+            };
             commands.spawn((
-                Text2d::new(name.clone()),
+                Text2d::new(label),
                 TextFont {
                     font_size: 11.0,
                     ..default()
                 },
-                TextColor(Color::srgb(1.0, 0.86, 0.64)),
+                TextColor(if selected {
+                    Color::srgb(1.0, 0.95, 0.46)
+                } else {
+                    Color::srgb(1.0, 0.86, 0.64)
+                }),
                 Transform::from_xyz(x, y - 21.0, 5.0),
                 WorldVisual,
             ));
@@ -277,6 +296,44 @@ pub fn refresh_world_visuals(
     spawn_upgrade_buildings(&mut commands, &state);
 
     state.dirty_visuals = false;
+}
+
+fn select_civet_on_click(
+    click: On<Pointer<Click>>,
+    targets: Query<&CivetClickTarget>,
+    mut state: ResMut<GameState>,
+) {
+    if state.screen != GameScreen::Playing
+        || state.inspection
+        || state.event.is_some()
+        || state.pending_order.is_some()
+        || state.day_report.is_some()
+        || state.game_result.is_some()
+    {
+        return;
+    }
+
+    let Ok(target) = targets.get(click.event_target()) else {
+        return;
+    };
+    select_civet_by_index(&mut state, target.index);
+    state.dirty_visuals = true;
+}
+
+fn tint_civet_on_hover(color: Color) -> impl Fn(On<Pointer<Over>>, Query<&mut Sprite>) {
+    move |event, mut sprites| {
+        if let Ok(mut sprite) = sprites.get_mut(event.event_target()) {
+            sprite.color = color;
+        }
+    }
+}
+
+fn tint_civet_on_out(color: Color) -> impl Fn(On<Pointer<Out>>, Query<&mut Sprite>) {
+    move |event, mut sprites| {
+        if let Ok(mut sprite) = sprites.get_mut(event.event_target()) {
+            sprite.color = color;
+        }
+    }
 }
 
 fn spawn_upgrade_buildings(commands: &mut Commands, state: &GameState) {

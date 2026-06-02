@@ -13,6 +13,10 @@ pub struct GameState {
     pub civets: u32,
     #[serde(default = "default_civet_names")]
     pub civet_names: Vec<String>,
+    #[serde(default = "default_civet_profiles")]
+    pub civet_profiles: Vec<CivetProfile>,
+    #[serde(default)]
+    pub selected_civet: Option<usize>,
     pub coffee_fruit: f32,
     pub civet_feed: f32,
     pub processed_beans: f32,
@@ -95,6 +99,15 @@ pub struct OrderOffer {
     pub due_day: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CivetProfile {
+    pub name: String,
+    pub hunger: f32,
+    pub mood: f32,
+    pub favorite_fruit: String,
+    pub note: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub enum GameScreen {
     #[default]
@@ -112,6 +125,8 @@ impl Default for GameState {
             coffee_plants: 6,
             civets: 3,
             civet_names: default_civet_names(),
+            civet_profiles: default_civet_profiles(),
+            selected_civet: None,
             coffee_fruit: 8.0,
             civet_feed: 0.0,
             processed_beans: 0.0,
@@ -154,10 +169,46 @@ pub fn default_civet_names() -> Vec<String> {
         .collect()
 }
 
+pub fn default_civet_profiles() -> Vec<CivetProfile> {
+    [
+        (
+            "Miso",
+            24.0,
+            78.0,
+            "ruby coffee cherries",
+            "chief fruit critic",
+        ),
+        (
+            "Kanel",
+            32.0,
+            72.0,
+            "soft yellow fruit",
+            "night-shift bean philosopher",
+        ),
+        (
+            "Beanie",
+            27.0,
+            80.0,
+            "tiny overripe fruit",
+            "small paws, large opinions",
+        ),
+    ]
+    .into_iter()
+    .map(|(name, hunger, mood, favorite_fruit, note)| CivetProfile {
+        name: name.to_string(),
+        hunger,
+        mood,
+        favorite_fruit: favorite_fruit.to_string(),
+        note: note.to_string(),
+    })
+    .collect()
+}
+
 impl GameState {
     pub fn load() -> Option<Self> {
         let text = fs::read_to_string(SAVE_PATH).ok()?;
         let mut state: Self = serde_json::from_str(&text).ok()?;
+        state.ensure_civet_profiles();
         state.log_line("Loaded plantation ledger from disk.");
         state.dirty_visuals = true;
         Some(state)
@@ -183,7 +234,39 @@ impl GameState {
         }
     }
 
+    pub fn ensure_civet_profiles(&mut self) {
+        if self.civet_profiles.is_empty() {
+            self.civet_profiles = default_civet_profiles();
+        }
+        while self.civet_profiles.len() < self.civets as usize {
+            let next = self.civet_profiles.len() + 1;
+            self.civet_profiles.push(CivetProfile {
+                name: format!("Civet {next}"),
+                hunger: 35.0,
+                mood: 68.0,
+                favorite_fruit: "carefully documented coffee fruit".to_string(),
+                note: "new sanctuary resident".to_string(),
+            });
+        }
+        self.civet_names = self
+            .civet_profiles
+            .iter()
+            .map(|profile| profile.name.clone())
+            .collect();
+        if self
+            .selected_civet
+            .is_some_and(|idx| idx >= self.civet_profiles.len())
+        {
+            self.selected_civet = None;
+        }
+    }
+
     pub fn clamp(&mut self) {
+        self.ensure_civet_profiles();
+        for profile in &mut self.civet_profiles {
+            profile.hunger = profile.hunger.clamp(0.0, 100.0);
+            profile.mood = profile.mood.clamp(0.0, 100.0);
+        }
         self.suspicion = self.suspicion.clamp(0.0, 100.0);
         self.civet_happiness = self.civet_happiness.clamp(0.0, 100.0);
         if self.suspicion >= 100.0 {
@@ -249,6 +332,14 @@ pub struct OrderModal;
 #[derive(Component)]
 pub struct ScreenModal;
 
+#[derive(Component)]
+pub struct AnimalPanel;
+
+#[derive(Component)]
+pub struct CivetClickTarget {
+    pub index: usize,
+}
+
 #[derive(Component, Clone, Copy)]
 pub struct ActionButton(pub Action);
 
@@ -298,6 +389,10 @@ pub enum Action {
     DeliverOrder,
     Save,
     Load,
+    FeedSelectedCivet,
+    PetSelectedCivet,
+    InspectSelectedCivet,
+    CloseAnimalPanel,
     StartGame,
     ShowIntro,
     ShowAnimalBook,

@@ -36,6 +36,8 @@ pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut
         }
     }
 
+    update_animal_care(&mut state, eaten);
+
     if state.coffee_plants > 24 {
         state.suspicion += 0.25;
     }
@@ -43,6 +45,48 @@ pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut
         state.suspicion += 0.2;
     }
     state.clamp();
+}
+
+fn update_animal_care(state: &mut GameState, eaten: f32) {
+    state.ensure_civet_profiles();
+    if state.civet_profiles.is_empty() {
+        return;
+    }
+
+    let per_civet_food = if state.civets > 0 {
+        eaten / state.civets as f32
+    } else {
+        0.0
+    };
+    let hunger_drift = if state.caretaker { 1.0 } else { 1.45 };
+    let mood_support =
+        state.enclosure_level as f32 * 0.18 + if state.caretaker { 0.55 } else { 0.0 };
+
+    let mut hunger_total = 0.0;
+    let mut mood_total = 0.0;
+    for profile in &mut state.civet_profiles {
+        profile.hunger += hunger_drift - per_civet_food * 7.5;
+        if profile.hunger > 72.0 {
+            profile.mood -= 1.0;
+        } else if profile.hunger < 38.0 {
+            profile.mood += 0.35;
+        }
+        profile.mood += mood_support;
+        profile.hunger = profile.hunger.clamp(0.0, 100.0);
+        profile.mood = profile.mood.clamp(0.0, 100.0);
+        hunger_total += profile.hunger;
+        mood_total += profile.mood;
+    }
+
+    let count = state.civet_profiles.len() as f32;
+    let average_hunger = hunger_total / count;
+    let average_mood = mood_total / count;
+    let care_score = (average_mood * 0.72 + (100.0 - average_hunger) * 0.28).clamp(0.0, 100.0);
+    state.civet_happiness = (state.civet_happiness * 0.84 + care_score * 0.16).clamp(0.0, 100.0);
+    if average_hunger > 82.0 {
+        state.suspicion += 0.45;
+        state.reputation -= 1;
+    }
 }
 
 pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMut<GameState>) {

@@ -240,6 +240,10 @@ fn button_base_color(action: Action) -> Color {
             Color::srgb(0.48, 0.31, 0.10)
         }
         Action::Save | Action::Load => Color::srgb(0.18, 0.18, 0.18),
+        Action::FeedSelectedCivet | Action::PetSelectedCivet | Action::InspectSelectedCivet => {
+            Color::srgb(0.24, 0.34, 0.18)
+        }
+        Action::CloseAnimalPanel => Color::srgb(0.18, 0.18, 0.14),
         Action::StartGame
         | Action::ShowIntro
         | Action::ShowAnimalBook
@@ -349,6 +353,9 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::BuildTastingRoom => upgrade_label("Tasting room", 140, state.tasting_room),
         Action::Save => "Save".to_string(),
         Action::Load => "Load".to_string(),
+        Action::FeedSelectedCivet => "Feed fruit tray".to_string(),
+        Action::PetSelectedCivet => "Pet gently".to_string(),
+        Action::InspectSelectedCivet => "Inspect notes".to_string(),
         _ => "Action".to_string(),
     }
 }
@@ -387,6 +394,10 @@ fn can_run(action: Action, state: &GameState) -> bool {
         Action::BuildFruitSorter => !state.fruit_sorter && state.money >= 95,
         Action::BuildRoastingShed => !state.roasting_shed && state.money >= 125,
         Action::BuildTastingRoom => !state.tasting_room && state.money >= 140,
+        Action::FeedSelectedCivet => state.selected_civet.is_some() && state.coffee_fruit >= 2.0,
+        Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
+            state.selected_civet.is_some()
+        }
         Action::AcceptOrder | Action::DeclineOrder => state.pending_order.is_some(),
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => state.event.is_some(),
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => state.inspection,
@@ -409,6 +420,11 @@ fn unavailable_reason(action: Action, state: &GameState) -> &'static str {
         | Action::BuildFruitSorter
         | Action::BuildRoastingShed
         | Action::BuildTastingRoom => "Upgrade is unavailable or already built.",
+        Action::FeedSelectedCivet if state.selected_civet.is_none() => "Select a civet first.",
+        Action::FeedSelectedCivet => "A personal fruit tray needs 2 coffee fruit.",
+        Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
+            "Select a civet first."
+        }
         _ => "That action is unavailable right now.",
     }
 }
@@ -830,6 +846,90 @@ pub fn refresh_order_modal(
     }
 }
 
+pub fn refresh_animal_panel(
+    mut commands: Commands,
+    state: Res<GameState>,
+    panel: Query<Entity, With<AnimalPanel>>,
+) {
+    let should_show = state.screen == GameScreen::Playing
+        && state.selected_civet.is_some()
+        && !state.inspection
+        && state.event.is_none()
+        && state.pending_order.is_none()
+        && state.day_report.is_none()
+        && state.game_result.is_none();
+    let exists = !panel.is_empty();
+
+    if should_show && exists && state.is_changed() {
+        for entity in &panel {
+            commands.entity(entity).despawn();
+        }
+        return;
+    }
+
+    if should_show && !exists {
+        let index = state.selected_civet.expect("selected checked above");
+        let Some(profile) = state.civet_profiles.get(index) else {
+            return;
+        };
+
+        commands
+            .spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    right: px(24),
+                    top: px(72),
+                    width: px(300),
+                    padding: UiRect::all(px(16)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(9),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(1.0, 0.78, 0.72, 0.96)),
+                GlobalZIndex(5),
+                AnimalPanel,
+            ))
+            .with_children(|panel| {
+                panel.spawn((
+                    Text::new(profile.name.clone()),
+                    TextFont {
+                        font_size: 28.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.25, 0.15, 0.10)),
+                ));
+                panel.spawn((
+                    Text::new(format!("{}.", profile.note)),
+                    TextFont {
+                        font_size: 15.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.36, 0.23, 0.18)),
+                ));
+                panel.spawn((
+                    Text::new(format!(
+                        "Mood {:.0}%  Hunger {:.0}%\nFavorite: {}",
+                        profile.mood, profile.hunger, profile.favorite_fruit
+                    )),
+                    TextFont {
+                        font_size: 16.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.30, 0.20, 0.14)),
+                ));
+
+                spawn_button(panel, "Feed fruit tray", Action::FeedSelectedCivet);
+                spawn_button(panel, "Pet gently", Action::PetSelectedCivet);
+                spawn_button(panel, "Inspect notes", Action::InspectSelectedCivet);
+                spawn_button(panel, "Close", Action::CloseAnimalPanel);
+            });
+    } else if !should_show && exists {
+        for entity in &panel {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
 pub fn refresh_screen_modal(
     mut commands: Commands,
     state: Res<GameState>,
@@ -940,19 +1040,17 @@ fn spawn_animal_book(parent: &mut ChildSpawnerCommands, state: &GameState) {
         },
         TextColor(Color::srgb(0.25, 0.18, 0.11)),
     ));
-    let names = if state.civet_names.is_empty() {
-        default_civet_names()
+    let profiles = if state.civet_profiles.is_empty() {
+        default_civet_profiles()
     } else {
-        state.civet_names.clone()
+        state.civet_profiles.clone()
     };
-    for (idx, name) in names.iter().enumerate() {
-        let trait_line = match idx {
-            0 => "chief fruit critic",
-            1 => "night-shift bean philosopher",
-            _ => "small paws, large opinions",
-        };
+    for profile in profiles.iter() {
         parent.spawn((
-            Text::new(format!("{name}: {trait_line}")),
+            Text::new(format!(
+                "{}: {}, favorite {}",
+                profile.name, profile.note, profile.favorite_fruit
+            )),
             TextFont {
                 font_size: 20.0,
                 ..default()

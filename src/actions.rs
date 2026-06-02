@@ -46,6 +46,13 @@ pub fn run_action(state: &mut GameState, action: Action) {
         return;
     }
 
+    if matches!(action, Action::CloseAnimalPanel) {
+        state.selected_civet = None;
+        state.dirty_visuals = true;
+        state.log_line("Animal care clipboard closed.");
+        return;
+    }
+
     if matches!(
         action,
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC
@@ -197,6 +204,9 @@ pub fn run_action(state: &mut GameState, action: Action) {
             }
         }
         Action::DeliverOrder => deliver_order(state),
+        Action::FeedSelectedCivet => feed_selected_civet(state),
+        Action::PetSelectedCivet => pet_selected_civet(state),
+        Action::InspectSelectedCivet => inspect_selected_civet(state),
         Action::ImproveEnclosure => {
             let cost = 45 + state.enclosure_level as i32 * 20;
             if state.money >= cost {
@@ -277,6 +287,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => {}
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {}
         Action::AcceptOrder | Action::DeclineOrder => {}
+        Action::CloseAnimalPanel => {}
         Action::StartGame | Action::ShowIntro | Action::ShowAnimalBook | Action::BackToMenu => {}
         Action::ContinueDay => {}
     }
@@ -286,6 +297,88 @@ pub fn run_action(state: &mut GameState, action: Action) {
         state.reputation -= 1;
     }
     state.clamp();
+}
+
+pub fn select_civet_by_index(state: &mut GameState, index: usize) {
+    state.ensure_civet_profiles();
+    if index >= state.civet_profiles.len() {
+        return;
+    }
+
+    state.selected_civet = Some(index);
+    let profile = &state.civet_profiles[index];
+    state.log_line(format!(
+        "{} trots over. Mood {:.0}%, hunger {:.0}%.",
+        profile.name, profile.mood, profile.hunger
+    ));
+}
+
+fn selected_civet_index(state: &mut GameState) -> Option<usize> {
+    state.ensure_civet_profiles();
+    let index = state.selected_civet?;
+    (index < state.civet_profiles.len()).then_some(index)
+}
+
+fn feed_selected_civet(state: &mut GameState) {
+    let Some(index) = selected_civet_index(state) else {
+        state.log_line("Select a civet first.");
+        return;
+    };
+
+    if state.coffee_fruit < 2.0 {
+        state.civet_happiness -= 2.0;
+        state.suspicion += 1.2;
+        state.log_line("Not enough coffee fruit for a personal snack tray.");
+        state.clamp();
+        return;
+    }
+
+    state.coffee_fruit -= 2.0;
+    state.civet_feed += 1.0;
+    let profile = &mut state.civet_profiles[index];
+    profile.hunger -= 28.0;
+    profile.mood += 8.0;
+    let name = profile.name.clone();
+    state.civet_happiness += 4.0;
+    state.suspicion -= 0.8;
+    state.dirty_visuals = true;
+    state.log_line(format!(
+        "{name} gets a hand-picked fruit tray and approves with grave professionalism."
+    ));
+    state.clamp();
+}
+
+fn pet_selected_civet(state: &mut GameState) {
+    let Some(index) = selected_civet_index(state) else {
+        state.log_line("Select a civet first.");
+        return;
+    };
+
+    let profile = &mut state.civet_profiles[index];
+    profile.mood += 11.0;
+    profile.hunger += 1.0;
+    let name = profile.name.clone();
+    state.civet_happiness += 2.5;
+    state.reputation += 1;
+    state.suspicion -= 0.4;
+    state.dirty_visuals = true;
+    state.log_line(format!(
+        "{name} receives sanctuary-grade attention. This is excellent press, if anyone asks."
+    ));
+    state.clamp();
+}
+
+fn inspect_selected_civet(state: &mut GameState) {
+    let Some(index) = selected_civet_index(state) else {
+        state.log_line("Select a civet first.");
+        return;
+    };
+
+    let profile = &state.civet_profiles[index];
+    state.log_line(format!(
+        "{}: favorite {}, mood {:.0}%, hunger {:.0}%. Note: {}.",
+        profile.name, profile.favorite_fruit, profile.mood, profile.hunger, profile.note
+    ));
 }
 
 fn resolve_pending_order(state: &mut GameState, action: Action) {
