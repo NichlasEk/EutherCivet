@@ -454,10 +454,16 @@ pub struct MovingCivet {
 }
 
 #[derive(Component)]
-pub struct PlayerAvatar;
+pub struct PlayerAvatar {
+    pub facing: f32,
+    pub moving: bool,
+}
 
 #[derive(Component)]
 pub struct PlayerLabel;
+
+#[derive(Component)]
+pub struct PlayerShadow;
 
 #[derive(Component)]
 pub struct WorldActionTarget(pub Action);

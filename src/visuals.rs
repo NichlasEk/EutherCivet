@@ -4,7 +4,7 @@ use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
     Action, BackgroundAssets, CharacterAssets, CivetClickTarget, EnvironmentBackdrop, GameScreen,
     GameState, Helicopter, MovingCivet, ParallaxLayer, PlantationRoom, PlayerAvatar, PlayerLabel,
-    PropAssets, SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
+    PlayerShadow, PropAssets, SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
 };
 
 const SKIN_STATS_PANEL: usize = 0;
@@ -84,14 +84,67 @@ fn spawn_cloud(commands: &mut Commands, x: f32, y: f32, speed: f32, amplitude: f
 pub fn animate_world(
     time: Res<Time>,
     state: Res<GameState>,
-    mut backdrops: Query<(&EnvironmentBackdrop, &mut Sprite), Without<SuspicionGlow>>,
+    mut backdrops: Query<
+        (&EnvironmentBackdrop, &mut Sprite),
+        (Without<SuspicionGlow>, Without<PlayerAvatar>),
+    >,
     mut parallax: Query<
         (&ParallaxLayer, &mut Transform),
-        (Without<Helicopter>, Without<MovingCivet>),
+        (
+            Without<Helicopter>,
+            Without<MovingCivet>,
+            Without<PlayerAvatar>,
+            Without<PlayerShadow>,
+            Without<EnvironmentBackdrop>,
+        ),
     >,
-    mut helicopters: Query<(&Helicopter, &mut Transform)>,
-    mut civets: Query<(&MovingCivet, &mut Transform), Without<Helicopter>>,
-    mut glows: Query<&mut Sprite, With<SuspicionGlow>>,
+    mut helicopters: Query<
+        (&Helicopter, &mut Transform),
+        (
+            Without<PlayerAvatar>,
+            Without<PlayerShadow>,
+            Without<MovingCivet>,
+            Without<ParallaxLayer>,
+        ),
+    >,
+    mut civets: Query<
+        (&MovingCivet, &mut Transform),
+        (
+            Without<Helicopter>,
+            Without<PlayerAvatar>,
+            Without<PlayerShadow>,
+            Without<ParallaxLayer>,
+        ),
+    >,
+    mut players: Query<
+        (&PlayerAvatar, &mut Transform),
+        (
+            Without<PlayerShadow>,
+            Without<SuspicionGlow>,
+            Without<EnvironmentBackdrop>,
+            Without<Helicopter>,
+            Without<MovingCivet>,
+            Without<ParallaxLayer>,
+        ),
+    >,
+    mut player_shadows: Query<
+        &mut Transform,
+        (
+            With<PlayerShadow>,
+            Without<PlayerAvatar>,
+            Without<Helicopter>,
+            Without<MovingCivet>,
+            Without<ParallaxLayer>,
+        ),
+    >,
+    mut glows: Query<
+        &mut Sprite,
+        (
+            With<SuspicionGlow>,
+            Without<PlayerAvatar>,
+            Without<EnvironmentBackdrop>,
+        ),
+    >,
 ) {
     let t = time.elapsed_secs();
     let base = Vec3::new(
@@ -123,6 +176,31 @@ pub fn animate_world(
         transform.rotation = Quat::from_rotation_z(walk * 0.035);
     }
 
+    for (avatar, mut transform) in &mut players {
+        let stride = (t * 10.0).sin();
+        let lift = if avatar.moving {
+            stride.abs() * 7.0
+        } else {
+            0.0
+        };
+        let squash = if avatar.moving {
+            stride.abs() * 0.015
+        } else {
+            0.0
+        };
+        transform.translation.y = state.player_y + lift;
+        transform.rotation =
+            Quat::from_rotation_z(if avatar.moving { stride * 0.025 } else { 0.0 });
+        transform.scale = Vec3::new(0.26 * avatar.facing, 0.26 + squash, 0.26);
+    }
+
+    for mut transform in &mut player_shadows {
+        transform.translation.x = state.player_x;
+        transform.translation.y = state.player_y - 68.0;
+        let width = if state.player_y < -185.0 { 1.10 } else { 0.96 };
+        transform.scale = Vec3::new(width, 0.78, 1.0);
+    }
+
     let pulse = 0.5 + 0.5 * (t * 4.0).sin();
     let alpha = if state.inspection {
         0.30 + pulse * 0.18
@@ -138,14 +216,35 @@ pub fn move_player(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<GameState>,
-    mut players: Query<&mut Transform, (With<PlayerAvatar>, Without<PlayerLabel>)>,
-    mut labels: Query<&mut Transform, (With<PlayerLabel>, Without<PlayerAvatar>)>,
+    mut players: Query<
+        (&mut Transform, &mut PlayerAvatar),
+        (Without<PlayerLabel>, Without<PlayerShadow>),
+    >,
+    mut labels: Query<
+        &mut Transform,
+        (
+            With<PlayerLabel>,
+            Without<PlayerAvatar>,
+            Without<PlayerShadow>,
+        ),
+    >,
+    mut shadows: Query<
+        &mut Transform,
+        (
+            With<PlayerShadow>,
+            Without<PlayerAvatar>,
+            Without<PlayerLabel>,
+        ),
+    >,
 ) {
     if state.screen != GameScreen::Playing
         || state.inspection
         || state.day_report.is_some()
         || state.game_result.is_some()
     {
+        for (_, mut avatar) in &mut players {
+            avatar.moving = false;
+        }
         return;
     }
 
@@ -164,6 +263,9 @@ pub fn move_player(
     }
 
     if delta == Vec2::ZERO {
+        for (_, mut avatar) in &mut players {
+            avatar.moving = false;
+        }
         return;
     }
 
@@ -181,15 +283,29 @@ pub fn move_player(
     } else {
         state.player_x = state.player_x.clamp(-525.0, 525.0);
     }
-    state.player_y = state.player_y.clamp(-295.0, 185.0);
+    let floor = walkable_floor(state.current_room);
+    state.player_y = state.player_y.clamp(floor.min_y, floor.max_y);
+    state.player_x = state.player_x.clamp(floor.min_x, floor.max_x);
 
-    for mut transform in &mut players {
+    for (mut transform, mut avatar) in &mut players {
         transform.translation.x = state.player_x;
         transform.translation.y = state.player_y;
+        avatar.facing = if step.x < -0.1 {
+            1.0
+        } else if step.x > 0.1 {
+            -1.0
+        } else {
+            avatar.facing
+        };
+        avatar.moving = true;
     }
     for mut transform in &mut labels {
         transform.translation.x = state.player_x;
         transform.translation.y = state.player_y - 94.0;
+    }
+    for mut transform in &mut shadows {
+        transform.translation.x = state.player_x;
+        transform.translation.y = state.player_y - 68.0;
     }
 }
 
@@ -233,6 +349,42 @@ fn room_name(room: PlantationRoom) -> &'static str {
     }
 }
 
+struct WalkableFloor {
+    min_x: f32,
+    max_x: f32,
+    min_y: f32,
+    max_y: f32,
+}
+
+fn walkable_floor(room: PlantationRoom) -> WalkableFloor {
+    match room {
+        PlantationRoom::Sanctuary => WalkableFloor {
+            min_x: -525.0,
+            max_x: 525.0,
+            min_y: -268.0,
+            max_y: 48.0,
+        },
+        PlantationRoom::CoffeeField => WalkableFloor {
+            min_x: -525.0,
+            max_x: 525.0,
+            min_y: -272.0,
+            max_y: 128.0,
+        },
+        PlantationRoom::Roastery => WalkableFloor {
+            min_x: -525.0,
+            max_x: 525.0,
+            min_y: -270.0,
+            max_y: 88.0,
+        },
+        PlantationRoom::PaperworkOffice => WalkableFloor {
+            min_x: -525.0,
+            max_x: 525.0,
+            min_y: -270.0,
+            max_y: 58.0,
+        },
+    }
+}
+
 fn backdrop_alpha(cycle: f32, phase: usize) -> f32 {
     let centers = [0.08, 0.34, 0.62, 0.86];
     let mut weights = [0.0; 4];
@@ -270,6 +422,7 @@ pub fn refresh_world_visuals(
     }
 
     spawn_room_title(&mut commands, &state);
+    spawn_walkable_floor(&mut commands, state.current_room);
     spawn_room_exits(&mut commands, &state, &skin);
     spawn_player(&mut commands, &characters, &state);
     match state.current_room {
@@ -310,6 +463,12 @@ fn skin_sprite(skin: &UiSkinAssets, index: usize, color: Color) -> Sprite {
 
 fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &GameState) {
     commands.spawn((
+        Sprite::from_color(Color::srgba(0.05, 0.035, 0.02, 0.26), Vec2::new(86.0, 28.0)),
+        Transform::from_xyz(state.player_x, state.player_y - 68.0, 4.0),
+        PlayerShadow,
+        WorldVisual,
+    ));
+    commands.spawn((
         Sprite::from_atlas_image(
             characters.texture.clone(),
             TextureAtlas {
@@ -318,7 +477,10 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
             },
         ),
         Transform::from_xyz(state.player_x, state.player_y, 5.0).with_scale(Vec3::splat(0.26)),
-        PlayerAvatar,
+        PlayerAvatar {
+            facing: 1.0,
+            moving: false,
+        },
         WorldVisual,
     ));
     commands.spawn((
@@ -332,6 +494,70 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
         PlayerLabel,
         WorldVisual,
     ));
+}
+
+fn spawn_walkable_floor(commands: &mut Commands, room: PlantationRoom) {
+    let (main, edge, path, y, h) = match room {
+        PlantationRoom::Sanctuary => (
+            Color::srgba(0.47, 0.33, 0.18, 0.72),
+            Color::srgba(0.23, 0.14, 0.07, 0.48),
+            Color::srgba(0.72, 0.47, 0.24, 0.34),
+            -150.0,
+            305.0,
+        ),
+        PlantationRoom::CoffeeField => (
+            Color::srgba(0.31, 0.52, 0.21, 0.56),
+            Color::srgba(0.13, 0.24, 0.10, 0.36),
+            Color::srgba(0.77, 0.52, 0.25, 0.28),
+            -145.0,
+            355.0,
+        ),
+        PlantationRoom::Roastery => (
+            Color::srgba(0.38, 0.22, 0.13, 0.64),
+            Color::srgba(0.17, 0.09, 0.05, 0.44),
+            Color::srgba(0.75, 0.49, 0.26, 0.23),
+            -153.0,
+            270.0,
+        ),
+        PlantationRoom::PaperworkOffice => (
+            Color::srgba(0.39, 0.27, 0.17, 0.62),
+            Color::srgba(0.17, 0.10, 0.06, 0.42),
+            Color::srgba(0.89, 0.70, 0.44, 0.22),
+            -150.0,
+            285.0,
+        ),
+    };
+
+    commands.spawn((
+        Sprite::from_color(main, Vec2::new(1180.0, h)),
+        Transform::from_xyz(40.0, y, -4.2),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Sprite::from_color(edge, Vec2::new(1180.0, 20.0)),
+        Transform::from_xyz(40.0, y + h * 0.5, -3.8),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Sprite::from_color(path, Vec2::new(760.0, 72.0)),
+        Transform::from_xyz(25.0, y - h * 0.10, -3.6).with_rotation(Quat::from_rotation_z(-0.04)),
+        WorldVisual,
+    ));
+
+    for (x, stripe_y, alpha) in [
+        (-360.0, y - h * 0.34, 0.16),
+        (70.0, y - h * 0.12, 0.13),
+        (360.0, y + h * 0.18, 0.10),
+    ] {
+        commands.spawn((
+            Sprite::from_color(
+                Color::srgba(0.06, 0.04, 0.02, alpha),
+                Vec2::new(330.0, 12.0),
+            ),
+            Transform::from_xyz(x, stripe_y, -3.4),
+            WorldVisual,
+        ));
+    }
 }
 
 fn spawn_room_title(commands: &mut Commands, state: &GameState) {
@@ -586,6 +812,7 @@ fn spawn_sanctuary_room(
     for i in 0..state.civets.min(10) {
         let x = -40.0 + (i % 5) as f32 * 48.0;
         let y = -120.0 + (i / 5) as f32 * 44.0;
+        spawn_contact_shadow(commands, x, y - 13.0, 45.0, 14.0, 2.7);
         commands
             .spawn((
                 Sprite::from_atlas_image(
@@ -632,6 +859,7 @@ fn spawn_sanctuary_room(
     }
 
     if state.binturong_home {
+        spawn_contact_shadow(commands, 85.0, 0.0, 88.0, 24.0, 2.7);
         spawn_prop(commands, props, 11, 85.0, 10.0, 0.28, 3.0);
         commands.spawn((
             Text2d::new("binturong"),
@@ -867,7 +1095,19 @@ fn spawn_prop(
     ));
 }
 
+fn spawn_contact_shadow(commands: &mut Commands, x: f32, y: f32, width: f32, height: f32, z: f32) {
+    commands.spawn((
+        Sprite::from_color(
+            Color::srgba(0.04, 0.028, 0.015, 0.24),
+            Vec2::new(width, height),
+        ),
+        Transform::from_xyz(x, y, z),
+        WorldVisual,
+    ));
+}
+
 fn spawn_goat(commands: &mut Commands, props: &PropAssets, x: f32, y: f32, label: &str) {
+    spawn_contact_shadow(commands, x, y - 18.0, 66.0, 18.0, 2.7);
     spawn_prop(commands, props, 10, x, y, 0.25, 3.0);
     commands.spawn((
         Text2d::new(label),
