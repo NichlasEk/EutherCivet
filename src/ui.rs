@@ -193,6 +193,47 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                         }
                     });
             });
+
+            root.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: percent(29),
+                    right: percent(23),
+                    bottom: px(16),
+                    min_height: px(66),
+                    flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::Center,
+                    row_gap: px(7),
+                    column_gap: px(8),
+                    padding: UiRect::all(px(10)),
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(12)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.08, 0.055, 0.03, 0.20)),
+                ui_skin_node(skin, SKIN_BUTTON, Color::srgba(0.95, 0.78, 0.52, 0.86)),
+                BorderColor::all(Color::srgba(1.0, 0.80, 0.42, 0.42)),
+            ))
+            .with_children(|inventory| {
+                spawn_dynamic_button(
+                    inventory,
+                    skin,
+                    "Inventory sack",
+                    Action::ToggleInventory,
+                    150.0,
+                );
+                for (label, action) in [
+                    ("Give coffee fruit", Action::GiveFruitFromInventory),
+                    ("Pick up beans", Action::PickUpBeansToInventory),
+                    ("Tiny brush", Action::UseTinyBrush),
+                    ("Ribbon collar", Action::UseRibbonCollar),
+                    ("Fruit puzzle", Action::UseFruitPuzzle),
+                ] {
+                    spawn_inventory_button(inventory, skin, label, action);
+                }
+            });
         });
 }
 
@@ -276,6 +317,45 @@ fn spawn_grouped_dynamic_button(
                 Text::new(label),
                 TextFont {
                     font_size: 13.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.92, 0.72)),
+                DynamicButtonText(action),
+            ));
+        });
+}
+
+fn spawn_inventory_button(
+    parent: &mut ChildSpawnerCommands,
+    skin: &UiSkinAssets,
+    label: &str,
+    action: Action,
+) {
+    parent
+        .spawn((
+            Button,
+            Node {
+                display: Display::None,
+                width: px(150),
+                height: px(40),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                padding: UiRect::horizontal(px(8)),
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(8)),
+                ..default()
+            },
+            BackgroundColor(Color::NONE),
+            ui_skin_node(skin, SKIN_BUTTON, button_base_color(action)),
+            BorderColor::all(button_border_color(action)),
+            ActionButton(action),
+            InventoryAction,
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(label),
+                TextFont {
+                    font_size: 12.0,
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.92, 0.72)),
@@ -394,6 +474,9 @@ fn button_base_color(action: Action) -> Color {
         | Action::ShowUpgradeTools
         | Action::ShowSystemTools => Color::srgb(0.16, 0.22, 0.16),
         Action::DeliverOrder | Action::AcceptOrder => Color::srgb(0.33, 0.34, 0.12),
+        Action::GiveFruitFromInventory
+        | Action::PickUpBeansToInventory
+        | Action::ToggleInventory => Color::srgb(0.36, 0.25, 0.11),
         Action::DeclineOrder => Color::srgb(0.32, 0.16, 0.12),
         Action::BuildLegalOffice
         | Action::HireCaretaker
@@ -561,6 +644,7 @@ pub fn update_button_labels(
     state: Res<GameState>,
     mut labels: Query<(&DynamicButtonText, &mut Text)>,
     mut grouped_actions: Query<(&ToolActionGroup, &mut Node)>,
+    mut inventory_actions: Query<&mut Node, (With<InventoryAction>, Without<ToolActionGroup>)>,
 ) {
     if !state.is_changed() {
         return;
@@ -572,6 +656,14 @@ pub fn update_button_labels(
 
     for (group, mut node) in &mut grouped_actions {
         node.display = if group.0 == state.active_tool_group {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+
+    for mut node in &mut inventory_actions {
+        node.display = if state.inventory_open {
             Display::Flex
         } else {
             Display::None
@@ -606,6 +698,18 @@ fn action_label(action: Action, state: &GameState) -> String {
             format!("Sell coffee {bonus}")
         }
         Action::DeliverOrder => "Deliver order".to_string(),
+        Action::ToggleInventory => {
+            if state.inventory_open {
+                "Close sack".to_string()
+            } else {
+                format!(
+                    "Inventory sack ({:.0} fruit, {:.1} beans)",
+                    state.coffee_fruit, state.processed_beans
+                )
+            }
+        }
+        Action::GiveFruitFromInventory => format!("Give fruit ({:.0})", state.coffee_fruit),
+        Action::PickUpBeansToInventory => "Pick up beans".to_string(),
         Action::ImproveEnclosure => {
             format!(
                 "Improve enclosure (${})",
@@ -685,6 +789,11 @@ fn can_run(action: Action, state: &GameState) -> bool {
             .active_order
             .as_ref()
             .is_some_and(|order| state.roasted_coffee >= order.bags),
+        Action::ToggleInventory => true,
+        Action::GiveFruitFromInventory => {
+            state.current_room == PlantationRoom::Sanctuary && state.coffee_fruit >= 1.0
+        }
+        Action::PickUpBeansToInventory => state.current_room == PlantationRoom::Sanctuary,
         Action::ImproveEnclosure => state.money >= 45 + state.enclosure_level as i32 * 20,
         Action::ShowPaperwork => {
             let cost = if state.legal_office {
@@ -731,6 +840,8 @@ fn unavailable_reason(action: Action, state: &GameState) -> &'static str {
         Action::SellCoffee => "No roasted coffee ready to sell.",
         Action::DeliverOrder if state.active_order.is_none() => "No active order to deliver.",
         Action::DeliverOrder => "Not enough roasted coffee for the active order.",
+        Action::GiveFruitFromInventory => "Walk to the civets with coffee fruit in the sack.",
+        Action::PickUpBeansToInventory => "Walk to the civet enclosure work area.",
         Action::ShowPaperwork => "Not enough money for paperwork.",
         Action::ImproveEnclosure => "Not enough money for enclosure work.",
         Action::BuildLegalOffice
@@ -1056,10 +1167,6 @@ pub fn refresh_day_modal(
         for entity in &modal {
             commands.entity(entity).despawn();
         }
-    } else if should_show && exists && state.is_changed() {
-        for entity in &modal {
-            commands.entity(entity).despawn();
-        }
     }
 }
 
@@ -1120,10 +1227,6 @@ pub fn refresh_event_modal(
                 spawn_button(modal, &skin, c, Action::EventOptionC);
             });
     } else if !should_show && exists {
-        for entity in &modal {
-            commands.entity(entity).despawn();
-        }
-    } else if should_show && exists && state.is_changed() {
         for entity in &modal {
             commands.entity(entity).despawn();
         }
@@ -1203,10 +1306,6 @@ pub fn refresh_order_modal(
         for entity in &modal {
             commands.entity(entity).despawn();
         }
-    } else if should_show && exists && state.is_changed() {
-        for entity in &modal {
-            commands.entity(entity).despawn();
-        }
     }
 }
 
@@ -1223,13 +1322,6 @@ pub fn refresh_animal_panel(
         && state.game_result.is_none();
     let exists = !panel.is_empty();
 
-    if should_show && exists && state.is_changed() {
-        for entity in &panel {
-            commands.entity(entity).despawn();
-        }
-        return;
-    }
-
     if should_show && !exists {
         let index = state.selected_civet.expect("selected checked above");
         let Some(profile) = state.civet_profiles.get(index) else {
@@ -1240,8 +1332,8 @@ pub fn refresh_animal_panel(
             .spawn((
                 Node {
                     position_type: PositionType::Absolute,
-                    right: px(24),
-                    top: px(72),
+                    right: px(360),
+                    top: px(48),
                     width: px(300),
                     padding: UiRect::all(px(16)),
                     flex_direction: FlexDirection::Column,

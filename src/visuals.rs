@@ -3,8 +3,8 @@ use bevy::prelude::*;
 use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
     Action, BackgroundAssets, CharacterAssets, CivetClickTarget, EnvironmentBackdrop, GameScreen,
-    GameState, Helicopter, MovingCivet, ParallaxLayer, PlantationRoom, PropAssets, SuspicionGlow,
-    UiSkinAssets, WorldActionTarget, WorldVisual,
+    GameState, Helicopter, MovingCivet, ParallaxLayer, PlantationRoom, PlayerAvatar, PlayerLabel,
+    PropAssets, SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
 };
 
 const SKIN_STATS_PANEL: usize = 0;
@@ -134,6 +134,105 @@ pub fn animate_world(
     }
 }
 
+pub fn move_player(
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut state: ResMut<GameState>,
+    mut players: Query<&mut Transform, (With<PlayerAvatar>, Without<PlayerLabel>)>,
+    mut labels: Query<&mut Transform, (With<PlayerLabel>, Without<PlayerAvatar>)>,
+) {
+    if state.screen != GameScreen::Playing
+        || state.inspection
+        || state.day_report.is_some()
+        || state.game_result.is_some()
+    {
+        return;
+    }
+
+    let mut delta = Vec2::ZERO;
+    if keys.pressed(KeyCode::ArrowLeft) || keys.pressed(KeyCode::KeyA) {
+        delta.x -= 1.0;
+    }
+    if keys.pressed(KeyCode::ArrowRight) || keys.pressed(KeyCode::KeyD) {
+        delta.x += 1.0;
+    }
+    if keys.pressed(KeyCode::ArrowUp) || keys.pressed(KeyCode::KeyW) {
+        delta.y += 1.0;
+    }
+    if keys.pressed(KeyCode::ArrowDown) || keys.pressed(KeyCode::KeyS) {
+        delta.y -= 1.0;
+    }
+
+    if delta == Vec2::ZERO {
+        return;
+    }
+
+    let speed = 205.0;
+    let step = delta.normalize() * speed * time.delta_secs();
+    state.player_x += step.x;
+    state.player_y += step.y;
+
+    if state.player_x < -525.0 {
+        let next_room = exit_left(state.current_room);
+        walk_to_room(&mut state, next_room, 500.0);
+    } else if state.player_x > 525.0 {
+        let next_room = exit_right(state.current_room);
+        walk_to_room(&mut state, next_room, -500.0);
+    } else {
+        state.player_x = state.player_x.clamp(-525.0, 525.0);
+    }
+    state.player_y = state.player_y.clamp(-295.0, 185.0);
+
+    for mut transform in &mut players {
+        transform.translation.x = state.player_x;
+        transform.translation.y = state.player_y;
+    }
+    for mut transform in &mut labels {
+        transform.translation.x = state.player_x;
+        transform.translation.y = state.player_y - 94.0;
+    }
+}
+
+fn walk_to_room(state: &mut GameState, room: PlantationRoom, player_x: f32) {
+    if state.current_room == room {
+        state.player_x = player_x;
+        return;
+    }
+    state.current_room = room;
+    state.player_x = player_x;
+    state.player_y = -145.0;
+    state.selected_civet = None;
+    state.dirty_visuals = true;
+    state.log_line(format!("Walked to {}.", room_name(room)));
+}
+
+fn exit_left(room: PlantationRoom) -> PlantationRoom {
+    match room {
+        PlantationRoom::Sanctuary => PlantationRoom::PaperworkOffice,
+        PlantationRoom::CoffeeField => PlantationRoom::Sanctuary,
+        PlantationRoom::Roastery => PlantationRoom::CoffeeField,
+        PlantationRoom::PaperworkOffice => PlantationRoom::Roastery,
+    }
+}
+
+fn exit_right(room: PlantationRoom) -> PlantationRoom {
+    match room {
+        PlantationRoom::Sanctuary => PlantationRoom::CoffeeField,
+        PlantationRoom::CoffeeField => PlantationRoom::Roastery,
+        PlantationRoom::Roastery => PlantationRoom::PaperworkOffice,
+        PlantationRoom::PaperworkOffice => PlantationRoom::Sanctuary,
+    }
+}
+
+fn room_name(room: PlantationRoom) -> &'static str {
+    match room {
+        PlantationRoom::Sanctuary => "Sanctuary",
+        PlantationRoom::CoffeeField => "Coffee Field",
+        PlantationRoom::Roastery => "Roastery",
+        PlantationRoom::PaperworkOffice => "Paperwork Office",
+    }
+}
+
 fn backdrop_alpha(cycle: f32, phase: usize) -> f32 {
     let centers = [0.08, 0.34, 0.62, 0.86];
     let mut weights = [0.0; 4];
@@ -171,6 +270,7 @@ pub fn refresh_world_visuals(
     }
 
     spawn_room_title(&mut commands, &state);
+    spawn_room_exits(&mut commands, &state, &skin);
     spawn_player(&mut commands, &characters, &state);
     match state.current_room {
         PlantationRoom::Sanctuary => {
@@ -209,13 +309,6 @@ fn skin_sprite(skin: &UiSkinAssets, index: usize, color: Color) -> Sprite {
 }
 
 fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &GameState) {
-    let (x, y) = match state.current_room {
-        PlantationRoom::Sanctuary => (-310.0, -112.0),
-        PlantationRoom::CoffeeField => (-345.0, -92.0),
-        PlantationRoom::Roastery => (-330.0, -118.0),
-        PlantationRoom::PaperworkOffice => (-320.0, -150.0),
-    };
-
     commands.spawn((
         Sprite::from_atlas_image(
             characters.texture.clone(),
@@ -224,7 +317,8 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
                 index: 3,
             },
         ),
-        Transform::from_xyz(x, y, 5.0).with_scale(Vec3::splat(0.26)),
+        Transform::from_xyz(state.player_x, state.player_y, 5.0).with_scale(Vec3::splat(0.26)),
+        PlayerAvatar,
         WorldVisual,
     ));
     commands.spawn((
@@ -234,7 +328,8 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.88, 0.62)),
-        Transform::from_xyz(x, y - 94.0, 6.0),
+        Transform::from_xyz(state.player_x, state.player_y - 94.0, 6.0),
+        PlayerLabel,
         WorldVisual,
     ));
 }
@@ -283,6 +378,67 @@ fn spawn_room_title(commands: &mut Commands, state: &GameState) {
         Transform::from_xyz(-160.0, 285.0, 2.0),
         WorldVisual,
     ));
+}
+
+fn spawn_room_exits(commands: &mut Commands, state: &GameState, skin: &UiSkinAssets) {
+    let left = exit_left(state.current_room);
+    let right = exit_right(state.current_room);
+    spawn_exit_sign(
+        commands,
+        skin,
+        -455.0,
+        -260.0,
+        format!("< {}", room_name(left)),
+        room_action(left),
+    );
+    spawn_exit_sign(
+        commands,
+        skin,
+        430.0,
+        -260.0,
+        format!("{} >", room_name(right)),
+        room_action(right),
+    );
+}
+
+fn spawn_exit_sign(
+    commands: &mut Commands,
+    skin: &UiSkinAssets,
+    x: f32,
+    y: f32,
+    label: String,
+    action: Action,
+) {
+    commands
+        .spawn((
+            skin_sprite(skin, SKIN_BUTTON, Color::srgba(1.0, 0.80, 0.50, 0.90)),
+            Transform::from_xyz(x, y, 3.0).with_scale(Vec3::splat(0.34)),
+            Pickable::default(),
+            WorldActionTarget(action),
+            WorldVisual,
+        ))
+        .observe(world_action_on_click)
+        .observe(tint_sprite_on_hover(Color::srgb(1.0, 0.86, 0.56)))
+        .observe(tint_sprite_on_out(Color::WHITE));
+    commands.spawn((
+        Text2d::new(label),
+        TextFont {
+            font_size: 13.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.92, 0.70)),
+        Transform::from_xyz(x, y, 4.0),
+        WorldVisual,
+    ));
+}
+
+fn room_action(room: PlantationRoom) -> Action {
+    match room {
+        PlantationRoom::Sanctuary => Action::GoSanctuary,
+        PlantationRoom::CoffeeField => Action::GoCoffeeField,
+        PlantationRoom::Roastery => Action::GoRoastery,
+        PlantationRoom::PaperworkOffice => Action::GoPaperworkOffice,
+    }
 }
 
 fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &PropAssets) {

@@ -13,7 +13,7 @@ use ui::{
     refresh_inspection_modal, refresh_order_modal, refresh_screen_modal, spawn_ui,
     update_button_labels, update_log, update_stats, update_status_bars,
 };
-use visuals::{animate_world, refresh_world_visuals, spawn_world};
+use visuals::{animate_world, move_player, refresh_world_visuals, spawn_world};
 
 fn main() {
     App::new()
@@ -45,6 +45,7 @@ fn main() {
                 update_stats,
                 update_status_bars,
                 update_log,
+                move_player,
                 animate_world,
                 refresh_world_visuals,
                 refresh_inspection_modal,

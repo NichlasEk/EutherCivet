@@ -23,6 +23,12 @@ pub struct GameState {
     pub selected_civet: Option<usize>,
     #[serde(default = "default_inventory")]
     pub inventory: Vec<InventoryItem>,
+    #[serde(default = "default_player_x")]
+    pub player_x: f32,
+    #[serde(default = "default_player_y")]
+    pub player_y: f32,
+    #[serde(default)]
+    pub inventory_open: bool,
     pub coffee_fruit: f32,
     pub civet_feed: f32,
     pub processed_beans: f32,
@@ -165,6 +171,9 @@ impl Default for GameState {
             civet_profiles: default_civet_profiles(),
             selected_civet: None,
             inventory: default_inventory(),
+            player_x: default_player_x(),
+            player_y: default_player_y(),
+            inventory_open: false,
             coffee_fruit: 8.0,
             civet_feed: 0.0,
             processed_beans: 0.0,
@@ -248,6 +257,14 @@ pub fn default_inventory() -> Vec<InventoryItem> {
         InventoryItem::RibbonCollar,
         InventoryItem::FruitPuzzle,
     ]
+}
+
+pub fn default_player_x() -> f32 {
+    -300.0
+}
+
+pub fn default_player_y() -> f32 {
+    -145.0
 }
 
 impl GameState {
@@ -437,10 +454,19 @@ pub struct MovingCivet {
 }
 
 #[derive(Component)]
+pub struct PlayerAvatar;
+
+#[derive(Component)]
+pub struct PlayerLabel;
+
+#[derive(Component)]
 pub struct WorldActionTarget(pub Action);
 
 #[derive(Component, Clone, Copy)]
 pub struct ToolActionGroup(pub ToolGroup);
+
+#[derive(Component)]
+pub struct InventoryAction;
 
 #[derive(Component, Clone, Copy)]
 pub struct ActionButton(pub Action);
@@ -490,6 +516,9 @@ pub enum Action {
     BuildRoastingShed,
     BuildTastingRoom,
     DeliverOrder,
+    GiveFruitFromInventory,
+    PickUpBeansToInventory,
+    ToggleInventory,
     Save,
     Load,
     FeedSelectedCivet,

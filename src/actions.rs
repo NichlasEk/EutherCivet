@@ -69,6 +69,16 @@ pub fn run_action(state: &mut GameState, action: Action) {
         return;
     }
 
+    if matches!(action, Action::ToggleInventory) {
+        state.inventory_open = !state.inventory_open;
+        state.log_line(if state.inventory_open {
+            "Inventory sack opens into a bottom tray."
+        } else {
+            "Inventory tray folds back into a coffee sack."
+        });
+        return;
+    }
+
     if matches!(
         action,
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC
@@ -215,6 +225,8 @@ pub fn run_action(state: &mut GameState, action: Action) {
             }
         }
         Action::DeliverOrder => deliver_order(state),
+        Action::GiveFruitFromInventory => give_fruit_from_inventory(state),
+        Action::PickUpBeansToInventory => pick_up_beans_to_inventory(state),
         Action::FeedSelectedCivet => feed_selected_civet(state),
         Action::PetSelectedCivet => pet_selected_civet(state),
         Action::InspectSelectedCivet => inspect_selected_civet(state),
@@ -307,6 +319,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {}
         Action::AcceptOrder | Action::DeclineOrder => {}
         Action::CloseAnimalPanel => {}
+        Action::ToggleInventory => {}
         Action::GoSanctuary
         | Action::GoCoffeeField
         | Action::GoRoastery
@@ -338,6 +351,8 @@ fn switch_room(state: &mut GameState, action: Action) {
     };
 
     state.current_room = room;
+    state.player_x = -300.0;
+    state.player_y = -145.0;
     state.active_tool_group = match room {
         PlantationRoom::Sanctuary => ToolGroup::Care,
         PlantationRoom::CoffeeField => ToolGroup::Field,
@@ -409,6 +424,70 @@ fn feed_selected_civet(state: &mut GameState) {
     state.dirty_visuals = true;
     state.log_line(format!(
         "{name} gets a hand-picked fruit tray and approves with grave professionalism."
+    ));
+    state.clamp();
+}
+
+fn give_fruit_from_inventory(state: &mut GameState) {
+    if state.current_room != PlantationRoom::Sanctuary {
+        state.log_line("Bring the coffee fruit to the Sanctuary first.");
+        return;
+    }
+    if state.coffee_fruit < 1.0 {
+        state.log_line("No coffee fruit in the inventory sack.");
+        return;
+    }
+    if state.player_x < -130.0
+        || state.player_x > 280.0
+        || state.player_y < -230.0
+        || state.player_y > 50.0
+    {
+        state.log_line("Walk closer to the civets before offering fruit.");
+        return;
+    }
+
+    state.ensure_civet_profiles();
+    let index = state
+        .selected_civet
+        .unwrap_or(0)
+        .min(state.civet_profiles.len().saturating_sub(1));
+    state.selected_civet = Some(index);
+    state.coffee_fruit -= 1.0;
+    state.civet_feed += 1.0;
+
+    let profile = &mut state.civet_profiles[index];
+    profile.hunger -= 15.0;
+    profile.mood += 5.0;
+    let name = profile.name.clone();
+    state.civet_happiness += 2.0;
+    state.suspicion -= 0.3;
+    state.dirty_visuals = true;
+    state.log_line(format!(
+        "{name} takes a coffee fruit from your inventory tray."
+    ));
+    state.clamp();
+}
+
+fn pick_up_beans_to_inventory(state: &mut GameState) {
+    if state.current_room != PlantationRoom::Sanctuary {
+        state.log_line("Processed beans are collected near the civets.");
+        return;
+    }
+    if state.player_x < -130.0
+        || state.player_x > 280.0
+        || state.player_y < -240.0
+        || state.player_y > 55.0
+    {
+        state.log_line("Walk into the enclosure work area before picking up beans.");
+        return;
+    }
+
+    let found = 0.7 + state.civets as f32 * 0.22;
+    state.processed_beans += found;
+    state.suspicion += 0.4;
+    state.dirty_visuals = true;
+    state.log_line(format!(
+        "Picked up {found:.1} processed beans and tucked them into the inventory sack."
     ));
     state.clamp();
 }
