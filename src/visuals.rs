@@ -447,7 +447,7 @@ pub fn refresh_world_visuals(
 
     spawn_room_title(&mut commands, &state);
     spawn_walkable_floor(&mut commands, state.current_room);
-    spawn_room_exits(&mut commands, &state, &skin);
+    spawn_room_exits(&mut commands, &state);
     spawn_player(&mut commands, &characters, &state);
     match state.current_room {
         PlantationRoom::Sanctuary => {
@@ -587,12 +587,11 @@ fn spawn_room_title(commands: &mut Commands, state: &GameState) {
     ));
 }
 
-fn spawn_room_exits(commands: &mut Commands, state: &GameState, skin: &UiSkinAssets) {
+fn spawn_room_exits(commands: &mut Commands, state: &GameState) {
     let left = exit_left(state.current_room);
     let right = exit_right(state.current_room);
     spawn_exit_sign(
         commands,
-        skin,
         -455.0,
         -260.0,
         format!("< {}", room_name(left)),
@@ -600,7 +599,6 @@ fn spawn_room_exits(commands: &mut Commands, state: &GameState, skin: &UiSkinAss
     );
     spawn_exit_sign(
         commands,
-        skin,
         430.0,
         -260.0,
         format!("{} >", room_name(right)),
@@ -608,25 +606,52 @@ fn spawn_room_exits(commands: &mut Commands, state: &GameState, skin: &UiSkinAss
     );
 }
 
-fn spawn_exit_sign(
-    commands: &mut Commands,
-    skin: &UiSkinAssets,
-    x: f32,
-    y: f32,
-    label: String,
-    action: Action,
-) {
+fn spawn_exit_sign(commands: &mut Commands, x: f32, y: f32, label: String, action: Action) {
+    let plank = Color::srgba(0.42, 0.23, 0.09, 0.92);
+    let plank_hover = Color::srgba(0.58, 0.34, 0.13, 0.96);
+    let plank_dark = Color::srgba(0.16, 0.08, 0.035, 0.80);
+    let bamboo = Color::srgba(0.64, 0.39, 0.15, 0.88);
+    let highlight = Color::srgba(0.95, 0.68, 0.30, 0.42);
+
+    for dx in [-78.0, 78.0] {
+        commands.spawn((
+            Sprite::from_color(plank_dark, Vec2::new(14.0, 92.0)),
+            Transform::from_xyz(x + dx + 3.0, y - 34.0, 2.75),
+            WorldVisual,
+        ));
+        commands.spawn((
+            Sprite::from_color(bamboo, Vec2::new(12.0, 88.0)),
+            Transform::from_xyz(x + dx, y - 34.0, 2.8),
+            WorldVisual,
+        ));
+        commands.spawn((
+            Sprite::from_color(highlight, Vec2::new(3.0, 78.0)),
+            Transform::from_xyz(x + dx - 3.0, y - 31.0, 2.9),
+            WorldVisual,
+        ));
+    }
+
+    commands.spawn((
+        Sprite::from_color(plank_dark, Vec2::new(206.0, 56.0)),
+        Transform::from_xyz(x + 4.0, y - 5.0, 2.95),
+        WorldVisual,
+    ));
     commands
         .spawn((
-            skin_sprite(skin, SKIN_BUTTON, Color::srgba(1.0, 0.80, 0.50, 0.90)),
-            Transform::from_xyz(x, y, 3.0).with_scale(Vec3::splat(0.34)),
+            Sprite::from_color(plank, Vec2::new(198.0, 48.0)),
+            Transform::from_xyz(x, y, 3.0),
             Pickable::default(),
             WorldActionTarget(action),
             WorldVisual,
         ))
         .observe(world_action_on_click)
-        .observe(tint_sprite_on_hover(Color::srgb(1.0, 0.86, 0.56)))
-        .observe(tint_sprite_on_out(Color::WHITE));
+        .observe(tint_sprite_on_hover(plank_hover))
+        .observe(tint_sprite_on_out(plank));
+    commands.spawn((
+        Sprite::from_color(highlight, Vec2::new(178.0, 4.0)),
+        Transform::from_xyz(x - 2.0, y + 15.0, 3.1),
+        WorldVisual,
+    ));
     commands.spawn((
         Text2d::new(label),
         TextFont {
@@ -634,7 +659,7 @@ fn spawn_exit_sign(
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.92, 0.70)),
-        Transform::from_xyz(x, y, 4.0),
+        Transform::from_xyz(x, y + 1.0, 4.0),
         WorldVisual,
     ));
 }
