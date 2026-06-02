@@ -107,6 +107,7 @@ pub fn animate_world(
         (&RetroSkyBand, &mut Transform),
         (
             Without<ParallaxLayer>,
+            Without<EnvironmentBackdrop>,
             Without<Helicopter>,
             Without<MovingCivet>,
             Without<PlayerAvatar>,
@@ -116,6 +117,7 @@ pub fn animate_world(
     mut helicopters: Query<
         (&Helicopter, &mut Transform),
         (
+            Without<EnvironmentBackdrop>,
             Without<PlayerAvatar>,
             Without<PlayerShadow>,
             Without<MovingCivet>,
@@ -125,6 +127,7 @@ pub fn animate_world(
     mut civets: Query<
         (&MovingCivet, &mut Transform),
         (
+            Without<EnvironmentBackdrop>,
             Without<Helicopter>,
             Without<PlayerAvatar>,
             Without<PlayerShadow>,
@@ -146,6 +149,7 @@ pub fn animate_world(
         &mut Transform,
         (
             With<PlayerShadow>,
+            Without<EnvironmentBackdrop>,
             Without<PlayerAvatar>,
             Without<Helicopter>,
             Without<MovingCivet>,
