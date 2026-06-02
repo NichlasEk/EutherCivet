@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use crate::actions::run_action;
 use crate::model::*;
 
-const PANEL_DARK: Color = Color::srgba(0.08, 0.065, 0.045, 0.18);
 const PANEL_PAPER: Color = Color::srgba(0.98, 0.84, 0.70, 0.10);
 const SKIN_STATS_PANEL: usize = 0;
 const SKIN_PAPER_PANEL: usize = 2;
@@ -15,8 +14,6 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
             Node {
                 width: percent(100),
                 height: percent(100),
-                padding: UiRect::all(px(16)),
-                column_gap: px(14),
                 ..default()
             },
             Pickable::IGNORE,
@@ -24,197 +21,183 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
         .with_children(|root| {
             root.spawn((
                 Node {
-                    width: px(360),
-                    height: percent(100),
-                    flex_direction: FlexDirection::Column,
-                    row_gap: px(10),
-                    padding: UiRect::all(px(16)),
-                    border: UiRect::all(px(2)),
-                    border_radius: BorderRadius::all(px(12)),
+                    position_type: PositionType::Absolute,
+                    left: px(14),
+                    right: px(14),
+                    top: px(10),
+                    min_height: px(72),
+                    flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
+                    align_items: AlignItems::Center,
+                    row_gap: px(6),
+                    column_gap: px(10),
+                    padding: UiRect::axes(px(14), px(8)),
+                    border: UiRect::all(px(1)),
+                    border_radius: BorderRadius::all(px(10)),
                     ..default()
                 },
-                BackgroundColor(PANEL_DARK),
-                ui_skin_node(skin, SKIN_STATS_PANEL, Color::srgba(1.0, 1.0, 1.0, 0.94)),
-                BorderColor::all(Color::srgba(0.94, 0.72, 0.38, 0.45)),
+                BackgroundColor(Color::srgba(0.04, 0.035, 0.025, 0.34)),
+                BorderColor::all(Color::srgba(1.0, 0.78, 0.36, 0.24)),
             ))
-            .with_children(|panel| {
-                panel.spawn((
+            .with_children(|hud| {
+                hud.spawn((
                     Text::new("EutherCivet"),
                     TextFont {
-                        font_size: 34.0,
+                        font_size: 27.0,
                         ..default()
                     },
                     TextColor(Color::srgb(1.0, 0.86, 0.42)),
                 ));
-                panel.spawn((
-                    Text::new("Premium coffee. Exotic mammals. Unhelpful optics."),
+                hud.spawn((
+                    Text::new("Fair-trade coffee. Questionable optics."),
                     TextFont {
-                        font_size: 15.0,
+                        font_size: 13.0,
                         ..default()
                     },
-                    TextColor(Color::srgb(0.88, 0.82, 0.66)),
+                    TextColor(Color::srgba(0.92, 0.86, 0.68, 0.86)),
                 ));
 
-                spawn_bar(panel, "Suspicion", StatusKind::Suspicion);
-                spawn_bar(panel, "Civet happiness", StatusKind::Happiness);
-                spawn_bar(panel, "Coffee pipeline", StatusKind::CoffeePipeline);
+                spawn_bar(hud, "Suspicion", StatusKind::Suspicion);
+                spawn_bar(hud, "Civets", StatusKind::Happiness);
+                spawn_bar(hud, "Coffee", StatusKind::CoffeePipeline);
 
                 for kind in [
                     StatKind::Day,
-                    StatKind::Plants,
-                    StatKind::Civets,
                     StatKind::Fruit,
-                    StatKind::Feed,
                     StatKind::Beans,
                     StatKind::Roasted,
                     StatKind::Money,
                     StatKind::Suspicion,
                     StatKind::Happiness,
                     StatKind::Reputation,
-                    StatKind::Paperwork,
                     StatKind::Mailbox,
-                    StatKind::Upgrades,
                     StatKind::Order,
                 ] {
-                    panel.spawn((
+                    hud.spawn((
                         Text::new("..."),
                         TextFont {
-                            font_size: 17.0,
+                            font_size: 14.0,
                             ..default()
                         },
-                        TextColor(Color::WHITE),
+                        TextColor(Color::srgba(1.0, 0.94, 0.76, 0.94)),
                         StatText(kind),
                     ));
                 }
+            });
 
-                panel.spawn((
+            root.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: px(14),
+                    top: px(92),
+                    width: px(430),
+                    max_height: px(150),
+                    padding: UiRect::all(px(10)),
+                    border: UiRect::all(px(1)),
+                    border_radius: BorderRadius::all(px(8)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.025, 0.022, 0.016, 0.24)),
+                BorderColor::all(Color::srgba(1.0, 0.82, 0.48, 0.15)),
+            ))
+            .with_children(|debug| {
+                debug.spawn((
                     Text::new(""),
                     TextFont {
-                        font_size: 13.0,
+                        font_size: 11.0,
                         ..default()
                     },
-                    TextColor(Color::srgb(0.92, 0.88, 0.76)),
+                    TextColor(Color::srgba(0.95, 0.91, 0.76, 0.76)),
                     LogText,
                 ));
             });
 
             root.spawn((
                 Node {
-                    flex_grow: 1.0,
-                    height: percent(100),
-                    justify_content: JustifyContent::FlexEnd,
-                    align_items: AlignItems::FlexEnd,
-                    ..default()
-                },
-                Pickable::IGNORE,
-            ))
-            .with_children(|right| {
-                right
-                    .spawn((
-                        Node {
-                            width: px(320),
-                            flex_direction: FlexDirection::Row,
-                            flex_wrap: FlexWrap::Wrap,
-                            row_gap: px(7),
-                            column_gap: px(7),
-                            padding: UiRect::all(px(12)),
-                            border: UiRect::all(px(2)),
-                            border_radius: BorderRadius::all(px(12)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::NONE),
-                        BorderColor::all(Color::NONE),
-                    ))
-                    .with_children(|buttons| {
-                        for (label, action) in [
-                            ("Sanctuary", Action::GoSanctuary),
-                            ("Coffee Field", Action::GoCoffeeField),
-                            ("Roastery", Action::GoRoastery),
-                            ("Paperwork Office", Action::GoPaperworkOffice),
-                        ] {
-                            spawn_dynamic_button(buttons, skin, label, action, 145.0);
-                        }
-                        for (label, action) in [
-                            ("Care", Action::ShowCareTools),
-                            ("Field", Action::ShowFieldTools),
-                            ("Production", Action::ShowProductionTools),
-                            ("Compliance", Action::ShowComplianceTools),
-                            ("Upgrades", Action::ShowUpgradeTools),
-                            ("System", Action::ShowSystemTools),
-                        ] {
-                            spawn_dynamic_button(buttons, skin, label, action, 95.0);
-                        }
-                        for (label, action, group) in [
-                            ("Feed civets", Action::FeedCivets, ToolGroup::Care),
-                            (
-                                "Improve enclosure",
-                                Action::ImproveEnclosure,
-                                ToolGroup::Care,
-                            ),
-                            ("Plant coffee", Action::PlantCoffee, ToolGroup::Field),
-                            ("Harvest fruit", Action::HarvestFruit, ToolGroup::Field),
-                            ("Collect beans", Action::CollectBeans, ToolGroup::Production),
-                            ("Roast coffee", Action::RoastCoffee, ToolGroup::Production),
-                            ("Sell coffee", Action::SellCoffee, ToolGroup::Production),
-                            ("Deliver order", Action::DeliverOrder, ToolGroup::Production),
-                            (
-                                "Show paperwork to authorities",
-                                Action::ShowPaperwork,
-                                ToolGroup::Compliance,
-                            ),
-                            (
-                                "Build legal office",
-                                Action::BuildLegalOffice,
-                                ToolGroup::Upgrades,
-                            ),
-                            ("Hire caretaker", Action::HireCaretaker, ToolGroup::Upgrades),
-                            (
-                                "Build fruit sorter",
-                                Action::BuildFruitSorter,
-                                ToolGroup::Upgrades,
-                            ),
-                            (
-                                "Build roasting shed",
-                                Action::BuildRoastingShed,
-                                ToolGroup::Upgrades,
-                            ),
-                            (
-                                "Open tasting room",
-                                Action::BuildTastingRoom,
-                                ToolGroup::Upgrades,
-                            ),
-                            ("Save", Action::Save, ToolGroup::System),
-                            ("Load", Action::Load, ToolGroup::System),
-                        ] {
-                            spawn_grouped_dynamic_button(buttons, skin, label, action, group);
-                        }
-                    });
-            });
-
-            root.spawn((
-                Node {
                     position_type: PositionType::Absolute,
-                    left: percent(29),
-                    right: percent(23),
-                    bottom: px(16),
-                    min_height: px(66),
+                    left: px(145),
+                    right: px(145),
+                    bottom: px(14),
+                    min_height: px(118),
                     flex_direction: FlexDirection::Row,
                     flex_wrap: FlexWrap::Wrap,
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::Center,
                     row_gap: px(7),
-                    column_gap: px(8),
+                    column_gap: px(7),
                     padding: UiRect::all(px(10)),
-                    border: UiRect::all(px(2)),
-                    border_radius: BorderRadius::all(px(12)),
+                    border: UiRect::all(px(1)),
+                    border_radius: BorderRadius::all(px(10)),
                     ..default()
                 },
-                BackgroundColor(Color::NONE),
-                BorderColor::all(Color::NONE),
+                BackgroundColor(Color::srgba(0.045, 0.032, 0.018, 0.30)),
+                BorderColor::all(Color::srgba(1.0, 0.72, 0.32, 0.22)),
             ))
-            .with_children(|inventory| {
+            .with_children(|buttons| {
+                for (label, action) in [
+                    ("Sanctuary", Action::GoSanctuary),
+                    ("Coffee Field", Action::GoCoffeeField),
+                    ("Roastery", Action::GoRoastery),
+                    ("Paperwork Office", Action::GoPaperworkOffice),
+                ] {
+                    spawn_dynamic_button(buttons, skin, label, action, 132.0);
+                }
+                for (label, action) in [
+                    ("Care", Action::ShowCareTools),
+                    ("Field", Action::ShowFieldTools),
+                    ("Production", Action::ShowProductionTools),
+                    ("Compliance", Action::ShowComplianceTools),
+                    ("Upgrades", Action::ShowUpgradeTools),
+                    ("System", Action::ShowSystemTools),
+                ] {
+                    spawn_dynamic_button(buttons, skin, label, action, 92.0);
+                }
+                for (label, action, group) in [
+                    ("Feed civets", Action::FeedCivets, ToolGroup::Care),
+                    (
+                        "Improve enclosure",
+                        Action::ImproveEnclosure,
+                        ToolGroup::Care,
+                    ),
+                    ("Plant coffee", Action::PlantCoffee, ToolGroup::Field),
+                    ("Harvest fruit", Action::HarvestFruit, ToolGroup::Field),
+                    ("Collect beans", Action::CollectBeans, ToolGroup::Production),
+                    ("Roast coffee", Action::RoastCoffee, ToolGroup::Production),
+                    ("Sell coffee", Action::SellCoffee, ToolGroup::Production),
+                    ("Deliver order", Action::DeliverOrder, ToolGroup::Production),
+                    (
+                        "Show paperwork to authorities",
+                        Action::ShowPaperwork,
+                        ToolGroup::Compliance,
+                    ),
+                    (
+                        "Build legal office",
+                        Action::BuildLegalOffice,
+                        ToolGroup::Upgrades,
+                    ),
+                    ("Hire caretaker", Action::HireCaretaker, ToolGroup::Upgrades),
+                    (
+                        "Build fruit sorter",
+                        Action::BuildFruitSorter,
+                        ToolGroup::Upgrades,
+                    ),
+                    (
+                        "Build roasting shed",
+                        Action::BuildRoastingShed,
+                        ToolGroup::Upgrades,
+                    ),
+                    (
+                        "Open tasting room",
+                        Action::BuildTastingRoom,
+                        ToolGroup::Upgrades,
+                    ),
+                    ("Save", Action::Save, ToolGroup::System),
+                    ("Load", Action::Load, ToolGroup::System),
+                ] {
+                    spawn_grouped_dynamic_button(buttons, skin, label, action, group);
+                }
                 spawn_dynamic_button(
-                    inventory,
+                    buttons,
                     skin,
                     "Inventory sack",
                     Action::ToggleInventory,
@@ -227,7 +210,7 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                     ("Ribbon collar", Action::UseRibbonCollar),
                     ("Fruit puzzle", Action::UseFruitPuzzle),
                 ] {
-                    spawn_inventory_button(inventory, skin, label, action);
+                    spawn_inventory_button(buttons, skin, label, action);
                 }
             });
         });
@@ -256,7 +239,7 @@ fn spawn_dynamic_button(
             Button,
             Node {
                 width: px(width),
-                height: px(42),
+                height: px(34),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 padding: UiRect::horizontal(px(8)),
@@ -273,7 +256,7 @@ fn spawn_dynamic_button(
             button.spawn((
                 Text::new(label),
                 TextFont {
-                    font_size: 13.0,
+                    font_size: 12.0,
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.92, 0.72)),
@@ -293,8 +276,8 @@ fn spawn_grouped_dynamic_button(
         .spawn((
             Button,
             Node {
-                width: px(296),
-                height: px(42),
+                width: px(210),
+                height: px(34),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 padding: UiRect::horizontal(px(8)),
@@ -312,7 +295,7 @@ fn spawn_grouped_dynamic_button(
             button.spawn((
                 Text::new(label),
                 TextFont {
-                    font_size: 13.0,
+                    font_size: 12.0,
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.92, 0.72)),
@@ -332,8 +315,8 @@ fn spawn_inventory_button(
             Button,
             Node {
                 display: Display::None,
-                width: px(150),
-                height: px(40),
+                width: px(138),
+                height: px(34),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 padding: UiRect::horizontal(px(8)),
@@ -351,7 +334,7 @@ fn spawn_inventory_button(
             button.spawn((
                 Text::new(label),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: 11.0,
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.92, 0.72)),
@@ -399,17 +382,17 @@ fn spawn_button(
 fn spawn_bar(parent: &mut ChildSpawnerCommands, label: &str, kind: StatusKind) {
     parent
         .spawn(Node {
-            width: percent(100),
-            height: px(40),
+            width: px(128),
+            height: px(34),
             flex_direction: FlexDirection::Column,
-            row_gap: px(4),
+            row_gap: px(3),
             ..default()
         })
         .with_children(|bar| {
             bar.spawn((
                 Text::new(label),
                 TextFont {
-                    font_size: 13.0,
+                    font_size: 11.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.88, 0.82, 0.66)),
@@ -417,7 +400,7 @@ fn spawn_bar(parent: &mut ChildSpawnerCommands, label: &str, kind: StatusKind) {
             bar.spawn((
                 Node {
                     width: percent(100),
-                    height: px(13),
+                    height: px(10),
                     padding: UiRect::all(px(2)),
                     border: UiRect::all(px(1)),
                     border_radius: BorderRadius::all(px(5)),
@@ -868,22 +851,22 @@ pub fn update_stats(
         let value = match stat.0 {
             StatKind::Day => {
                 if state.game_result.is_some() {
-                    format!("Week status: final report")
+                    "Final report".to_string()
                 } else {
-                    format!("Day: {} / 7", state.day)
+                    format!("Day {}/7", state.day)
                 }
             }
-            StatKind::Plants => format!("Coffee plants: {}", state.coffee_plants),
-            StatKind::Civets => format!("Civets: {}", state.civets),
-            StatKind::Fruit => format!("Coffee fruit: {:.0}", state.coffee_fruit),
-            StatKind::Feed => format!("Fruit in civet feeders: {:.0}", state.civet_feed),
-            StatKind::Beans => format!("Processed beans: {:.1}", state.processed_beans),
-            StatKind::Roasted => format!("Roasted coffee bags: {:.1}", state.roasted_coffee),
-            StatKind::Money => format!("Money: ${}", state.money),
-            StatKind::Suspicion => format!("Suspicion: {:.0}%", state.suspicion),
-            StatKind::Happiness => format!("Civet happiness: {:.0}%", state.civet_happiness),
-            StatKind::Reputation => format!("Reputation: {}", state.reputation),
-            StatKind::Paperwork => format!("Paperwork level: {}", state.paperwork_level),
+            StatKind::Plants => format!("Plants {}", state.coffee_plants),
+            StatKind::Civets => format!("Civets {}", state.civets),
+            StatKind::Fruit => format!("Fruit {:.0}", state.coffee_fruit),
+            StatKind::Feed => format!("Feed {:.0}", state.civet_feed),
+            StatKind::Beans => format!("Beans {:.1}", state.processed_beans),
+            StatKind::Roasted => format!("Roast {:.1}", state.roasted_coffee),
+            StatKind::Money => format!("${}", state.money),
+            StatKind::Suspicion => format!("Susp {:.0}%", state.suspicion),
+            StatKind::Happiness => format!("Happy {:.0}%", state.civet_happiness),
+            StatKind::Reputation => format!("Rep {}", state.reputation),
+            StatKind::Paperwork => format!("Paper {}", state.paperwork_level),
             StatKind::Mailbox => mailbox_summary(&state),
             StatKind::Upgrades => format!("Upgrades: {}", upgrade_summary(&state)),
             StatKind::Order => order_summary(&state),
@@ -911,22 +894,19 @@ fn mailbox_summary(state: &GameState) -> String {
         letters += 1;
     }
     if letters == 0 {
-        "Mailbox: empty".to_string()
+        "Mail 0".to_string()
     } else {
-        format!("Mailbox: {letters} letter(s) in Paperwork Office")
+        format!("Mail {letters}")
     }
 }
 
 fn order_summary(state: &GameState) -> String {
     if let Some(order) = &state.active_order {
-        format!(
-            "Order: {:.1} bags for ${} due day {}",
-            order.bags, order.payout, order.due_day
-        )
+        format!("Order {:.1} by d{}", order.bags, order.due_day)
     } else if state.pending_order.is_some() {
-        "Order: offer pending".to_string()
+        "Order offer".to_string()
     } else {
-        "Order: none".to_string()
+        "Order none".to_string()
     }
 }
 

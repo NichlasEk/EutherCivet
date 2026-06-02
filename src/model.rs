@@ -490,6 +490,7 @@ pub struct ActionButton(pub Action);
 #[derive(Component, Clone, Copy)]
 pub struct DynamicButtonText(pub Action);
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 pub enum StatKind {
     Day,
