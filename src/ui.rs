@@ -686,27 +686,106 @@ fn is_active_group_action(action: Action, state: &GameState) -> bool {
 fn tr(state: &GameState, key: &'static str) -> &'static str {
     if state.language == Language::Swedish {
         match key {
-            "tagline" => "Rattvis kaffe. Tveksam optik.",
+            "tagline" => "Rättvis kaffe. Tveksam optik.",
             "suspicion" => "Misstanke",
-            "civets" => "Palmmardar",
+            "civets" => "Palmmårdar",
             "coffee" => "Kaffe",
             "care" => "Omsorg",
-            "field" => "Falt",
+            "field" => "Fält",
             "production" => "Produktion",
             "compliance" => "Papper",
             "upgrades" => "Byggen",
             "system" => "System",
-            "settings" => "Installningar",
+            "settings" => "Inställningar",
             "save" => "Spara",
             "load" => "Ladda",
             "plant_coffee" => "Plantera kaffe",
-            "harvest_fruit" => "Skorda frukt",
-            "feed_civets" => "Mata palmmardar",
-            "collect_beans" => "Samla bonor",
-            "sell_coffee" => "Salj kaffe",
+            "harvest_fruit" => "Skörda frukt",
+            "feed_civets" => "Mata palmmårdar",
+            "collect_beans" => "Samla bönor",
+            "sell_coffee" => "Sälj kaffe",
             "deliver_order" => "Leverera order",
             "show_paperwork" => "Visa papper",
-            "inventory" => "Inventariesack",
+            "inventory" => "Inventariesäck",
+            "needs_fruit" => "behöver frukt",
+            "use_beans_roaster" => "Använd bönor vid rostaren",
+            "close_sack" => "Stäng säcken",
+            "near_civets" => "nära palmmårdar",
+            "near_roastery" => "nära rosteriet",
+            "near_field" => "nära fältet",
+            "near_office" => "nära kontoret",
+            "walk_closer" => "gå närmare",
+            "offer_fruit" => "Erbjud frukt från säcken",
+            "beans_into_sack" => "Samla bönor i säcken",
+            "start_new_run" => "Starta ny omgång",
+            "speed" => "Hastighet",
+            "close" => "Stäng",
+            "hide_layout_guides" => "Dölj layoutguider",
+            "show_layout_guides" => "Visa layoutguider",
+            "feed_tray" => "Mata med fruktbricka",
+            "pet_gently" => "Klappa försiktigt",
+            "inspect_notes" => "Granska anteckningar",
+            "tiny_brush" => "Liten borste",
+            "ribbon_collar" => "Rosetthalsband",
+            "fruit_puzzle" => "Fruktpussel",
+            "built" => "byggt",
+            "final_report" => "Slutrapport",
+            "day" => "Dag",
+            "plants" => "Plantor",
+            "fruit" => "Frukt",
+            "feed" => "Foder",
+            "beans" => "Bönor",
+            "roast" => "Rostat",
+            "happy" => "Nöjda",
+            "rep" => "Rykte",
+            "paper" => "Papper",
+            "mail" => "Post",
+            "order" => "Order",
+            "offer" => "erbjudande",
+            "none" => "ingen",
+            "settings_language" => "Språk: Svenska",
+            "english" => "Engelska",
+            "swedish" => "Svenska",
+            "paperwork_inbox" => "Pappersinkorg",
+            "no_letters" => "Inga brev. Kontoret doftar svagt av frimärken.",
+            "operation_bitter_bean" => "Operation Bitter Bean",
+            "show_paperwork_btn" => "Visa papper",
+            "coffee_tasting" => "Erbjud kaffeprovning",
+            "blame_goat" => "Skyll på geten",
+            "begin_next_day" => "Börja nästa dag",
+            "view_final_verdict" => "Visa slutomdöme",
+            "load_save" => "Ladda sparfil",
+            "back_to_menu" => "Till huvudmeny",
+            "sanctuary" => "Fristad",
+            "coffee_field" => "Kaffefält",
+            "roastery" => "Rosteri",
+            "paperwork_office" => "Papperskontor",
+            "legal_office" => "Juridiskt kontor",
+            "caretaker" => "Djurskötare",
+            "fruit_sorter" => "Fruktsorterare",
+            "roasting_shed" => "Rostningsskjul",
+            "tasting_room" => "Provsmakningsrum",
+            "inspection_body" => {
+                "Myndigheterna gör razzia på plantagen i väntan på narkotika. De hittar kaffe, palmmårdar, extremt detaljerade papper och en misstänkt get."
+            }
+            "upkeep_charged" => "Drift debiterad",
+            "official_memo" => "Officiellt memo: alla bönor är fortfarande juridiskt bönor.",
+            "weekly_won" => "Veckoomdöme: Operativt legitimt",
+            "weekly_failed" => "Veckoomdöme: Styrelsen är oroad",
+            "archive_result" => {
+                "Arkivera resultatet, ladda en sparfil eller börja om med rena böcker."
+            }
+            "premium_contract" => "Premiumkontrakt för kaffe",
+            "accept_contract" => "Acceptera kontrakt",
+            "decline_politely" => "Avböj artigt",
+            "order_wants" => "vill ha",
+            "roasted_bags_by_day" => "rostade säckar till dag",
+            "payout" => "Utbetalning",
+            "reputation" => "rykte",
+            "legitimate_contract" => "Legitimt kontrakt. Ordet 'diskret' förekommer sju gånger.",
+            "mood" => "Humör",
+            "hunger" => "Hunger",
+            "favorite" => "Favorit",
             _ => key,
         }
     } else {
@@ -732,8 +811,98 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "deliver_order" => "Deliver order",
             "show_paperwork" => "Show paperwork",
             "inventory" => "Inventory sack",
+            "needs_fruit" => "needs fruit",
+            "use_beans_roaster" => "Use beans at roaster",
+            "close_sack" => "Close sack",
+            "near_civets" => "near civets",
+            "near_roastery" => "near roastery",
+            "near_field" => "near field",
+            "near_office" => "near office",
+            "walk_closer" => "walk closer",
+            "offer_fruit" => "Offer fruit from sack",
+            "beans_into_sack" => "Collect beans into sack",
+            "start_new_run" => "Start new run",
+            "speed" => "Speed",
+            "close" => "Close",
+            "hide_layout_guides" => "Hide layout guides",
+            "show_layout_guides" => "Show layout guides",
+            "feed_tray" => "Feed fruit tray",
+            "pet_gently" => "Pet gently",
+            "inspect_notes" => "Inspect notes",
+            "tiny_brush" => "Tiny brush",
+            "ribbon_collar" => "Ribbon collar",
+            "fruit_puzzle" => "Fruit puzzle",
+            "built" => "built",
+            "final_report" => "Final report",
+            "day" => "Day",
+            "plants" => "Plants",
+            "fruit" => "Fruit",
+            "feed" => "Feed",
+            "beans" => "Beans",
+            "roast" => "Roast",
+            "happy" => "Happy",
+            "rep" => "Rep",
+            "paper" => "Paper",
+            "mail" => "Mail",
+            "order" => "Order",
+            "offer" => "offer",
+            "none" => "none",
+            "settings_language" => "Language: English",
+            "english" => "English",
+            "swedish" => "Svenska",
+            "paperwork_inbox" => "Paperwork Inbox",
+            "no_letters" => "No letters. The office smells faintly of stamps.",
+            "operation_bitter_bean" => "Operation Bitter Bean",
+            "show_paperwork_btn" => "Show paperwork",
+            "coffee_tasting" => "Offer coffee tasting",
+            "blame_goat" => "Blame the goat",
+            "begin_next_day" => "Begin next day",
+            "view_final_verdict" => "View final verdict",
+            "load_save" => "Load save",
+            "back_to_menu" => "Back to menu",
+            "sanctuary" => "Sanctuary",
+            "coffee_field" => "Coffee Field",
+            "roastery" => "Roastery",
+            "paperwork_office" => "Paperwork Office",
+            "legal_office" => "Legal office",
+            "caretaker" => "Caretaker",
+            "fruit_sorter" => "Fruit sorter",
+            "roasting_shed" => "Roasting shed",
+            "tasting_room" => "Tasting room",
+            "inspection_body" => {
+                "Authorities raid the plantation expecting narcotics. They find coffee, civets, extremely detailed paperwork, and one suspicious goat."
+            }
+            "upkeep_charged" => "Upkeep charged",
+            "official_memo" => "Official memo: all beans remain legally beans.",
+            "weekly_won" => "Weekly Verdict: Operationally Legitimate",
+            "weekly_failed" => "Weekly Verdict: Board-Level Concern",
+            "archive_result" => {
+                "Archive the result, load a save, or begin again with clean ledgers."
+            }
+            "premium_contract" => "Premium Coffee Contract",
+            "accept_contract" => "Accept contract",
+            "decline_politely" => "Decline politely",
+            "order_wants" => "wants",
+            "roasted_bags_by_day" => "roasted bags by day",
+            "payout" => "Payout",
+            "reputation" => "reputation",
+            "legitimate_contract" => {
+                "Legitimate contract. The word 'discreet' appears seven times."
+            }
+            "mood" => "Mood",
+            "hunger" => "Hunger",
+            "favorite" => "Favorite",
             _ => key,
         }
+    }
+}
+
+fn room_tr(state: &GameState, room: PlantationRoom) -> &'static str {
+    match room {
+        PlantationRoom::Sanctuary => tr(state, "sanctuary"),
+        PlantationRoom::CoffeeField => tr(state, "coffee_field"),
+        PlantationRoom::Roastery => tr(state, "roastery"),
+        PlantationRoom::PaperworkOffice => tr(state, "paperwork_office"),
     }
 }
 
@@ -747,11 +916,15 @@ fn action_label(action: Action, state: &GameState) -> String {
                 state.coffee_plants as f32 * 1.6
             )
         }
-        Action::FeedCivets => format!("{} (needs fruit)", tr(state, "feed_civets")),
+        Action::FeedCivets => format!(
+            "{} ({})",
+            tr(state, "feed_civets"),
+            tr(state, "needs_fruit")
+        ),
         Action::CollectBeans => tr(state, "collect_beans").to_string(),
         Action::RoastCoffee => {
             let rate = if state.roasting_shed { "96%" } else { "82%" };
-            format!("Use beans at roaster ({rate})")
+            format!("{} ({rate})", tr(state, "use_beans_roaster"))
         }
         Action::SellCoffee => {
             let bonus = if state.tasting_room { "+ tasting" } else { "" };
@@ -760,18 +933,18 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::DeliverOrder => tr(state, "deliver_order").to_string(),
         Action::ToggleInventory => {
             let where_hint = if state.near_civets() {
-                "near civets"
+                tr(state, "near_civets")
             } else if state.near_roastery() {
-                "near roastery"
+                tr(state, "near_roastery")
             } else if state.near_field_workbench() {
-                "near field"
+                tr(state, "near_field")
             } else if state.near_paperwork_desk() {
-                "near office"
+                tr(state, "near_office")
             } else {
-                "walk closer"
+                tr(state, "walk_closer")
             };
             if state.inventory_open {
-                format!("Close sack ({where_hint})")
+                format!("{} ({where_hint})", tr(state, "close_sack"))
             } else {
                 format!(
                     "{} ({:.0} fruit, {:.1} beans, {where_hint})",
@@ -782,10 +955,14 @@ fn action_label(action: Action, state: &GameState) -> String {
             }
         }
         Action::GiveFruitFromInventory => {
-            format!("Offer fruit from sack ({:.0})", state.coffee_fruit)
+            format!("{} ({:.0})", tr(state, "offer_fruit"), state.coffee_fruit)
         }
         Action::PickUpBeansToInventory => {
-            format!("Collect beans into sack ({:.1})", state.processed_beans)
+            format!(
+                "{} ({:.1})",
+                tr(state, "beans_into_sack"),
+                state.processed_beans
+            )
         }
         Action::ImproveEnclosure => {
             format!(
@@ -801,38 +978,54 @@ fn action_label(action: Action, state: &GameState) -> String {
             };
             format!("{} (${cost})", tr(state, "show_paperwork"))
         }
-        Action::BuildLegalOffice => upgrade_label("Legal office", 110, state.legal_office),
-        Action::HireCaretaker => upgrade_label("Caretaker", 85, state.caretaker),
-        Action::BuildFruitSorter => upgrade_label("Fruit sorter", 95, state.fruit_sorter),
-        Action::BuildRoastingShed => upgrade_label("Roasting shed", 125, state.roasting_shed),
-        Action::BuildTastingRoom => upgrade_label("Tasting room", 140, state.tasting_room),
+        Action::BuildLegalOffice => upgrade_label(state, "legal_office", 110, state.legal_office),
+        Action::HireCaretaker => upgrade_label(state, "caretaker", 85, state.caretaker),
+        Action::BuildFruitSorter => upgrade_label(state, "fruit_sorter", 95, state.fruit_sorter),
+        Action::BuildRoastingShed => {
+            upgrade_label(state, "roasting_shed", 125, state.roasting_shed)
+        }
+        Action::BuildTastingRoom => upgrade_label(state, "tasting_room", 140, state.tasting_room),
         Action::Save => tr(state, "save").to_string(),
         Action::Load => tr(state, "load").to_string(),
-        Action::StartNewRun => "Start new run".to_string(),
-        Action::CycleTimeScale => format!("Speed {}", state.time_scale.label()),
+        Action::StartNewRun => tr(state, "start_new_run").to_string(),
+        Action::CycleTimeScale => format!("{} {}", tr(state, "speed"), state.time_scale.label()),
         Action::ShowSettings => tr(state, "settings").to_string(),
-        Action::CloseSettings => "Close".to_string(),
+        Action::CloseSettings => tr(state, "close").to_string(),
         Action::ToggleLayoutGuides => {
             if state.show_layout_guides {
-                "Hide layout guides".to_string()
+                tr(state, "hide_layout_guides").to_string()
             } else {
-                "Show layout guides".to_string()
+                tr(state, "show_layout_guides").to_string()
             }
         }
-        Action::SetLanguageEnglish => "English".to_string(),
-        Action::SetLanguageSwedish => "Svenska".to_string(),
-        Action::FeedSelectedCivet => "Feed fruit tray".to_string(),
-        Action::PetSelectedCivet => "Pet gently".to_string(),
-        Action::InspectSelectedCivet => "Inspect notes".to_string(),
-        Action::UseTinyBrush => "Tiny brush".to_string(),
-        Action::UseRibbonCollar => "Ribbon collar".to_string(),
-        Action::UseFruitPuzzle => "Fruit puzzle".to_string(),
-        Action::GoSanctuary => room_label("Sanctuary", PlantationRoom::Sanctuary, state),
-        Action::GoCoffeeField => room_label("Coffee Field", PlantationRoom::CoffeeField, state),
-        Action::GoRoastery => room_label("Roastery", PlantationRoom::Roastery, state),
-        Action::GoPaperworkOffice => {
-            room_label("Paperwork Office", PlantationRoom::PaperworkOffice, state)
-        }
+        Action::SetLanguageEnglish => tr(state, "english").to_string(),
+        Action::SetLanguageSwedish => tr(state, "swedish").to_string(),
+        Action::FeedSelectedCivet => tr(state, "feed_tray").to_string(),
+        Action::PetSelectedCivet => tr(state, "pet_gently").to_string(),
+        Action::InspectSelectedCivet => tr(state, "inspect_notes").to_string(),
+        Action::UseTinyBrush => tr(state, "tiny_brush").to_string(),
+        Action::UseRibbonCollar => tr(state, "ribbon_collar").to_string(),
+        Action::UseFruitPuzzle => tr(state, "fruit_puzzle").to_string(),
+        Action::GoSanctuary => room_label(
+            room_tr(state, PlantationRoom::Sanctuary),
+            PlantationRoom::Sanctuary,
+            state,
+        ),
+        Action::GoCoffeeField => room_label(
+            room_tr(state, PlantationRoom::CoffeeField),
+            PlantationRoom::CoffeeField,
+            state,
+        ),
+        Action::GoRoastery => room_label(
+            room_tr(state, PlantationRoom::Roastery),
+            PlantationRoom::Roastery,
+            state,
+        ),
+        Action::GoPaperworkOffice => room_label(
+            room_tr(state, PlantationRoom::PaperworkOffice),
+            PlantationRoom::PaperworkOffice,
+            state,
+        ),
         Action::ShowCareTools => group_label(tr(state, "care"), ToolGroup::Care, state),
         Action::ShowFieldTools => group_label(tr(state, "field"), ToolGroup::Field, state),
         Action::ShowProductionTools => {
@@ -863,9 +1056,10 @@ fn group_label(name: &str, group: ToolGroup, state: &GameState) -> String {
     }
 }
 
-fn upgrade_label(name: &str, cost: i32, bought: bool) -> String {
+fn upgrade_label(state: &GameState, key: &'static str, cost: i32, bought: bool) -> String {
+    let name = tr(state, key);
     if bought {
-        format!("{name} (built)")
+        format!("{name} ({})", tr(state, "built"))
     } else {
         format!("{name} (${cost})")
     }
@@ -939,35 +1133,71 @@ fn can_run(action: Action, state: &GameState) -> bool {
     }
 }
 
-fn unavailable_reason(action: Action, state: &GameState) -> &'static str {
-    match action {
-        Action::PlantCoffee => "Stand by the Coffee Field workbench with enough money.",
-        Action::HarvestFruit => "Stand by the Coffee Field plants.",
-        Action::FeedCivets => "Stand near the civets with coffee fruit.",
-        Action::CollectBeans => "Stand near the civet enclosure work area.",
-        Action::RoastCoffee => "Stand by the roaster with processed beans.",
-        Action::SellCoffee => "Stand by the roastery packing table with roasted coffee.",
-        Action::DeliverOrder if state.active_order.is_none() => "No active order to deliver.",
-        Action::DeliverOrder => "Not enough roasted coffee for the active order.",
-        Action::GiveFruitFromInventory => "Walk to the civets with coffee fruit in the sack.",
-        Action::PickUpBeansToInventory => "Walk to the civet enclosure work area.",
-        Action::ShowPaperwork => "Not enough money for paperwork.",
-        Action::ImproveEnclosure => "Not enough money for enclosure work.",
-        Action::BuildLegalOffice
-        | Action::HireCaretaker
-        | Action::BuildFruitSorter
-        | Action::BuildRoastingShed
-        | Action::BuildTastingRoom => "Upgrade is unavailable or already built.",
-        Action::FeedSelectedCivet if state.selected_civet.is_none() => "Select a civet first.",
-        Action::FeedSelectedCivet => "A personal fruit tray needs 2 coffee fruit.",
-        Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
-            "Select a civet first."
+fn unavailable_reason(action: Action, state: &GameState) -> String {
+    let text = if state.language == Language::Swedish {
+        match action {
+            Action::PlantCoffee => {
+                "Stå vid kaffefältets arbetsbord och ha tillräckligt med pengar."
+            }
+            Action::HarvestFruit => "Stå vid kaffefältets plantor.",
+            Action::FeedCivets => "Stå nära palmmårdarna med kaffefrukt.",
+            Action::CollectBeans => "Stå nära palmmårdarnas arbetsyta.",
+            Action::RoastCoffee => "Stå vid rostaren med processade bönor.",
+            Action::SellCoffee => "Stå vid rosteriets packbord med rostat kaffe.",
+            Action::DeliverOrder if state.active_order.is_none() => "Det finns ingen aktiv order.",
+            Action::DeliverOrder => "Det finns inte tillräckligt rostat kaffe för ordern.",
+            Action::GiveFruitFromInventory => "Gå till palmmårdarna med kaffefrukt i säcken.",
+            Action::PickUpBeansToInventory => "Gå till palmmårdarnas arbetsyta.",
+            Action::ShowPaperwork => "Det saknas pengar eller närhet till pappersdisken.",
+            Action::ImproveEnclosure => "Det saknas pengar för att förbättra hägnet.",
+            Action::BuildLegalOffice
+            | Action::HireCaretaker
+            | Action::BuildFruitSorter
+            | Action::BuildRoastingShed
+            | Action::BuildTastingRoom => "Bygget är inte tillgängligt eller redan klart.",
+            Action::FeedSelectedCivet if state.selected_civet.is_none() => {
+                "Välj en palmmård först."
+            }
+            Action::FeedSelectedCivet => "En personlig fruktbricka kräver 2 kaffefrukter.",
+            Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
+                "Välj en palmmård först."
+            }
+            Action::UseTinyBrush | Action::UseRibbonCollar | Action::UseFruitPuzzle => {
+                "Välj en palmmård först."
+            }
+            _ => "Den handlingen är inte tillgänglig just nu.",
         }
-        Action::UseTinyBrush | Action::UseRibbonCollar | Action::UseFruitPuzzle => {
-            "Select a civet first."
+    } else {
+        match action {
+            Action::PlantCoffee => "Stand by the Coffee Field workbench with enough money.",
+            Action::HarvestFruit => "Stand by the Coffee Field plants.",
+            Action::FeedCivets => "Stand near the civets with coffee fruit.",
+            Action::CollectBeans => "Stand near the civet enclosure work area.",
+            Action::RoastCoffee => "Stand by the roaster with processed beans.",
+            Action::SellCoffee => "Stand by the roastery packing table with roasted coffee.",
+            Action::DeliverOrder if state.active_order.is_none() => "No active order to deliver.",
+            Action::DeliverOrder => "Not enough roasted coffee for the active order.",
+            Action::GiveFruitFromInventory => "Walk to the civets with coffee fruit in the sack.",
+            Action::PickUpBeansToInventory => "Walk to the civet enclosure work area.",
+            Action::ShowPaperwork => "Not enough money for paperwork.",
+            Action::ImproveEnclosure => "Not enough money for enclosure work.",
+            Action::BuildLegalOffice
+            | Action::HireCaretaker
+            | Action::BuildFruitSorter
+            | Action::BuildRoastingShed
+            | Action::BuildTastingRoom => "Upgrade is unavailable or already built.",
+            Action::FeedSelectedCivet if state.selected_civet.is_none() => "Select a civet first.",
+            Action::FeedSelectedCivet => "A personal fruit tray needs 2 coffee fruit.",
+            Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
+                "Select a civet first."
+            }
+            Action::UseTinyBrush | Action::UseRibbonCollar | Action::UseFruitPuzzle => {
+                "Select a civet first."
+            }
+            _ => "That action is unavailable right now.",
         }
-        _ => "That action is unavailable right now.",
-    }
+    };
+    text.to_string()
 }
 
 fn game_clock_label(day_progress: f32) -> String {
@@ -992,9 +1222,9 @@ pub fn update_stats(
         let value = match stat.0 {
             StatKind::Day => {
                 if state.game_result.is_some() {
-                    "Final report".to_string()
+                    tr(&state, "final_report").to_string()
                 } else {
-                    format!("Day {}/7", state.day)
+                    format!("{} {}/7", tr(&state, "day"), state.day)
                 }
             }
             StatKind::Clock => format!(
@@ -1002,19 +1232,21 @@ pub fn update_stats(
                 game_clock_label(state.day_progress),
                 state.time_scale.label()
             ),
-            StatKind::Plants => format!("Plants {}", state.coffee_plants),
-            StatKind::Civets => format!("Civets {}", state.civets),
-            StatKind::Fruit => format!("Fruit {:.0}", state.coffee_fruit),
-            StatKind::Feed => format!("Feed {:.0}", state.civet_feed),
-            StatKind::Beans => format!("Beans {:.1}", state.processed_beans),
-            StatKind::Roasted => format!("Roast {:.1}", state.roasted_coffee),
+            StatKind::Plants => format!("{} {}", tr(&state, "plants"), state.coffee_plants),
+            StatKind::Civets => format!("{} {}", tr(&state, "civets"), state.civets),
+            StatKind::Fruit => format!("{} {:.0}", tr(&state, "fruit"), state.coffee_fruit),
+            StatKind::Feed => format!("{} {:.0}", tr(&state, "feed"), state.civet_feed),
+            StatKind::Beans => format!("{} {:.1}", tr(&state, "beans"), state.processed_beans),
+            StatKind::Roasted => format!("{} {:.1}", tr(&state, "roast"), state.roasted_coffee),
             StatKind::Money => format!("${}", state.money),
-            StatKind::Suspicion => format!("Susp {:.0}%", state.suspicion),
-            StatKind::Happiness => format!("Happy {:.0}%", state.civet_happiness),
-            StatKind::Reputation => format!("Rep {}", state.reputation),
-            StatKind::Paperwork => format!("Paper {}", state.paperwork_level),
+            StatKind::Suspicion => format!("{} {:.0}%", tr(&state, "suspicion"), state.suspicion),
+            StatKind::Happiness => format!("{} {:.0}%", tr(&state, "happy"), state.civet_happiness),
+            StatKind::Reputation => format!("{} {}", tr(&state, "rep"), state.reputation),
+            StatKind::Paperwork => format!("{} {}", tr(&state, "paper"), state.paperwork_level),
             StatKind::Mailbox => mailbox_summary(&state),
-            StatKind::Upgrades => format!("Upgrades: {}", upgrade_summary(&state)),
+            StatKind::Upgrades => {
+                format!("{}: {}", tr(&state, "upgrades"), upgrade_summary(&state))
+            }
             StatKind::Order => order_summary(&state),
         };
         **text = value;
@@ -1040,42 +1272,47 @@ fn mailbox_summary(state: &GameState) -> String {
         letters += 1;
     }
     if letters == 0 {
-        "Mail 0".to_string()
+        format!("{} 0", tr(state, "mail"))
     } else {
-        format!("Mail {letters}")
+        format!("{} {letters}", tr(state, "mail"))
     }
 }
 
 fn order_summary(state: &GameState) -> String {
     if let Some(order) = &state.active_order {
-        format!("Order {:.1} by d{}", order.bags, order.due_day)
+        format!(
+            "{} {:.1} d{}",
+            tr(state, "order"),
+            order.bags,
+            order.due_day
+        )
     } else if state.pending_order.is_some() {
-        "Order offer".to_string()
+        format!("{} {}", tr(state, "order"), tr(state, "offer"))
     } else {
-        "Order none".to_string()
+        format!("{} {}", tr(state, "order"), tr(state, "none"))
     }
 }
 
 fn upgrade_summary(state: &GameState) -> String {
     let mut names = Vec::new();
     if state.legal_office {
-        names.push("legal");
+        names.push(tr(state, "legal_office"));
     }
     if state.caretaker {
-        names.push("caretaker");
+        names.push(tr(state, "caretaker"));
     }
     if state.fruit_sorter {
-        names.push("sorter");
+        names.push(tr(state, "fruit_sorter"));
     }
     if state.roasting_shed {
-        names.push("roaster");
+        names.push(tr(state, "roasting_shed"));
     }
     if state.tasting_room {
-        names.push("tasting");
+        names.push(tr(state, "tasting_room"));
     }
 
     if names.is_empty() {
-        "none".to_string()
+        tr(state, "none").to_string()
     } else {
         names.join(", ")
     }
@@ -1207,7 +1444,7 @@ pub fn refresh_inspection_modal(
             ))
             .with_children(|modal| {
                 modal.spawn((
-                    Text::new("Operation Bitter Bean"),
+                    Text::new(tr(&state, "operation_bitter_bean")),
                     TextFont {
                         font_size: 36.0,
                         ..default()
@@ -1215,18 +1452,26 @@ pub fn refresh_inspection_modal(
                     TextColor(Color::srgb(1.0, 0.88, 0.56)),
                 ));
                 modal.spawn((
-                    Text::new(
-                        "Authorities raid the plantation expecting narcotics. They find coffee, civets, extremely detailed paperwork, and one suspicious goat.",
-                    ),
+                    Text::new(tr(&state, "inspection_body")),
                     TextFont {
                         font_size: 18.0,
                         ..default()
                     },
                     TextColor(Color::WHITE),
                 ));
-                spawn_button(modal, &skin, "Show paperwork", Action::InspectPaperwork);
-                spawn_button(modal, &skin, "Offer coffee tasting", Action::InspectTasting);
-                spawn_button(modal, &skin, "Blame the goat", Action::InspectGoat);
+                spawn_button(
+                    modal,
+                    &skin,
+                    tr(&state, "show_paperwork_btn"),
+                    Action::InspectPaperwork,
+                );
+                spawn_button(
+                    modal,
+                    &skin,
+                    tr(&state, "coffee_tasting"),
+                    Action::InspectTasting,
+                );
+                spawn_button(modal, &skin, tr(&state, "blame_goat"), Action::InspectGoat);
             });
     } else if !state.inspection && exists {
         for entity in &modal {
@@ -1305,8 +1550,10 @@ pub fn refresh_day_modal(
                     ));
                     modal.spawn((
                         Text::new(format!(
-                            "Upkeep charged: ${}. Official memo: all beans remain legally beans.",
-                            report.upkeep
+                            "{}: ${}. {}",
+                            tr(&state, "upkeep_charged"),
+                            report.upkeep,
+                            tr(&state, "official_memo")
                         )),
                         TextFont {
                             font_size: 15.0,
@@ -1316,19 +1563,27 @@ pub fn refresh_day_modal(
                     ));
 
                     if state.game_result.is_none() {
-                        spawn_button(modal, &skin, "Begin next day", Action::ContinueDay);
+                        spawn_button(
+                            modal,
+                            &skin,
+                            tr(&state, "begin_next_day"),
+                            Action::ContinueDay,
+                        );
                     } else {
-                        spawn_button(modal, &skin, "View final verdict", Action::ContinueDay);
+                        spawn_button(
+                            modal,
+                            &skin,
+                            tr(&state, "view_final_verdict"),
+                            Action::ContinueDay,
+                        );
                     }
                 } else if let Some(result) = &state.game_result {
                     let (title, body, color) = match result {
-                        GameResult::Won(body) => (
-                            "Weekly Verdict: Operationally Legitimate",
-                            body,
-                            Color::srgb(0.46, 1.0, 0.48),
-                        ),
+                        GameResult::Won(body) => {
+                            (tr(&state, "weekly_won"), body, Color::srgb(0.46, 1.0, 0.48))
+                        }
                         GameResult::Failed(body) => (
-                            "Weekly Verdict: Board-Level Concern",
+                            tr(&state, "weekly_failed"),
                             body,
                             Color::srgb(1.0, 0.26, 0.18),
                         ),
@@ -1350,18 +1605,21 @@ pub fn refresh_day_modal(
                         TextColor(Color::srgb(0.95, 0.91, 0.78)),
                     ));
                     modal.spawn((
-                        Text::new(
-                            "Archive the result, load a save, or begin again with clean ledgers.",
-                        ),
+                        Text::new(tr(&state, "archive_result")),
                         TextFont {
                             font_size: 15.0,
                             ..default()
                         },
                         TextColor(Color::srgb(0.78, 0.88, 0.70)),
                     ));
-                    spawn_button(modal, &skin, "Start new run", Action::StartNewRun);
-                    spawn_button(modal, &skin, "Load save", Action::Load);
-                    spawn_button(modal, &skin, "Back to menu", Action::BackToMenu);
+                    spawn_button(
+                        modal,
+                        &skin,
+                        tr(&state, "start_new_run"),
+                        Action::StartNewRun,
+                    );
+                    spawn_button(modal, &skin, tr(&state, "load_save"), Action::Load);
+                    spawn_button(modal, &skin, tr(&state, "back_to_menu"), Action::BackToMenu);
                 }
             });
     } else {
@@ -1404,7 +1662,7 @@ pub fn refresh_event_modal(
             ))
             .with_children(|modal| {
                 modal.spawn((
-                    Text::new("Paperwork Inbox"),
+                    Text::new(tr(&state, "paperwork_inbox")),
                     TextFont {
                         font_size: 24.0,
                         ..default()
@@ -1414,7 +1672,7 @@ pub fn refresh_event_modal(
 
                 if let Some(event) = state.event.as_ref() {
                     spawn_inbox_card(modal, &event.title, &event.body, |card| {
-                        let (a, b, c) = event_option_labels(event.kind);
+                        let (a, b, c) = event_option_labels(event.kind, state.language);
                         spawn_button(card, &skin, a, Action::EventOptionA);
                         spawn_button(card, &skin, b, Action::EventOptionB);
                         spawn_button(card, &skin, c, Action::EventOptionC);
@@ -1422,24 +1680,43 @@ pub fn refresh_event_modal(
                 }
 
                 if let Some(order) = state.pending_order.as_ref() {
-                    let body = format!(
-                        "{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\nLegitimate contract. The word 'discreet' appears seven times.",
-                        order.client,
-                        order.bags,
-                        order.due_day,
-                        order.payout,
-                        order.reputation_reward,
-                        order.suspicion_risk
-                    );
-                    spawn_inbox_card(modal, "Premium Coffee Contract", &body, |card| {
-                        spawn_button(card, &skin, "Accept contract", Action::AcceptOrder);
-                        spawn_button(card, &skin, "Decline politely", Action::DeclineOrder);
+                    let body = if state.language == Language::Swedish {
+                        format!(
+                            "{} {} {:.1} {} {}. {} ${}, {} +{}, {} +{:.1}%.\n{}",
+                            order.client,
+                            tr(&state, "order_wants"),
+                            order.bags,
+                            tr(&state, "roasted_bags_by_day"),
+                            order.due_day,
+                            tr(&state, "payout"),
+                            order.payout,
+                            tr(&state, "reputation"),
+                            order.reputation_reward,
+                            tr(&state, "suspicion"),
+                            order.suspicion_risk,
+                            tr(&state, "legitimate_contract")
+                        )
+                    } else {
+                        format!(
+                            "{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\n{}",
+                            order.client,
+                            order.bags,
+                            order.due_day,
+                            order.payout,
+                            order.reputation_reward,
+                            order.suspicion_risk,
+                            tr(&state, "legitimate_contract")
+                        )
+                    };
+                    spawn_inbox_card(modal, tr(&state, "premium_contract"), &body, |card| {
+                        spawn_button(card, &skin, tr(&state, "accept_contract"), Action::AcceptOrder);
+                        spawn_button(card, &skin, tr(&state, "decline_politely"), Action::DeclineOrder);
                     });
                 }
 
                 if state.event.is_none() && state.pending_order.is_none() {
                     modal.spawn((
-                        Text::new("No letters. The office smells faintly of stamps."),
+                        Text::new(tr(&state, "no_letters")),
                         TextFont {
                             font_size: 15.0,
                             ..default()
@@ -1543,17 +1820,14 @@ pub fn refresh_settings_modal(
             ))
             .with_children(|modal| {
                 modal.spawn((
-                    Text::new("Settings"),
+                    Text::new(tr(&state, "settings")),
                     TextFont {
                         font_size: 30.0,
                         ..default()
                     },
                     TextColor(Color::srgb(1.0, 0.84, 0.42)),
                 ));
-                let language = match state.language {
-                    Language::English => "Language: English",
-                    Language::Swedish => "Sprak: Svenska",
-                };
+                let language = tr(&state, "settings_language");
                 modal.spawn((
                     Text::new(language),
                     TextFont {
@@ -1562,15 +1836,25 @@ pub fn refresh_settings_modal(
                     },
                     TextColor(Color::srgb(0.94, 0.91, 0.75)),
                 ));
-                spawn_button(modal, &skin, "English", Action::SetLanguageEnglish);
-                spawn_button(modal, &skin, "Svenska", Action::SetLanguageSwedish);
+                spawn_button(
+                    modal,
+                    &skin,
+                    tr(&state, "english"),
+                    Action::SetLanguageEnglish,
+                );
+                spawn_button(
+                    modal,
+                    &skin,
+                    tr(&state, "swedish"),
+                    Action::SetLanguageSwedish,
+                );
                 let guide_label = if state.show_layout_guides {
-                    "Hide layout guides"
+                    tr(&state, "hide_layout_guides")
                 } else {
-                    "Show layout guides"
+                    tr(&state, "show_layout_guides")
                 };
                 spawn_button(modal, &skin, guide_label, Action::ToggleLayoutGuides);
-                spawn_button(modal, &skin, "Close", Action::CloseSettings);
+                spawn_button(modal, &skin, tr(&state, "close"), Action::CloseSettings);
             });
     } else if !should_show && exists {
         for entity in &modal {
@@ -1637,8 +1921,13 @@ pub fn refresh_animal_panel(
                 ));
                 panel.spawn((
                     Text::new(format!(
-                        "Mood {:.0}%  Hunger {:.0}%\nFavorite: {}",
-                        profile.mood, profile.hunger, profile.favorite_fruit
+                        "{} {:.0}%  {} {:.0}%\n{}: {}",
+                        tr(&state, "mood"),
+                        profile.mood,
+                        tr(&state, "hunger"),
+                        profile.hunger,
+                        tr(&state, "favorite"),
+                        profile.favorite_fruit
                     )),
                     TextFont {
                         font_size: 16.0,
@@ -1647,13 +1936,38 @@ pub fn refresh_animal_panel(
                     TextColor(Color::srgb(0.30, 0.20, 0.14)),
                 ));
 
-                spawn_button(panel, &skin, "Feed fruit tray", Action::FeedSelectedCivet);
-                spawn_button(panel, &skin, "Pet gently", Action::PetSelectedCivet);
-                spawn_button(panel, &skin, "Inspect notes", Action::InspectSelectedCivet);
-                spawn_button(panel, &skin, "Tiny brush", Action::UseTinyBrush);
-                spawn_button(panel, &skin, "Ribbon collar", Action::UseRibbonCollar);
-                spawn_button(panel, &skin, "Fruit puzzle", Action::UseFruitPuzzle);
-                spawn_button(panel, &skin, "Close", Action::CloseAnimalPanel);
+                spawn_button(
+                    panel,
+                    &skin,
+                    tr(&state, "feed_tray"),
+                    Action::FeedSelectedCivet,
+                );
+                spawn_button(
+                    panel,
+                    &skin,
+                    tr(&state, "pet_gently"),
+                    Action::PetSelectedCivet,
+                );
+                spawn_button(
+                    panel,
+                    &skin,
+                    tr(&state, "inspect_notes"),
+                    Action::InspectSelectedCivet,
+                );
+                spawn_button(panel, &skin, tr(&state, "tiny_brush"), Action::UseTinyBrush);
+                spawn_button(
+                    panel,
+                    &skin,
+                    tr(&state, "ribbon_collar"),
+                    Action::UseRibbonCollar,
+                );
+                spawn_button(
+                    panel,
+                    &skin,
+                    tr(&state, "fruit_puzzle"),
+                    Action::UseFruitPuzzle,
+                );
+                spawn_button(panel, &skin, tr(&state, "close"), Action::CloseAnimalPanel);
             });
     } else if !should_show && exists {
         for entity in &panel {
@@ -1700,8 +2014,8 @@ pub fn refresh_screen_modal(
                 ScreenModal,
             ))
             .with_children(|modal| match state.screen {
-                GameScreen::MainMenu => spawn_main_menu(modal, &skin),
-                GameScreen::Intro => spawn_intro(modal, &skin),
+                GameScreen::MainMenu => spawn_main_menu(modal, &skin, &state),
+                GameScreen::Intro => spawn_intro(modal, &skin, &state),
                 GameScreen::AnimalBook => spawn_animal_book(modal, &skin, &state),
                 GameScreen::Playing => {}
             });
@@ -1712,7 +2026,7 @@ pub fn refresh_screen_modal(
     }
 }
 
-fn spawn_main_menu(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets) {
+fn spawn_main_menu(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets, state: &GameState) {
     parent.spawn((
         Text::new("EutherCivet"),
         TextFont {
@@ -1722,21 +2036,56 @@ fn spawn_main_menu(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets) {
         TextColor(Color::srgb(0.25, 0.18, 0.11)),
     ));
     parent.spawn((
-        Text::new("A cute civet coffee sanctuary with excellent beans, soft paws, and extremely suspicious paperwork."),
+        Text::new(if state.language == Language::Swedish {
+            "En gullig palmmårdsfristad med utmärkt kaffe, mjuka tassar och extremt misstänkta papper."
+        } else {
+            "A cute civet coffee sanctuary with excellent beans, soft paws, and extremely suspicious paperwork."
+        }),
         TextFont {
             font_size: 19.0,
             ..default()
         },
         TextColor(Color::srgb(0.36, 0.23, 0.18)),
     ));
-    spawn_button(parent, skin, "Start plantation", Action::StartGame);
-    spawn_button(parent, skin, "What is this company?", Action::ShowIntro);
-    spawn_button(parent, skin, "Meet the animals", Action::ShowAnimalBook);
+    spawn_button(
+        parent,
+        skin,
+        if state.language == Language::Swedish {
+            "Starta plantagen"
+        } else {
+            "Start plantation"
+        },
+        Action::StartGame,
+    );
+    spawn_button(
+        parent,
+        skin,
+        if state.language == Language::Swedish {
+            "Vad är det här företaget?"
+        } else {
+            "What is this company?"
+        },
+        Action::ShowIntro,
+    );
+    spawn_button(
+        parent,
+        skin,
+        if state.language == Language::Swedish {
+            "Möt djuren"
+        } else {
+            "Meet the animals"
+        },
+        Action::ShowAnimalBook,
+    );
 }
 
-fn spawn_intro(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets) {
+fn spawn_intro(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets, state: &GameState) {
     parent.spawn((
-        Text::new("What EutherCivet Stands For"),
+        Text::new(if state.language == Language::Swedish {
+            "Vad EutherCivet står för"
+        } else {
+            "What EutherCivet Stands For"
+        }),
         TextFont {
             font_size: 36.0,
             ..default()
@@ -1744,9 +2093,11 @@ fn spawn_intro(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets) {
         TextColor(Color::srgb(0.25, 0.18, 0.11)),
     ));
     parent.spawn((
-        Text::new(
-            "You run a fair-trade palm civet coffee plantation. The mission is simple: grow coffee fruit, care for the animals, collect processed beans, roast premium coffee, and prove every day that a sweet wildlife sanctuary is not an international criminal enterprise.",
-        ),
+        Text::new(if state.language == Language::Swedish {
+            "Du driver en rättvis palmmårdskaffeplantage. Uppdraget är enkelt: odla kaffefrukt, ta hand om djuren, samla processade bönor, rosta premiumkaffe och bevisa varje dag att en söt djurfristad inte är ett internationellt brottssyndikat."
+        } else {
+            "You run a fair-trade palm civet coffee plantation. The mission is simple: grow coffee fruit, care for the animals, collect processed beans, roast premium coffee, and prove every day that a sweet wildlife sanctuary is not an international criminal enterprise."
+        }),
         TextFont {
             font_size: 18.0,
             ..default()
@@ -1754,23 +2105,47 @@ fn spawn_intro(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets) {
         TextColor(Color::srgb(0.36, 0.23, 0.18)),
     ));
     parent.spawn((
-        Text::new(
-            "The tone is gentle on the animals, dry about bureaucracy, and deadly serious about good coffee.",
-        ),
+        Text::new(if state.language == Language::Swedish {
+            "Tonen är varm mot djuren, torr mot byråkratin och blodigt allvarlig när det gäller gott kaffe."
+        } else {
+            "The tone is gentle on the animals, dry about bureaucracy, and deadly serious about good coffee."
+        }),
         TextFont {
             font_size: 17.0,
             ..default()
         },
         TextColor(Color::srgb(0.40, 0.28, 0.20)),
     ));
-    spawn_button(parent, skin, "Start plantation", Action::StartGame);
-    spawn_button(parent, skin, "Meet the animals", Action::ShowAnimalBook);
-    spawn_button(parent, skin, "Back to menu", Action::BackToMenu);
+    spawn_button(
+        parent,
+        skin,
+        if state.language == Language::Swedish {
+            "Starta plantagen"
+        } else {
+            "Start plantation"
+        },
+        Action::StartGame,
+    );
+    spawn_button(
+        parent,
+        skin,
+        if state.language == Language::Swedish {
+            "Möt djuren"
+        } else {
+            "Meet the animals"
+        },
+        Action::ShowAnimalBook,
+    );
+    spawn_button(parent, skin, tr(state, "back_to_menu"), Action::BackToMenu);
 }
 
 fn spawn_animal_book(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets, state: &GameState) {
     parent.spawn((
-        Text::new("Meet the Animals"),
+        Text::new(if state.language == Language::Swedish {
+            "Möt djuren"
+        } else {
+            "Meet the Animals"
+        }),
         TextFont {
             font_size: 36.0,
             ..default()
@@ -1785,8 +2160,15 @@ fn spawn_animal_book(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets, sta
     for profile in profiles.iter() {
         parent.spawn((
             Text::new(format!(
-                "{}: {}, favorite {}",
-                profile.name, profile.note, profile.favorite_fruit
+                "{}: {}, {} {}",
+                profile.name,
+                profile.note,
+                if state.language == Language::Swedish {
+                    "favorit"
+                } else {
+                    "favorite"
+                },
+                profile.favorite_fruit
             )),
             TextFont {
                 font_size: 20.0,
@@ -1796,48 +2178,105 @@ fn spawn_animal_book(parent: &mut ChildSpawnerCommands, skin: &UiSkinAssets, sta
         ));
     }
     parent.spawn((
-        Text::new("Binturong: sleeps like a board member. Goat: appears without portfolio."),
+        Text::new(if state.language == Language::Swedish {
+            "Binturong: sover som en styrelseledamot. Geten: dyker upp utan portfölj."
+        } else {
+            "Binturong: sleeps like a board member. Goat: appears without portfolio."
+        }),
         TextFont {
             font_size: 18.0,
             ..default()
         },
         TextColor(Color::srgb(0.40, 0.28, 0.20)),
     ));
-    spawn_button(parent, skin, "Start plantation", Action::StartGame);
-    spawn_button(parent, skin, "Company mission", Action::ShowIntro);
-    spawn_button(parent, skin, "Back to menu", Action::BackToMenu);
+    spawn_button(
+        parent,
+        skin,
+        if state.language == Language::Swedish {
+            "Starta plantagen"
+        } else {
+            "Start plantation"
+        },
+        Action::StartGame,
+    );
+    spawn_button(
+        parent,
+        skin,
+        if state.language == Language::Swedish {
+            "Företagets uppdrag"
+        } else {
+            "Company mission"
+        },
+        Action::ShowIntro,
+    );
+    spawn_button(parent, skin, tr(state, "back_to_menu"), Action::BackToMenu);
 }
 
-fn event_option_labels(kind: RandomEventKind) -> (&'static str, &'static str, &'static str) {
-    match kind {
-        RandomEventKind::PoliceVisit => (
-            "Show bean paperwork",
-            "Offer coffee tasting",
-            "Answer vaguely",
-        ),
-        RandomEventKind::JournalistQuestions => (
-            "Invite full civet tour",
-            "Control the tour route",
-            "No comment",
-        ),
-        RandomEventKind::WelfareInspection => (
-            "Buy enrichment now",
-            "Open every enclosure",
-            "Reschedule politely",
-        ),
-        RandomEventKind::HelicopterOverhead => {
-            ("Deploy coffee tarps", "Wave cheerfully", "Hide everyone")
+fn event_option_labels(
+    kind: RandomEventKind,
+    language: Language,
+) -> (&'static str, &'static str, &'static str) {
+    if language == Language::Swedish {
+        match kind {
+            RandomEventKind::PoliceVisit => {
+                ("Visa bönpapper", "Erbjud kaffeprovning", "Svara vagt")
+            }
+            RandomEventKind::JournalistQuestions => {
+                ("Bjud på hel rundtur", "Styr rundturen", "Ingen kommentar")
+            }
+            RandomEventKind::WelfareInspection => {
+                ("Köp berikning nu", "Öppna alla hägn", "Boka om artigt")
+            }
+            RandomEventKind::HelicopterOverhead => {
+                ("Lägg ut kaffepresenningar", "Vinka glatt", "Göm alla")
+            }
+            RandomEventKind::BinturongEscape => {
+                ("Anställ djurskötare", "Låt berömmelsen ske", "Skicka geten")
+            }
+            RandomEventKind::PickyCivet => (
+                "Servera bästa frukten",
+                "Importera bättre frukt",
+                "Insistera på att den duger",
+            ),
+            RandomEventKind::GoatAppearance => (
+                "Sätt geten på lönelistan",
+                "Ta bort geten diskret",
+                "Skyll på geten tidigt",
+            ),
         }
-        RandomEventKind::BinturongEscape => ("Hire caretaker", "Let fame happen", "Send the goat"),
-        RandomEventKind::PickyCivet => (
-            "Serve best fruit",
-            "Import better fruit",
-            "Insist it is fine",
-        ),
-        RandomEventKind::GoatAppearance => (
-            "Put goat on payroll",
-            "Remove goat quietly",
-            "Blame goat early",
-        ),
+    } else {
+        match kind {
+            RandomEventKind::PoliceVisit => (
+                "Show bean paperwork",
+                "Offer coffee tasting",
+                "Answer vaguely",
+            ),
+            RandomEventKind::JournalistQuestions => (
+                "Invite full civet tour",
+                "Control the tour route",
+                "No comment",
+            ),
+            RandomEventKind::WelfareInspection => (
+                "Buy enrichment now",
+                "Open every enclosure",
+                "Reschedule politely",
+            ),
+            RandomEventKind::HelicopterOverhead => {
+                ("Deploy coffee tarps", "Wave cheerfully", "Hide everyone")
+            }
+            RandomEventKind::BinturongEscape => {
+                ("Hire caretaker", "Let fame happen", "Send the goat")
+            }
+            RandomEventKind::PickyCivet => (
+                "Serve best fruit",
+                "Import better fruit",
+                "Insist it is fine",
+            ),
+            RandomEventKind::GoatAppearance => (
+                "Put goat on payroll",
+                "Remove goat quietly",
+                "Blame goat early",
+            ),
+        }
     }
 }

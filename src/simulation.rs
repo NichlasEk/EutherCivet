@@ -2,8 +2,16 @@ use bevy::prelude::*;
 
 use crate::model::{
     DayReport, DayTick, EventState, EventTick, GameResult, GameScreen, GameState, GameTick,
-    OrderOffer, OrderTick, RandomEventKind,
+    Language, OrderOffer, OrderTick, RandomEventKind,
 };
+
+fn t(state: &GameState, en: &'static str, sv: &'static str) -> &'static str {
+    if state.language == Language::Swedish {
+        sv
+    } else {
+        en
+    }
+}
 
 pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut<GameState>) {
     let delta = time.delta().mul_f32(state.time_scale.multiplier());
@@ -152,7 +160,12 @@ pub fn generate_order_offers(
         suspicion_risk,
         due_day,
     });
-    state.log_line("New mailbox letter: a premium buyer sends a contract.");
+    let message = t(
+        &state,
+        "New mailbox letter: a premium buyer sends a contract.",
+        "Nytt brev i postlådan: en premiumköpare skickar ett kontrakt.",
+    );
+    state.log_line(message);
 }
 
 fn settle_day(state: &mut GameState) -> DayReport {
@@ -210,7 +223,11 @@ fn settle_day(state: &mut GameState) -> DayReport {
         state.active_order = None;
         reputation_delta -= 3;
         suspicion_delta += 6.0;
-        state.log_line("Missed a premium order. The buyer files a complaint with adjectives.");
+        state.log_line(t(
+            state,
+            "Missed a premium order. The buyer files a complaint with adjectives.",
+            "Missade en premiumorder. Köparen lämnar ett klagomål med adjektiv.",
+        ));
     }
 
     if state
@@ -221,7 +238,11 @@ fn settle_day(state: &mut GameState) -> DayReport {
         state.pending_order = None;
         reputation_delta -= 1;
         suspicion_delta += 2.0;
-        state.log_line("An unopened contract expires in the mailbox. Mildly bad optics.");
+        state.log_line(t(
+            state,
+            "An unopened contract expires in the mailbox. Mildly bad optics.",
+            "Ett oöppnat kontrakt löper ut i postlådan. Milt dålig optik.",
+        ));
     }
 
     if state
@@ -233,14 +254,16 @@ fn settle_day(state: &mut GameState) -> DayReport {
             .event
             .as_ref()
             .map(|event| event.title.clone())
-            .unwrap_or_else(|| "Mailbox incident".to_string());
+            .unwrap_or_else(|| t(state, "Mailbox incident", "Postlådeincident").to_string());
         state.event = None;
         reputation_delta -= 1;
         suspicion_delta += 2.5;
         state.civet_happiness -= 1.5;
-        state.log_line(format!(
-            "{title} times out in the mailbox. The world keeps spinning."
-        ));
+        state.log_line(if state.language == Language::Swedish {
+            format!("{title} löper ut i postlådan. Världen fortsätter snurra.")
+        } else {
+            format!("{title} times out in the mailbox. The world keeps spinning.")
+        });
     }
 
     state.reputation += reputation_delta;
@@ -248,47 +271,98 @@ fn settle_day(state: &mut GameState) -> DayReport {
     state.clamp();
 
     let title = if state.suspicion >= 85.0 {
-        "Daily Report: Everyone Is Being Very Calm".to_string()
+        t(
+            state,
+            "Daily Report: Everyone Is Being Very Calm",
+            "Dagsrapport: Alla är väldigt lugna",
+        )
+        .to_string()
     } else if state.civet_happiness < 40.0 {
-        "Daily Report: Civet Morale Committee Convenes".to_string()
+        t(
+            state,
+            "Daily Report: Civet Morale Committee Convenes",
+            "Dagsrapport: Palmmårdarnas moralkommitté sammanträder",
+        )
+        .to_string()
     } else if state.daily_sales >= 120 {
-        "Daily Report: Premium Beans, Premium Questions".to_string()
+        t(
+            state,
+            "Daily Report: Premium Beans, Premium Questions",
+            "Dagsrapport: Premiumbönor, premiumfrågor",
+        )
+        .to_string()
     } else {
-        "Daily Report: Boring Coffee, Dramatic Shadows".to_string()
+        t(
+            state,
+            "Daily Report: Boring Coffee, Dramatic Shadows",
+            "Dagsrapport: Tråkigt kaffe, dramatiska skuggor",
+        )
+        .to_string()
     };
 
-    let summary = format!(
-        "Sales ${}. Operating costs ${}. Reputation {:+}. Suspicion {:+.1}%.",
-        state.daily_sales, state.daily_expenses, reputation_delta, suspicion_delta
-    );
+    let summary = if state.language == Language::Swedish {
+        format!(
+            "Försäljning ${}. Driftkostnader ${}. Rykte {:+}. Misstanke {:+.1}%.",
+            state.daily_sales, state.daily_expenses, reputation_delta, suspicion_delta
+        )
+    } else {
+        format!(
+            "Sales ${}. Operating costs ${}. Reputation {:+}. Suspicion {:+.1}%.",
+            state.daily_sales, state.daily_expenses, reputation_delta, suspicion_delta
+        )
+    };
 
-    state.log_line(format!(
-        "End of day {day}: sales ${}, costs ${}, reputation {:+}, suspicion {:+.1}%.",
-        state.daily_sales, state.daily_expenses, reputation_delta, suspicion_delta
-    ));
+    state.log_line(if state.language == Language::Swedish {
+        format!(
+            "Slut på dag {day}: försäljning ${}, kostnader ${}, rykte {:+}, misstanke {:+.1}%.",
+            state.daily_sales, state.daily_expenses, reputation_delta, suspicion_delta
+        )
+    } else {
+        format!(
+            "End of day {day}: sales ${}, costs ${}, reputation {:+}, suspicion {:+.1}%.",
+            state.daily_sales, state.daily_expenses, reputation_delta, suspicion_delta
+        )
+    });
 
     state.daily_sales = 0;
     state.daily_expenses = 0;
 
     if state.money < -80 {
         state.game_result = Some(GameResult::Failed(
-            "The plantation collapses under debt. The goat denies fiduciary responsibility."
-                .to_string(),
+            t(
+                state,
+                "The plantation collapses under debt. The goat denies fiduciary responsibility.",
+                "Plantagen kollapsar under skulder. Geten förnekar ekonomiskt ansvar.",
+            )
+            .to_string(),
         ));
     } else if state.reputation <= -8 {
         state.game_result = Some(GameResult::Failed(
-            "Reputation bottoms out. Reviewers describe the coffee as 'procedurally concerning'."
-                .to_string(),
+            t(
+                state,
+                "Reputation bottoms out. Reviewers describe the coffee as 'procedurally concerning'.",
+                "Ryktet bottnar. Recensenter beskriver kaffet som 'procedurmässigt oroande'.",
+            )
+            .to_string(),
         ));
     } else if day >= 7 {
         if state.money >= 320 && state.reputation >= 18 && state.suspicion < 80.0 {
             state.game_result = Some(GameResult::Won(
-                "Seven days survived: profitable, reputable, and only moderately surveilled."
-                    .to_string(),
+                t(
+                    state,
+                    "Seven days survived: profitable, reputable, and only moderately surveilled.",
+                    "Sju dagar överlevda: lönsamt, ansett och bara måttligt övervakat.",
+                )
+                .to_string(),
             ));
         } else {
             state.game_result = Some(GameResult::Failed(
-                "Seven days pass, but the board calls the result 'not yet investable'.".to_string(),
+                t(
+                    state,
+                    "Seven days pass, but the board calls the result 'not yet investable'.",
+                    "Sju dagar går, men styrelsen kallar resultatet 'ännu inte investerbart'.",
+                )
+                .to_string(),
             ));
         }
     } else {
@@ -333,47 +407,90 @@ pub fn trigger_random_events(
 
     state.event = Some(EventState {
         kind,
-        title: event_title(kind).to_string(),
-        body: event_body(kind).to_string(),
+        title: event_title(kind, state.language).to_string(),
+        body: event_body(kind, state.language).to_string(),
         due_day: (state.day + 2).min(7),
     });
-    state.log_line("New mailbox letter: an incident needs attention in the office.");
+    let message = t(
+        &state,
+        "New mailbox letter: an incident needs attention in the office.",
+        "Nytt brev i postlådan: en incident kräver uppmärksamhet på kontoret.",
+    );
+    state.log_line(message);
 }
 
-fn event_title(kind: RandomEventKind) -> &'static str {
-    match kind {
-        RandomEventKind::PoliceVisit => "Local Police Visit",
-        RandomEventKind::JournalistQuestions => "Journalist Asks Questions",
-        RandomEventKind::WelfareInspection => "Animal Welfare Inspection",
-        RandomEventKind::HelicopterOverhead => "Helicopter Overhead",
-        RandomEventKind::BinturongEscape => "Binturong Escape",
-        RandomEventKind::PickyCivet => "Civet Refuses Fruit",
-        RandomEventKind::GoatAppearance => "Unscheduled Goat",
+fn event_title(kind: RandomEventKind, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match kind {
+            RandomEventKind::PoliceVisit => "Lokalt polisbesök",
+            RandomEventKind::JournalistQuestions => "Journalist ställer frågor",
+            RandomEventKind::WelfareInspection => "Djurskyddsinspektion",
+            RandomEventKind::HelicopterOverhead => "Helikopter ovanför",
+            RandomEventKind::BinturongEscape => "Binturong rymmer",
+            RandomEventKind::PickyCivet => "Palmmård vägrar frukt",
+            RandomEventKind::GoatAppearance => "Oplanerad get",
+        }
+    } else {
+        match kind {
+            RandomEventKind::PoliceVisit => "Local Police Visit",
+            RandomEventKind::JournalistQuestions => "Journalist Asks Questions",
+            RandomEventKind::WelfareInspection => "Animal Welfare Inspection",
+            RandomEventKind::HelicopterOverhead => "Helicopter Overhead",
+            RandomEventKind::BinturongEscape => "Binturong Escape",
+            RandomEventKind::PickyCivet => "Civet Refuses Fruit",
+            RandomEventKind::GoatAppearance => "Unscheduled Goat",
+        }
     }
 }
 
-fn event_body(kind: RandomEventKind) -> &'static str {
-    match kind {
-        RandomEventKind::PoliceVisit => {
-            "Two officers arrive to ask why the legal coffee estate has a perimeter plan and mirrored sunglasses."
+fn event_body(kind: RandomEventKind, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match kind {
+            RandomEventKind::PoliceVisit => {
+                "Två poliser kommer för att fråga varför den lagliga kaffeegendomen har perimeterplan och spegelsolglasögon."
+            }
+            RandomEventKind::JournalistQuestions => {
+                "En reporter vill ha rundtur, citat och en rimlig förklaring till uttrycket 'bönkedja för ansvar'."
+            }
+            RandomEventKind::WelfareInspection => {
+                "En djurskyddsinspektör har skrivplatta, bra skor och mycket specifika krav på palmmårdsberikning."
+            }
+            RandomEventKind::HelicopterOverhead => {
+                "En helikopter cirklar lågt nog för att läsa kaffesäckarna och uttala 'palmmård' fel på radion."
+            }
+            RandomEventKind::BinturongEscape => {
+                "Binturongen lämnar hägnet med en aktieägares tysta självförtroende."
+            }
+            RandomEventKind::PickyCivet => {
+                "En palmmård avvisar dagens frukturval och håller ögonkontakt med alla ansvariga."
+            }
+            RandomEventKind::GoatAppearance => {
+                "En get dyker upp i pappersrummet. Ingen anställde den. Ingen kan bevisa motsatsen."
+            }
         }
-        RandomEventKind::JournalistQuestions => {
-            "A reporter wants a tour, a quote, and a plausible explanation for the phrase 'bean chain of custody'."
-        }
-        RandomEventKind::WelfareInspection => {
-            "An animal welfare inspector has a clipboard, good shoes, and very specific civet enrichment expectations."
-        }
-        RandomEventKind::HelicopterOverhead => {
-            "A helicopter circles low enough to read the coffee bags and mispronounce 'civet' on the radio."
-        }
-        RandomEventKind::BinturongEscape => {
-            "The binturong exits its enclosure with the quiet confidence of a shareholder."
-        }
-        RandomEventKind::PickyCivet => {
-            "A civet rejects today's fruit selection and makes eye contact with everyone responsible."
-        }
-        RandomEventKind::GoatAppearance => {
-            "A goat appears inside the paperwork room. No one hired it. No one can prove that."
+    } else {
+        match kind {
+            RandomEventKind::PoliceVisit => {
+                "Two officers arrive to ask why the legal coffee estate has a perimeter plan and mirrored sunglasses."
+            }
+            RandomEventKind::JournalistQuestions => {
+                "A reporter wants a tour, a quote, and a plausible explanation for the phrase 'bean chain of custody'."
+            }
+            RandomEventKind::WelfareInspection => {
+                "An animal welfare inspector has a clipboard, good shoes, and very specific civet enrichment expectations."
+            }
+            RandomEventKind::HelicopterOverhead => {
+                "A helicopter circles low enough to read the coffee bags and mispronounce 'civet' on the radio."
+            }
+            RandomEventKind::BinturongEscape => {
+                "The binturong exits its enclosure with the quiet confidence of a shareholder."
+            }
+            RandomEventKind::PickyCivet => {
+                "A civet rejects today's fruit selection and makes eye contact with everyone responsible."
+            }
+            RandomEventKind::GoatAppearance => {
+                "A goat appears inside the paperwork room. No one hired it. No one can prove that."
+            }
         }
     }
 }

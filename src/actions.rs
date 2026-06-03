@@ -1,5 +1,31 @@
 use crate::model::{Action, GameState, Language, PlantationRoom, RandomEventKind, ToolGroup};
 
+fn t(state: &GameState, en: &'static str, sv: &'static str) -> &'static str {
+    if state.language == Language::Swedish {
+        sv
+    } else {
+        en
+    }
+}
+
+fn room_label(room: PlantationRoom, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match room {
+            PlantationRoom::Sanctuary => "Fristaden",
+            PlantationRoom::CoffeeField => "Kaffefältet",
+            PlantationRoom::Roastery => "Rosteriet",
+            PlantationRoom::PaperworkOffice => "Papperskontoret",
+        }
+    } else {
+        match room {
+            PlantationRoom::Sanctuary => "Sanctuary",
+            PlantationRoom::CoffeeField => "Coffee Field",
+            PlantationRoom::Roastery => "Roastery",
+            PlantationRoom::PaperworkOffice => "Paperwork Office",
+        }
+    }
+}
+
 pub fn run_action(state: &mut GameState, action: Action) {
     match action {
         Action::StartGame => {
@@ -11,9 +37,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.time_scale = time_scale;
             }
             state.screen = crate::model::GameScreen::Playing;
-            state.log_line(
+            state.log_line(t(
+                state,
                 "The plantation opens for business. Everyone looks adorable and audited.",
-            );
+                "Plantagen öppnar. Alla ser bedårande och granskade ut.",
+            ));
             return;
         }
         Action::StartNewRun => {
@@ -23,7 +51,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
             state.language = language;
             state.time_scale = time_scale;
             state.screen = crate::model::GameScreen::Playing;
-            state.log_line("New run started. The paperwork is blank and already judgemental.");
+            state.log_line(t(
+                state,
+                "New run started. The paperwork is blank and already judgemental.",
+                "Ny omgång startad. Pappersarbetet är tomt och redan dömande.",
+            ));
             return;
         }
         Action::ShowIntro => {
@@ -61,7 +93,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
     if matches!(action, Action::ContinueDay) {
         state.day_report = None;
         if state.game_result.is_none() {
-            state.log_line(format!("Day {} begins. The ledgers look awake.", state.day));
+            state.log_line(if state.language == Language::Swedish {
+                format!("Dag {} börjar. Böckerna ser vakna ut.", state.day)
+            } else {
+                format!("Day {} begins. The ledgers look awake.", state.day)
+            });
         }
         return;
     }
@@ -75,7 +111,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         if let Some(loaded) = GameState::load() {
             *state = loaded;
         } else {
-            state.log_line("No save file found.");
+            state.log_line(t(state, "No save file found.", "Ingen sparfil hittades."));
         }
         return;
     }
@@ -83,44 +119,68 @@ pub fn run_action(state: &mut GameState, action: Action) {
     if matches!(action, Action::CloseAnimalPanel) {
         state.selected_civet = None;
         state.dirty_visuals = true;
-        state.log_line("Animal care clipboard closed.");
+        state.log_line(t(
+            state,
+            "Animal care clipboard closed.",
+            "Djurskötselblocket stängdes.",
+        ));
         return;
     }
 
     if matches!(action, Action::ToggleInventory) {
         state.inventory_open = !state.inventory_open;
         state.log_line(if state.inventory_open {
-            "Inventory sack opens into a bottom tray."
+            t(
+                state,
+                "Inventory sack opens into a bottom tray.",
+                "Inventariesäcken öppnas till en bottenbricka.",
+            )
         } else {
-            "Inventory tray folds back into a coffee sack."
+            t(
+                state,
+                "Inventory tray folds back into a coffee sack.",
+                "Inventariebrickan viks tillbaka till en kaffesäck.",
+            )
         });
         return;
     }
 
     if matches!(action, Action::CycleTimeScale) {
         state.time_scale = state.time_scale.next();
-        state.log_line(format!("Time speed set to {}.", state.time_scale.label()));
+        state.log_line(if state.language == Language::Swedish {
+            format!("Tidshastighet satt till {}.", state.time_scale.label())
+        } else {
+            format!("Time speed set to {}.", state.time_scale.label())
+        });
         return;
     }
 
     match action {
         Action::ShowSettings => {
             state.settings_open = true;
-            state.log_line("Settings notebook opened.");
+            state.log_line(t(
+                state,
+                "Settings notebook opened.",
+                "Inställningsboken öppnades.",
+            ));
             return;
         }
         Action::CloseSettings => {
             state.settings_open = false;
-            state.log_line("Settings notebook closed.");
+            state.log_line(t(
+                state,
+                "Settings notebook closed.",
+                "Inställningsboken stängdes.",
+            ));
             return;
         }
         Action::ToggleLayoutGuides => {
             state.show_layout_guides = !state.show_layout_guides;
             state.dirty_visuals = true;
             state.log_line(if state.show_layout_guides {
-                "Layout guides enabled."
+                t(state, "Layout guides enabled.", "Layoutguider aktiverade.")
             } else {
-                "Layout guides hidden."
+                t(state, "Layout guides hidden.", "Layoutguider dolda.")
             });
             return;
         }
@@ -133,7 +193,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::SetLanguageSwedish => {
             state.language = Language::Swedish;
             state.settings_open = false;
-            state.log_line("Sprak satt till svenska.");
+            state.log_line("Språk satt till svenska.");
             return;
         }
         _ => {}
@@ -153,7 +213,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
     }
 
     if state.day_report.is_some() || state.game_result.is_some() {
-        state.log_line("The day report is waiting for acknowledgement.");
+        state.log_line(t(
+            state,
+            "The day report is waiting for acknowledgement.",
+            "Dagsrapporten väntar på kvittens.",
+        ));
         return;
     }
 
@@ -165,7 +229,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.suspicion -= reduction;
                 state.reputation += 3;
                 state.inspection = false;
-                state.log_line("Authorities read the paperwork and become visibly tired.");
+                state.log_line(t(
+                    state,
+                    "Authorities read the paperwork and become visibly tired.",
+                    "Myndigheterna läser pappren och blir synbart trötta.",
+                ));
             }
             Action::InspectTasting => {
                 if state.roasted_coffee >= 4.0 {
@@ -173,15 +241,19 @@ pub fn run_action(state: &mut GameState, action: Action) {
                     state.suspicion -= 34.0;
                     state.reputation += 6;
                     state.money -= 8;
-                    state.log_line(
+                    state.log_line(t(
+                        state,
                         "Coffee tasting successful. One inspector detects notes of panic.",
-                    );
+                        "Kaffeprovningen lyckas. En inspektör anar toner av panik.",
+                    ));
                 } else {
                     state.suspicion -= 12.0;
                     state.reputation -= 2;
-                    state.log_line(
+                    state.log_line(t(
+                        state,
                         "There was not enough roasted coffee. The tasting was mostly spoons.",
-                    );
+                        "Det fanns inte nog rostat kaffe. Provningen bestod mest av skedar.",
+                    ));
                 }
                 state.inspection = false;
             }
@@ -192,9 +264,17 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.goat_present = false;
                 state.inspection = false;
                 state.dirty_visuals = true;
-                state.log_line("The goat accepts no blame but leaves under legal advice.");
+                state.log_line(t(
+                    state,
+                    "The goat accepts no blame but leaves under legal advice.",
+                    "Geten tar ingen skuld men lämnar platsen efter juridisk rådgivning.",
+                ));
             }
-            _ => state.log_line("Normal work is paused during Operation Bitter Bean."),
+            _ => state.log_line(t(
+                state,
+                "Normal work is paused during Operation Bitter Bean.",
+                "Normalt arbete är pausat under Operation Bitter Bean.",
+            )),
         }
         state.clamp();
         return;
@@ -206,12 +286,18 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.money -= 14;
                 state.coffee_plants += 1;
                 state.suspicion += if state.coffee_plants > 18 { 3.5 } else { 1.2 };
-                state.log_line(
+                state.log_line(t(
+                    state,
                     "A coffee shrub is planted in a formation lawyers called unfortunate.",
-                );
+                    "En kaffebuske planteras i en formation juristerna kallade olycklig.",
+                ));
                 state.dirty_visuals = true;
             } else {
-                state.log_line("Not enough money for another coffee plant.");
+                state.log_line(t(
+                    state,
+                    "Not enough money for another coffee plant.",
+                    "Inte nog pengar för ännu en kaffeplanta.",
+                ));
             }
         }
         Action::HarvestFruit => {
@@ -219,7 +305,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
             state.coffee_fruit += gained;
             state.civet_happiness -= 0.8;
             state.dirty_visuals = true;
-            state.log_line(format!("Harvested {gained:.0} coffee fruit."));
+            state.log_line(if state.language == Language::Swedish {
+                format!("Skördade {gained:.0} kaffefrukter.")
+            } else {
+                format!("Harvested {gained:.0} coffee fruit.")
+            });
         }
         Action::FeedCivets => {
             let wanted = state.civets as f32 * 5.0;
@@ -231,11 +321,19 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.civet_happiness += 8.0 + sorter_bonus + fed * 0.25;
                 state.suspicion -= 1.0;
                 state.dirty_visuals = true;
-                state.log_line("Civets receive fruit. Morale improves. Optics remain complex.");
+                state.log_line(t(
+                    state,
+                    "Civets receive fruit. Morale improves. Optics remain complex.",
+                    "Palmmårdarna får frukt. Moralen stiger. Optiken förblir komplex.",
+                ));
             } else {
                 state.civet_happiness -= 5.0;
                 state.suspicion += 3.0;
-                state.log_line("No fruit to feed the civets. They file a silent complaint.");
+                state.log_line(t(
+                    state,
+                    "No fruit to feed the civets. They file a silent complaint.",
+                    "Ingen frukt att mata palmmårdarna med. De lämnar ett tyst klagomål.",
+                ));
             }
         }
         Action::CollectBeans => {
@@ -243,9 +341,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
             state.processed_beans += found;
             state.suspicion += 0.7;
             state.dirty_visuals = true;
-            state.log_line(format!(
-                "Collected {found:.1} processed beans from the civet area."
-            ));
+            state.log_line(if state.language == Language::Swedish {
+                format!("Samlade {found:.1} processade bönor från palmmårdsområdet.")
+            } else {
+                format!("Collected {found:.1} processed beans from the civet area.")
+            });
         }
         Action::RoastCoffee => {
             let batch = state.processed_beans.min(8.0);
@@ -256,9 +356,17 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.money -= if state.roasting_shed { 1 } else { 2 };
                 state.suspicion += if state.roasting_shed { 0.4 } else { 0.8 };
                 state.dirty_visuals = true;
-                state.log_line("Roasted a premium batch. Smoke plume described as theatrical.");
+                state.log_line(t(
+                    state,
+                    "Roasted a premium batch. Smoke plume described as theatrical.",
+                    "Rostade en premiumsats. Rökplymen beskrivs som teatralisk.",
+                ));
             } else {
-                state.log_line("Not enough processed beans to roast.");
+                state.log_line(t(
+                    state,
+                    "Not enough processed beans to roast.",
+                    "Inte nog processade bönor att rosta.",
+                ));
             }
         }
         Action::SellCoffee => {
@@ -277,11 +385,17 @@ pub fn run_action(state: &mut GameState, action: Action) {
                     1.2
                 };
                 state.dirty_visuals = true;
-                state.log_line(format!(
-                    "Sold {sold:.1} bags of civet coffee for ${earned}."
-                ));
+                state.log_line(if state.language == Language::Swedish {
+                    format!("Sålde {sold:.1} säckar palmmårdskaffe för ${earned}.")
+                } else {
+                    format!("Sold {sold:.1} bags of civet coffee for ${earned}.")
+                });
             } else {
-                state.log_line("No roasted coffee ready to sell.");
+                state.log_line(t(
+                    state,
+                    "No roasted coffee ready to sell.",
+                    "Inget rostat kaffe redo att säljas.",
+                ));
             }
         }
         Action::DeliverOrder => deliver_order(state),
@@ -306,9 +420,17 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.civet_happiness += 18.0;
                 state.suspicion -= 8.0;
                 state.reputation += 2;
-                state.log_line("Enclosure improved. Inspectors dislike how wholesome it is.");
+                state.log_line(t(
+                    state,
+                    "Enclosure improved. Inspectors dislike how wholesome it is.",
+                    "Hägnet förbättrades. Inspektörerna ogillar hur hälsosamt det ser ut.",
+                ));
             } else {
-                state.log_line(format!("Enclosure upgrade needs ${cost}."));
+                state.log_line(if state.language == Language::Swedish {
+                    format!("Hägnuppgraderingen kräver ${cost}.")
+                } else {
+                    format!("Enclosure upgrade needs ${cost}.")
+                });
             }
         }
         Action::ShowPaperwork => {
@@ -325,11 +447,17 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.suspicion -= 18.0 + legal_bonus + state.paperwork_level as f32;
                 state.reputation += 1;
                 state.dirty_visuals = true;
-                state.log_line(
+                state.log_line(t(
+                    state,
                     "Presented receipts, permits, civet dental charts, and bean custody forms.",
-                );
+                    "Visade kvitton, tillstånd, tanddiagram för palmmårdar och bönkedjeformulär.",
+                ));
             } else {
-                state.log_line("Not enough money to print the paperwork annex.");
+                state.log_line(t(
+                    state,
+                    "Not enough money to print the paperwork annex.",
+                    "Inte nog pengar för att skriva ut pappersbilagan.",
+                ));
             }
         }
         Action::BuildLegalOffice => buy_upgrade(
@@ -338,6 +466,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
             |state| state.legal_office,
             |state| state.legal_office = true,
             "Built Legal Office. Suspicion now has to wait in reception.",
+            "Byggde juridiskt kontor. Misstanken måste nu vänta i receptionen.",
         ),
         Action::HireCaretaker => buy_upgrade(
             state,
@@ -345,6 +474,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
             |state| state.caretaker,
             |state| state.caretaker = true,
             "Hired caretaker. Civets receive professional attention and fewer dramatic sighs.",
+            "Anställde djurskötare. Palmmårdarna får professionell omsorg och färre dramatiska suckar.",
         ),
         Action::BuildFruitSorter => buy_upgrade(
             state,
@@ -352,6 +482,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
             |state| state.fruit_sorter,
             |state| state.fruit_sorter = true,
             "Installed fruit sorter. Low-quality fruit is now rejected before the civets can judge you.",
+            "Installerade fruktsorterare. Dålig frukt avvisas nu innan palmmårdarna kan döma dig.",
         ),
         Action::BuildRoastingShed => buy_upgrade(
             state,
@@ -359,6 +490,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
             |state| state.roasting_shed,
             |state| state.roasting_shed = true,
             "Built roasting shed. Smoke is now artisanal instead of incriminating.",
+            "Byggde rostningsskjul. Röken är nu hantverksmässig i stället för belastande.",
         ),
         Action::BuildTastingRoom => buy_upgrade(
             state,
@@ -366,13 +498,14 @@ pub fn run_action(state: &mut GameState, action: Action) {
             |state| state.tasting_room,
             |state| state.tasting_room = true,
             "Opened tasting room. Guests pay extra to misunderstand the business in person.",
+            "Öppnade provsmakningsrum. Gäster betalar extra för att missförstå verksamheten på plats.",
         ),
         Action::Save => state.save(),
         Action::Load => {
             if let Some(loaded) = GameState::load() {
                 *state = loaded;
             } else {
-                state.log_line("No save file found.");
+                state.log_line(t(state, "No save file found.", "Ingen sparfil hittades."));
             }
         }
         Action::InspectPaperwork | Action::InspectTasting | Action::InspectGoat => {}
@@ -411,11 +544,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
 }
 
 fn switch_room(state: &mut GameState, action: Action) {
-    let (room, label) = match action {
-        Action::GoSanctuary => (PlantationRoom::Sanctuary, "Sanctuary"),
-        Action::GoCoffeeField => (PlantationRoom::CoffeeField, "Coffee Field"),
-        Action::GoRoastery => (PlantationRoom::Roastery, "Roastery"),
-        Action::GoPaperworkOffice => (PlantationRoom::PaperworkOffice, "Paperwork Office"),
+    let room = match action {
+        Action::GoSanctuary => PlantationRoom::Sanctuary,
+        Action::GoCoffeeField => PlantationRoom::CoffeeField,
+        Action::GoRoastery => PlantationRoom::Roastery,
+        Action::GoPaperworkOffice => PlantationRoom::PaperworkOffice,
         _ => return,
     };
 
@@ -432,7 +565,12 @@ fn switch_room(state: &mut GameState, action: Action) {
         state.selected_civet = None;
     }
     state.dirty_visuals = true;
-    state.log_line(format!("Moved to {label}. Everything is still legal."));
+    let label = room_label(room, state.language);
+    state.log_line(if state.language == Language::Swedish {
+        format!("Flyttade till {label}. Allt är fortfarande lagligt.")
+    } else {
+        format!("Moved to {label}. Everything is still legal.")
+    });
 }
 
 fn switch_tool_group(state: &mut GameState, action: Action) {
@@ -456,10 +594,17 @@ pub fn select_civet_by_index(state: &mut GameState, index: usize) {
 
     state.selected_civet = Some(index);
     let profile = &state.civet_profiles[index];
-    state.log_line(format!(
-        "{} trots over. Mood {:.0}%, hunger {:.0}%.",
-        profile.name, profile.mood, profile.hunger
-    ));
+    state.log_line(if state.language == Language::Swedish {
+        format!(
+            "{} tassar fram. Humör {:.0}%, hunger {:.0}%.",
+            profile.name, profile.mood, profile.hunger
+        )
+    } else {
+        format!(
+            "{} trots over. Mood {:.0}%, hunger {:.0}%.",
+            profile.name, profile.mood, profile.hunger
+        )
+    });
 }
 
 fn selected_civet_index(state: &mut GameState) -> Option<usize> {
@@ -470,14 +615,18 @@ fn selected_civet_index(state: &mut GameState) -> Option<usize> {
 
 fn feed_selected_civet(state: &mut GameState) {
     let Some(index) = selected_civet_index(state) else {
-        state.log_line("Select a civet first.");
+        state.log_line(t(state, "Select a civet first.", "Välj en palmmård först."));
         return;
     };
 
     if state.coffee_fruit < 2.0 {
         state.civet_happiness -= 2.0;
         state.suspicion += 1.2;
-        state.log_line("Not enough coffee fruit for a personal snack tray.");
+        state.log_line(t(
+            state,
+            "Not enough coffee fruit for a personal snack tray.",
+            "Inte nog kaffefrukt för en personlig snackbricka.",
+        ));
         state.clamp();
         return;
     }
@@ -491,23 +640,37 @@ fn feed_selected_civet(state: &mut GameState) {
     state.civet_happiness += 4.0;
     state.suspicion -= 0.8;
     state.dirty_visuals = true;
-    state.log_line(format!(
-        "{name} gets a hand-picked fruit tray and approves with grave professionalism."
-    ));
+    state.log_line(if state.language == Language::Swedish {
+        format!("{name} får en handplockad fruktbricka och godkänner den med gravallvarlig professionalism.")
+    } else {
+        format!("{name} gets a hand-picked fruit tray and approves with grave professionalism.")
+    });
     state.clamp();
 }
 
 fn give_fruit_from_inventory(state: &mut GameState) {
     if state.current_room != PlantationRoom::Sanctuary {
-        state.log_line("Bring the coffee fruit to the Sanctuary first.");
+        state.log_line(t(
+            state,
+            "Bring the coffee fruit to the Sanctuary first.",
+            "Ta kaffefrukten till fristaden först.",
+        ));
         return;
     }
     if state.coffee_fruit < 1.0 {
-        state.log_line("No coffee fruit in the inventory sack.");
+        state.log_line(t(
+            state,
+            "No coffee fruit in the inventory sack.",
+            "Ingen kaffefrukt i inventariesäcken.",
+        ));
         return;
     }
     if !state.near_civets() {
-        state.log_line("Walk closer to the civets before offering fruit.");
+        state.log_line(t(
+            state,
+            "Walk closer to the civets before offering fruit.",
+            "Gå närmare palmmårdarna innan du erbjuder frukt.",
+        ));
         return;
     }
 
@@ -527,19 +690,29 @@ fn give_fruit_from_inventory(state: &mut GameState) {
     state.civet_happiness += 2.0;
     state.suspicion -= 0.3;
     state.dirty_visuals = true;
-    state.log_line(format!(
-        "{name} takes a coffee fruit from your inventory tray."
-    ));
+    state.log_line(if state.language == Language::Swedish {
+        format!("{name} tar en kaffefrukt från inventariebrickan.")
+    } else {
+        format!("{name} takes a coffee fruit from your inventory tray.")
+    });
     state.clamp();
 }
 
 fn pick_up_beans_to_inventory(state: &mut GameState) {
     if state.current_room != PlantationRoom::Sanctuary {
-        state.log_line("Processed beans are collected near the civets.");
+        state.log_line(t(
+            state,
+            "Processed beans are collected near the civets.",
+            "Processade bönor samlas nära palmmårdarna.",
+        ));
         return;
     }
     if !state.near_civets() {
-        state.log_line("Walk into the enclosure work area before picking up beans.");
+        state.log_line(t(
+            state,
+            "Walk into the enclosure work area before picking up beans.",
+            "Gå in i hägnets arbetsyta innan du plockar upp bönor.",
+        ));
         return;
     }
 
@@ -547,15 +720,17 @@ fn pick_up_beans_to_inventory(state: &mut GameState) {
     state.processed_beans += found;
     state.suspicion += 0.4;
     state.dirty_visuals = true;
-    state.log_line(format!(
-        "Picked up {found:.1} processed beans and tucked them into the inventory sack."
-    ));
+    state.log_line(if state.language == Language::Swedish {
+        format!("Plockade upp {found:.1} processade bönor och stoppade dem i inventariesäcken.")
+    } else {
+        format!("Picked up {found:.1} processed beans and tucked them into the inventory sack.")
+    });
     state.clamp();
 }
 
 fn pet_selected_civet(state: &mut GameState) {
     let Some(index) = selected_civet_index(state) else {
-        state.log_line("Select a civet first.");
+        state.log_line(t(state, "Select a civet first.", "Välj en palmmård först."));
         return;
     };
 
@@ -567,33 +742,48 @@ fn pet_selected_civet(state: &mut GameState) {
     state.reputation += 1;
     state.suspicion -= 0.4;
     state.dirty_visuals = true;
-    state.log_line(format!(
-        "{name} receives sanctuary-grade attention. This is excellent press, if anyone asks."
-    ));
+    state.log_line(if state.language == Language::Swedish {
+        format!("{name} får omsorg i fristadsklass. Det här är utmärkt PR, om någon frågar.")
+    } else {
+        format!(
+            "{name} receives sanctuary-grade attention. This is excellent press, if anyone asks."
+        )
+    });
     state.clamp();
 }
 
 fn inspect_selected_civet(state: &mut GameState) {
     let Some(index) = selected_civet_index(state) else {
-        state.log_line("Select a civet first.");
+        state.log_line(t(state, "Select a civet first.", "Välj en palmmård först."));
         return;
     };
 
     let profile = &state.civet_profiles[index];
-    state.log_line(format!(
-        "{}: favorite {}, mood {:.0}%, hunger {:.0}%. Note: {}.",
-        profile.name, profile.favorite_fruit, profile.mood, profile.hunger, profile.note
-    ));
+    state.log_line(if state.language == Language::Swedish {
+        format!(
+            "{}: favorit {}, humör {:.0}%, hunger {:.0}%. Anteckning: {}.",
+            profile.name, profile.favorite_fruit, profile.mood, profile.hunger, profile.note
+        )
+    } else {
+        format!(
+            "{}: favorite {}, mood {:.0}%, hunger {:.0}%. Note: {}.",
+            profile.name, profile.favorite_fruit, profile.mood, profile.hunger, profile.note
+        )
+    });
 }
 
 fn use_inventory_item(state: &mut GameState, item: crate::model::InventoryItem) {
     let Some(index) = selected_civet_index(state) else {
-        state.log_line("Select a civet first.");
+        state.log_line(t(state, "Select a civet first.", "Välj en palmmård först."));
         return;
     };
 
     if !state.inventory.contains(&item) {
-        state.log_line("That item is not in the sanctuary basket.");
+        state.log_line(t(
+            state,
+            "That item is not in the sanctuary basket.",
+            "Det föremålet finns inte i fristadskorgen.",
+        ));
         return;
     }
 
@@ -605,26 +795,32 @@ fn use_inventory_item(state: &mut GameState, item: crate::model::InventoryItem) 
             profile.hunger += 0.5;
             state.civet_happiness += 2.0;
             state.reputation += 1;
-            state.log_line(format!(
-                "{name} gets brushed. The fur situation becomes investor-ready."
-            ));
+            state.log_line(if state.language == Language::Swedish {
+                format!("{name} blir borstad. Pälsläget blir investerarklart.")
+            } else {
+                format!("{name} gets brushed. The fur situation becomes investor-ready.")
+            });
         }
         crate::model::InventoryItem::RibbonCollar => {
             profile.mood += 5.0;
             state.civet_happiness += 1.5;
             state.suspicion -= 0.7;
-            state.log_line(format!(
-                "{name} tries a ribbon collar and looks extremely non-cartel."
-            ));
+            state.log_line(if state.language == Language::Swedish {
+                format!("{name} provar ett rosetthalsband och ser extremt icke-kartell ut.")
+            } else {
+                format!("{name} tries a ribbon collar and looks extremely non-cartel.")
+            });
         }
         crate::model::InventoryItem::FruitPuzzle => {
             profile.mood += 8.0;
             profile.hunger -= 4.0;
             state.civet_happiness += 2.5;
             state.suspicion -= 0.4;
-            state.log_line(format!(
-                "{name} works on a fruit puzzle with tiny, serious paws."
-            ));
+            state.log_line(if state.language == Language::Swedish {
+                format!("{name} arbetar med ett fruktpussel med små, seriösa tassar.")
+            } else {
+                format!("{name} works on a fruit puzzle with tiny, serious paws.")
+            });
         }
     }
 
@@ -634,24 +830,42 @@ fn use_inventory_item(state: &mut GameState, item: crate::model::InventoryItem) 
 
 fn resolve_pending_order(state: &mut GameState, action: Action) {
     let Some(order) = state.pending_order.take() else {
-        state.log_line("No premium order is waiting.");
+        state.log_line(t(
+            state,
+            "No premium order is waiting.",
+            "Ingen premiumorder väntar.",
+        ));
         return;
     };
 
     match action {
         Action::AcceptOrder => {
-            state.log_line(format!(
-                "Accepted order from {}: {:.1} bags due day {}.",
-                order.client, order.bags, order.due_day
-            ));
+            state.log_line(if state.language == Language::Swedish {
+                format!(
+                    "Accepterade order från {}: {:.1} säckar till dag {}.",
+                    order.client, order.bags, order.due_day
+                )
+            } else {
+                format!(
+                    "Accepted order from {}: {:.1} bags due day {}.",
+                    order.client, order.bags, order.due_day
+                )
+            });
             state.active_order = Some(order);
             state.suspicion += 1.5;
         }
         Action::DeclineOrder => {
-            state.log_line(format!(
-                "Declined {}. The contract used too many quiet adjectives.",
-                order.client
-            ));
+            state.log_line(if state.language == Language::Swedish {
+                format!(
+                    "Avböjde {}. Kontraktet använde för många lågmälda adjektiv.",
+                    order.client
+                )
+            } else {
+                format!(
+                    "Declined {}. The contract used too many quiet adjectives.",
+                    order.client
+                )
+            });
             state.reputation -= 1;
             state.suspicion -= 1.5;
         }
@@ -662,15 +876,26 @@ fn resolve_pending_order(state: &mut GameState, action: Action) {
 
 fn deliver_order(state: &mut GameState) {
     let Some(order) = state.active_order.clone() else {
-        state.log_line("No active premium order to deliver.");
+        state.log_line(t(
+            state,
+            "No active premium order to deliver.",
+            "Ingen aktiv premiumorder att leverera.",
+        ));
         return;
     };
 
     if state.roasted_coffee < order.bags {
-        state.log_line(format!(
-            "Order needs {:.1} roasted bags. Current stock is {:.1}.",
-            order.bags, state.roasted_coffee
-        ));
+        state.log_line(if state.language == Language::Swedish {
+            format!(
+                "Ordern kräver {:.1} rostade säckar. Nuvarande lager är {:.1}.",
+                order.bags, state.roasted_coffee
+            )
+        } else {
+            format!(
+                "Order needs {:.1} roasted bags. Current stock is {:.1}.",
+                order.bags, state.roasted_coffee
+            )
+        });
         return;
     }
 
@@ -681,10 +906,17 @@ fn deliver_order(state: &mut GameState) {
     let legal_reduction = if state.legal_office { 1.5 } else { 0.0 };
     state.suspicion += (order.suspicion_risk - legal_reduction).max(0.5);
     state.active_order = None;
-    state.log_line(format!(
-        "Delivered premium order to {} for ${}.",
-        order.client, order.payout
-    ));
+    state.log_line(if state.language == Language::Swedish {
+        format!(
+            "Levererade premiumorder till {} för ${}.",
+            order.client, order.payout
+        )
+    } else {
+        format!(
+            "Delivered premium order to {} for ${}.",
+            order.client, order.payout
+        )
+    });
     state.clamp();
 }
 
@@ -693,14 +925,23 @@ fn buy_upgrade(
     cost: i32,
     already_bought: impl Fn(&GameState) -> bool,
     apply: impl Fn(&mut GameState),
-    message: &'static str,
+    message_en: &'static str,
+    message_sv: &'static str,
 ) {
     if already_bought(state) {
-        state.log_line("That upgrade is already in place.");
+        state.log_line(t(
+            state,
+            "That upgrade is already in place.",
+            "Den uppgraderingen är redan på plats.",
+        ));
         return;
     }
     if state.money < cost {
-        state.log_line(format!("Upgrade needs ${cost}."));
+        state.log_line(if state.language == Language::Swedish {
+            format!("Uppgraderingen kräver ${cost}.")
+        } else {
+            format!("Upgrade needs ${cost}.")
+        });
         return;
     }
 
@@ -710,12 +951,16 @@ fn buy_upgrade(
     state.reputation += 1;
     apply(state);
     state.dirty_visuals = true;
-    state.log_line(message);
+    state.log_line(t(state, message_en, message_sv));
 }
 
 fn resolve_event(state: &mut GameState, action: Action) {
     let Some(event) = state.event.take() else {
-        state.log_line("No event is waiting for a decision.");
+        state.log_line(t(
+            state,
+            "No event is waiting for a decision.",
+            "Ingen händelse väntar på beslut.",
+        ));
         return;
     };
 
@@ -724,37 +969,59 @@ fn resolve_event(state: &mut GameState, action: Action) {
             state.money -= 14;
             state.suspicion -= 13.0 + state.paperwork_level as f32 * 1.5;
             state.reputation += 1;
-            state.log_line("Police accept the paperwork and leave with a laminated bean diagram.");
+            state.log_line(t(
+                state,
+                "Police accept the paperwork and leave with a laminated bean diagram.",
+                "Polisen godtar pappren och går med ett laminerat böndiagram.",
+            ));
         }
         (RandomEventKind::PoliceVisit, Action::EventOptionB) => {
             state.roasted_coffee = (state.roasted_coffee - 2.0).max(0.0);
             state.suspicion -= 8.0;
             state.reputation += 2;
-            state.log_line("Officers attend a tasting and downgrade the threat to 'nutty finish'.");
+            state.log_line(t(
+                state,
+                "Officers attend a tasting and downgrade the threat to 'nutty finish'.",
+                "Poliserna deltar i en provning och nedgraderar hotet till 'nötig eftersmak'.",
+            ));
         }
         (RandomEventKind::PoliceVisit, Action::EventOptionC) => {
             state.suspicion += 9.0;
             state.reputation -= 2;
-            state
-                .log_line("You answer evasively. The officers write 'too much coffee confidence'.");
+            state.log_line(t(
+                state,
+                "You answer evasively. The officers write 'too much coffee confidence'.",
+                "Du svarar undvikande. Poliserna skriver 'för mycket kaffesjälvförtroende'.",
+            ));
         }
 
         (RandomEventKind::JournalistQuestions, Action::EventOptionA) => {
             state.reputation += 4;
             state.suspicion += 4.0;
-            state
-                .log_line("The journalist loves the civets. The headline still uses 'mysterious'.");
+            state.log_line(t(
+                state,
+                "The journalist loves the civets. The headline still uses 'mysterious'.",
+                "Journalisten älskar palmmårdarna. Rubriken använder ändå 'mystiskt'.",
+            ));
         }
         (RandomEventKind::JournalistQuestions, Action::EventOptionB) => {
             state.money -= 20;
             state.suspicion -= 9.0;
             state.reputation += 1;
-            state.log_line("You give a controlled tour. Every label says 'coffee' twice.");
+            state.log_line(t(
+                state,
+                "You give a controlled tour. Every label says 'coffee' twice.",
+                "Du ger en kontrollerad rundtur. Varje etikett säger 'kaffe' två gånger.",
+            ));
         }
         (RandomEventKind::JournalistQuestions, Action::EventOptionC) => {
             state.suspicion += 12.0;
             state.reputation -= 3;
-            state.log_line("No comment becomes the story. The goat is photographed in profile.");
+            state.log_line(t(
+                state,
+                "No comment becomes the story. The goat is photographed in profile.",
+                "Ingen kommentar blir själva nyheten. Geten fotograferas i profil.",
+            ));
         }
 
         (RandomEventKind::WelfareInspection, Action::EventOptionA) => {
@@ -762,46 +1029,67 @@ fn resolve_event(state: &mut GameState, action: Action) {
             state.civet_happiness += 12.0;
             state.reputation += 3;
             state.suspicion -= 5.0;
-            state.log_line(
+            state.log_line(t(
+                state,
                 "Emergency enrichment deployed. Civets receive excellent tiny furniture.",
-            );
+                "Akut berikning sätts in. Palmmårdarna får utmärkta små möbler.",
+            ));
         }
         (RandomEventKind::WelfareInspection, Action::EventOptionB) => {
             if state.civet_happiness >= 60.0 {
                 state.reputation += 4;
                 state.suspicion -= 7.0;
-                state.log_line("Inspection passes. Civets look professionally satisfied.");
+                state.log_line(t(
+                    state,
+                    "Inspection passes. Civets look professionally satisfied.",
+                    "Inspektionen godkänns. Palmmårdarna ser professionellt nöjda ut.",
+                ));
             } else {
                 state.reputation -= 4;
                 state.suspicion += 10.0;
-                state.log_line(
+                state.log_line(t(
+                    state,
                     "Inspection finds disappointed civets and suspiciously tidy excuses.",
-                );
+                    "Inspektionen hittar besvikna palmmårdar och misstänkt prydliga ursäkter.",
+                ));
             }
         }
         (RandomEventKind::WelfareInspection, Action::EventOptionC) => {
             state.money -= 10;
             state.reputation -= 1;
             state.suspicion += 2.0;
-            state.log_line("You reschedule. It works, but the clipboard remembers.");
+            state.log_line(t(
+                state,
+                "You reschedule. It works, but the clipboard remembers.",
+                "Du bokar om. Det fungerar, men skrivplattan minns.",
+            ));
         }
 
         (RandomEventKind::HelicopterOverhead, Action::EventOptionA) => {
             state.suspicion -= 7.0;
             state.money -= 12;
-            state.log_line(
+            state.log_line(t(
+                state,
                 "Reflective coffee tarps deployed. Perfectly normal agricultural behavior.",
-            );
+                "Reflekterande kaffepresenningar läggs ut. Fullt normalt jordbruksbeteende.",
+            ));
         }
         (RandomEventKind::HelicopterOverhead, Action::EventOptionB) => {
             state.reputation += 2;
             state.suspicion += 5.0;
-            state.log_line("You wave cheerfully. This is either innocence or advanced theater.");
+            state.log_line(t(
+                state,
+                "You wave cheerfully. This is either innocence or advanced theater.",
+                "Du vinkar glatt. Det är antingen oskuld eller avancerad teater.",
+            ));
         }
         (RandomEventKind::HelicopterOverhead, Action::EventOptionC) => {
             state.suspicion += 13.0;
-            state
-                .log_line("Everyone hides. The helicopter learns nothing and suspects everything.");
+            state.log_line(t(
+                state,
+                "Everyone hides. The helicopter learns nothing and suspects everything.",
+                "Alla gömmer sig. Helikoptern lär sig inget och misstänker allt.",
+            ));
         }
 
         (RandomEventKind::BinturongEscape, Action::EventOptionA) => {
@@ -809,20 +1097,32 @@ fn resolve_event(state: &mut GameState, action: Action) {
             state.binturong_home = true;
             state.civet_happiness += 3.0;
             state.suspicion -= 4.0;
-            state.log_line("A caretaker retrieves the binturong with snacks and quiet bargaining.");
+            state.log_line(t(
+                state,
+                "A caretaker retrieves the binturong with snacks and quiet bargaining.",
+                "En djurskötare hämtar binturongen med snacks och lågmäld förhandling.",
+            ));
         }
         (RandomEventKind::BinturongEscape, Action::EventOptionB) => {
             state.binturong_home = false;
             state.reputation += 1;
             state.suspicion += 7.0;
-            state.log_line("The binturong becomes a local celebrity and a regulatory problem.");
+            state.log_line(t(
+                state,
+                "The binturong becomes a local celebrity and a regulatory problem.",
+                "Binturongen blir lokal kändis och ett regelverksproblem.",
+            ));
         }
         (RandomEventKind::BinturongEscape, Action::EventOptionC) => {
             state.goat_present = true;
             state.binturong_home = true;
             state.reputation -= 1;
             state.suspicion += 3.0;
-            state.log_line("The goat is sent as negotiator. Nobody understands why it works.");
+            state.log_line(t(
+                state,
+                "The goat is sent as negotiator. Nobody understands why it works.",
+                "Geten skickas som förhandlare. Ingen förstår varför det fungerar.",
+            ));
         }
 
         (RandomEventKind::PickyCivet, Action::EventOptionA) => {
@@ -830,38 +1130,62 @@ fn resolve_event(state: &mut GameState, action: Action) {
             state.coffee_fruit -= spent;
             state.civet_happiness += 10.0;
             state.reputation += 1;
-            state.log_line("Only the best fruit is served. The civet accepts tribute.");
+            state.log_line(t(
+                state,
+                "Only the best fruit is served. The civet accepts tribute.",
+                "Bara den bästa frukten serveras. Palmmården accepterar tributet.",
+            ));
         }
         (RandomEventKind::PickyCivet, Action::EventOptionB) => {
             state.money -= 18;
             state.civet_happiness += 8.0;
             state.suspicion -= 2.0;
-            state.log_line("Imported fruit arrives with more documentation than the staff.");
+            state.log_line(t(
+                state,
+                "Imported fruit arrives with more documentation than the staff.",
+                "Importerad frukt anländer med mer dokumentation än personalen.",
+            ));
         }
         (RandomEventKind::PickyCivet, Action::EventOptionC) => {
             state.civet_happiness -= 9.0;
             state.suspicion += 4.0;
             state.reputation -= 1;
-            state.log_line("You insist the fruit is fine. The civet disagrees in silence.");
+            state.log_line(t(
+                state,
+                "You insist the fruit is fine. The civet disagrees in silence.",
+                "Du insisterar på att frukten duger. Palmmården håller tyst medvetet.",
+            ));
         }
 
         (RandomEventKind::GoatAppearance, Action::EventOptionA) => {
             state.goat_present = true;
             state.suspicion += 2.0;
             state.reputation += 1;
-            state.log_line("The goat is listed as unpaid compliance intern.");
+            state.log_line(t(
+                state,
+                "The goat is listed as unpaid compliance intern.",
+                "Geten listas som obetald compliance-praktikant.",
+            ));
         }
         (RandomEventKind::GoatAppearance, Action::EventOptionB) => {
             state.goat_present = false;
             state.money -= 9;
             state.suspicion -= 4.0;
-            state.log_line("The goat is escorted off-site by a very serious courier.");
+            state.log_line(t(
+                state,
+                "The goat is escorted off-site by a very serious courier.",
+                "Geten eskorteras bort av ett mycket allvarligt bud.",
+            ));
         }
         (RandomEventKind::GoatAppearance, Action::EventOptionC) => {
             state.goat_present = true;
             state.suspicion -= 2.0;
             state.civet_happiness += 2.0;
-            state.log_line("You blame the goat preemptively. Oddly, morale improves.");
+            state.log_line(t(
+                state,
+                "You blame the goat preemptively. Oddly, morale improves.",
+                "Du skyller förebyggande på geten. Märkligt nog förbättras moralen.",
+            ));
         }
         _ => {}
     }

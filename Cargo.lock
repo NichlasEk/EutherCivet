@@ -2329,6 +2329,7 @@ dependencies = [
  "bevy",
  "serde",
  "serde_json",
+ "sys-locale",
 ]
 
 [[package]]

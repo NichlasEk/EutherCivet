@@ -370,7 +370,14 @@ fn walk_to_room(state: &mut GameState, room: PlantationRoom, player_x: f32) {
     clamp_player_to_floor(state);
     state.selected_civet = None;
     state.dirty_visuals = true;
-    state.log_line(format!("Walked to {}.", room_name(room)));
+    if state.language == crate::model::Language::Swedish {
+        state.log_line(format!(
+            "Gick till {}.",
+            room_name_lang(room, state.language)
+        ));
+    } else {
+        state.log_line(format!("Walked to {}.", room_name(room)));
+    }
 }
 
 fn exit_left(room: PlantationRoom) -> PlantationRoom {
@@ -397,6 +404,87 @@ fn room_name(room: PlantationRoom) -> &'static str {
         PlantationRoom::CoffeeField => "Coffee Field",
         PlantationRoom::Roastery => "Roastery",
         PlantationRoom::PaperworkOffice => "Paperwork Office",
+    }
+}
+
+fn room_name_lang(room: PlantationRoom, language: crate::model::Language) -> &'static str {
+    if language == crate::model::Language::Swedish {
+        match room {
+            PlantationRoom::Sanctuary => "Fristad",
+            PlantationRoom::CoffeeField => "Kaffefält",
+            PlantationRoom::Roastery => "Rosteri",
+            PlantationRoom::PaperworkOffice => "Papperskontor",
+        }
+    } else {
+        room_name(room)
+    }
+}
+
+fn world_label(state: &GameState, key: &'static str) -> &'static str {
+    if state.language == crate::model::Language::Swedish {
+        match key {
+            "owner" => "plantageägare",
+            "fruit" => "frukt",
+            "seedlings" => "plantor",
+            "fruit_on_hand" => "Kaffefrukt i säcken",
+            "civet_garden" => "palmmårdsträdgård",
+            "binturong" => "binturong",
+            "snack_trays" => "snackbrickor",
+            "roaster" => "ROSTARE",
+            "coffee" => "kaffe",
+            "bean_crate" => "bönlåda",
+            "police_helicopter" => "polishelikopter",
+            "suspicion" => "Misstanke",
+            "field_goat" => "fältget?",
+            "goat" => "get?",
+            "witness" => "vittne",
+            "field_hint" => "Bästa knapparna här: Plantera kaffe, Skörda frukt, Mata palmmårdar.",
+            "sanctuary_hint" => {
+                "Klicka på en palmmård för att mata, klappa, granska anteckningar och bygga tillgivenhet."
+            }
+            "roastery_hint" => "Bästa knapparna här: Samla bönor, Rosta kaffe, Sälj kaffe.",
+            "office_hint" => {
+                "Bästa knapparna här: Visa papper, bygg kontorsuppgraderingar, håll dig lugn."
+            }
+            "processed_beans" => "Processade bönor",
+            "roasted_bags" => "Rostade säckar",
+            "paperwork_level" => "Pappersnivå",
+            "sleepy" => "sömnig",
+            "hungry" => "hungrig",
+            "curious" => "nyfiken",
+            "content" => "nöjd",
+            _ => key,
+        }
+    } else {
+        match key {
+            "owner" => "plantation owner",
+            "fruit" => "fruit",
+            "seedlings" => "seedlings",
+            "fruit_on_hand" => "Coffee fruit on hand",
+            "civet_garden" => "civet garden",
+            "binturong" => "binturong",
+            "snack_trays" => "snack trays",
+            "roaster" => "ROASTER",
+            "coffee" => "coffee",
+            "bean_crate" => "bean crate",
+            "police_helicopter" => "police helicopter",
+            "suspicion" => "Suspicion",
+            "field_goat" => "field goat?",
+            "goat" => "goat?",
+            "witness" => "witness",
+            "field_hint" => "Best buttons here: Plant coffee, Harvest fruit, Feed civets.",
+            "sanctuary_hint" => "Click a civet to feed, pet, inspect notes, and build affection.",
+            "roastery_hint" => "Best buttons here: Collect beans, Roast coffee, Sell coffee.",
+            "office_hint" => "Best buttons here: Show paperwork, build office upgrades, stay calm.",
+            "processed_beans" => "Processed beans",
+            "roasted_bags" => "Roasted bags",
+            "paperwork_level" => "Paperwork level",
+            "sleepy" => "sleepy",
+            "hungry" => "hungry",
+            "curious" => "curious",
+            "content" => "content",
+            _ => key,
+        }
     }
 }
 
@@ -676,7 +764,7 @@ fn spawn_player(commands: &mut Commands, characters: &CharacterAssets, state: &G
         WorldVisual,
     ));
     commands.spawn((
-        Text2d::new("plantation owner"),
+        Text2d::new(world_label(state, "owner")),
         TextFont {
             font_size: 13.0,
             ..default()
@@ -718,23 +806,55 @@ fn spawn_walkable_floor(commands: &mut Commands, room: PlantationRoom) {
 fn spawn_room_title(commands: &mut Commands, state: &GameState) {
     let (title, subtitle, color) = match state.current_room {
         PlantationRoom::Sanctuary => (
-            "SANCTUARY ROOM",
-            "Soft paws, snack trays, and welfare optics.",
+            if state.language == crate::model::Language::Swedish {
+                "FRISTAD"
+            } else {
+                "SANCTUARY ROOM"
+            },
+            if state.language == crate::model::Language::Swedish {
+                "Mjuka tassar, snackbrickor och välfärdsoptik."
+            } else {
+                "Soft paws, snack trays, and welfare optics."
+            },
             Color::srgb(1.0, 0.76, 0.64),
         ),
         PlantationRoom::CoffeeField => (
-            "COFFEE FIELD",
-            "Fruit grows fast. So do questions.",
+            if state.language == crate::model::Language::Swedish {
+                "KAFFEFÄLT"
+            } else {
+                "COFFEE FIELD"
+            },
+            if state.language == crate::model::Language::Swedish {
+                "Frukten växer snabbt. Frågorna också."
+            } else {
+                "Fruit grows fast. So do questions."
+            },
             Color::srgb(0.78, 1.0, 0.46),
         ),
         PlantationRoom::Roastery => (
-            "ROASTERY",
-            "Artisanal smoke with unfortunate silhouettes.",
+            if state.language == crate::model::Language::Swedish {
+                "ROSTERI"
+            } else {
+                "ROASTERY"
+            },
+            if state.language == crate::model::Language::Swedish {
+                "Hantverksrök med olyckliga silhuetter."
+            } else {
+                "Artisanal smoke with unfortunate silhouettes."
+            },
             Color::srgb(1.0, 0.72, 0.38),
         ),
         PlantationRoom::PaperworkOffice => (
-            "PAPERWORK OFFICE",
-            "Receipts, permits, hoofprints, and strategic calm.",
+            if state.language == crate::model::Language::Swedish {
+                "PAPPERSKONTOR"
+            } else {
+                "PAPERWORK OFFICE"
+            },
+            if state.language == crate::model::Language::Swedish {
+                "Kvitton, tillstånd, hovavtryck och strategiskt lugn."
+            } else {
+                "Receipts, permits, hoofprints, and strategic calm."
+            },
             Color::srgb(0.78, 0.92, 1.0),
         ),
     };
@@ -837,14 +957,14 @@ fn spawn_room_exits(commands: &mut Commands, state: &GameState) {
         commands,
         layout.left_sign.x,
         layout.left_sign.y,
-        format!("< {}", room_name(left)),
+        format!("< {}", room_name_lang(left, state.language)),
         room_action(left),
     );
     spawn_exit_sign(
         commands,
         layout.right_sign.x,
         layout.right_sign.y,
-        format!("{} >", room_name(right)),
+        format!("{} >", room_name_lang(right, state.language)),
         room_action(right),
     );
 }
@@ -987,7 +1107,7 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
             .observe(tint_sprite_on_hover(Color::srgb(0.72, 0.48, 0.20)))
             .observe(tint_sprite_on_out(Color::srgb(0.58, 0.38, 0.16)));
         commands.spawn((
-            Text2d::new("fruit"),
+            Text2d::new(world_label(state, "fruit")),
             TextFont {
                 font_size: 12.0,
                 ..default()
@@ -1020,7 +1140,7 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
         .observe(tint_sprite_on_hover(Color::srgb(0.36, 0.55, 0.22)))
         .observe(tint_sprite_on_out(Color::srgb(0.28, 0.42, 0.18)));
     commands.spawn((
-        Text2d::new("seedlings"),
+        Text2d::new(world_label(state, "seedlings")),
         TextFont {
             font_size: 15.0,
             ..default()
@@ -1031,7 +1151,11 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
     ));
 
     commands.spawn((
-        Text2d::new(format!("Coffee fruit on hand: {:.0}", state.coffee_fruit)),
+        Text2d::new(format!(
+            "{}: {:.0}",
+            world_label(state, "fruit_on_hand"),
+            state.coffee_fruit
+        )),
         TextFont {
             font_size: 20.0,
             ..default()
@@ -1043,13 +1167,16 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
 
     spawn_prop(commands, props, 15, 525.0, -170.0, 0.34, ground_z(-170.0));
     if state.goat_present {
-        spawn_goat(commands, props, 496.0, -224.0, "field goat?");
+        spawn_goat(
+            commands,
+            props,
+            496.0,
+            -224.0,
+            world_label(state, "field_goat"),
+        );
     }
 
-    spawn_room_hint(
-        commands,
-        "Best buttons here: Plant coffee, Harvest fruit, Feed civets.",
-    );
+    spawn_room_hint(commands, world_label(state, "field_hint"));
 }
 
 fn spawn_sanctuary_room(
@@ -1080,7 +1207,7 @@ fn spawn_sanctuary_room(
         spawn_prop(commands, props, 0, x, y, 0.13, ground_z(y) - 0.1);
     }
     commands.spawn((
-        Text2d::new("civet garden"),
+        Text2d::new(world_label(state, "civet_garden")),
         TextFont {
             font_size: 14.0,
             ..default()
@@ -1129,11 +1256,11 @@ fn spawn_sanctuary_room(
                 format!(
                     "{}  {}  mood {:.0}%",
                     profile.name,
-                    civet_behavior_label(behavior),
+                    civet_behavior_label(behavior, state),
                     profile.mood
                 )
             } else {
-                format!("{} {}", profile.name, civet_behavior_label(behavior))
+                format!("{} {}", profile.name, civet_behavior_label(behavior, state))
             };
             commands.spawn((
                 Text2d::new(label),
@@ -1164,7 +1291,7 @@ fn spawn_sanctuary_room(
             ground_z(-144.0) + 0.1,
         );
         commands.spawn((
-            Text2d::new("binturong"),
+            Text2d::new(world_label(state, "binturong")),
             TextFont {
                 font_size: 13.0,
                 ..default()
@@ -1176,7 +1303,7 @@ fn spawn_sanctuary_room(
     }
 
     if state.goat_present {
-        spawn_goat(commands, props, -292.0, -224.0, "goat?");
+        spawn_goat(commands, props, -292.0, -224.0, world_label(state, "goat"));
     }
 
     let snack_slot = anchor_slot(snack_table, 0, 1, 0.0);
@@ -1190,7 +1317,7 @@ fn spawn_sanctuary_room(
         ground_z(snack_slot.y),
     );
     commands.spawn((
-        Text2d::new("snack trays"),
+        Text2d::new(world_label(state, "snack_trays")),
         TextFont {
             font_size: 15.0,
             ..default()
@@ -1200,10 +1327,7 @@ fn spawn_sanctuary_room(
         WorldVisual,
     ));
 
-    spawn_room_hint(
-        commands,
-        "Click a civet to feed, pet, inspect notes, and build affection.",
-    );
+    spawn_room_hint(commands, world_label(state, "sanctuary_hint"));
 }
 
 fn civet_behavior(profile: &crate::model::CivetProfile) -> CivetBehavior {
@@ -1218,12 +1342,12 @@ fn civet_behavior(profile: &crate::model::CivetProfile) -> CivetBehavior {
     }
 }
 
-fn civet_behavior_label(behavior: CivetBehavior) -> &'static str {
+fn civet_behavior_label(behavior: CivetBehavior, state: &GameState) -> &'static str {
     match behavior {
-        CivetBehavior::Asleep => "sleepy",
-        CivetBehavior::Hungry => "hungry",
-        CivetBehavior::Curious => "curious",
-        CivetBehavior::Content => "content",
+        CivetBehavior::Asleep => world_label(state, "sleepy"),
+        CivetBehavior::Hungry => world_label(state, "hungry"),
+        CivetBehavior::Curious => world_label(state, "curious"),
+        CivetBehavior::Content => world_label(state, "content"),
     }
 }
 
@@ -1312,7 +1436,7 @@ fn spawn_roastery_room(
         .observe(tint_sprite_on_hover(Color::srgb(0.70, 0.39, 0.16)))
         .observe(tint_sprite_on_out(Color::srgb(0.56, 0.30, 0.12)));
     commands.spawn((
-        Text2d::new("ROASTER"),
+        Text2d::new(world_label(state, "roaster")),
         TextFont {
             font_size: 18.0,
             ..default()
@@ -1342,7 +1466,7 @@ fn spawn_roastery_room(
             .observe(tint_sprite_on_hover(Color::srgb(0.72, 0.49, 0.24)))
             .observe(tint_sprite_on_out(Color::srgb(0.58, 0.39, 0.18)));
         commands.spawn((
-            Text2d::new("coffee"),
+            Text2d::new(world_label(state, "coffee")),
             TextFont {
                 font_size: 11.0,
                 ..default()
@@ -1373,7 +1497,7 @@ fn spawn_roastery_room(
         .observe(tint_sprite_on_hover(Color::srgb(0.28, 0.16, 0.09)))
         .observe(tint_sprite_on_out(Color::srgb(0.20, 0.12, 0.07)));
     commands.spawn((
-        Text2d::new("bean crate"),
+        Text2d::new(world_label(state, "bean_crate")),
         TextFont {
             font_size: 14.0,
             ..default()
@@ -1385,8 +1509,11 @@ fn spawn_roastery_room(
 
     commands.spawn((
         Text2d::new(format!(
-            "Processed beans {:.1}  |  Roasted bags {:.1}",
-            state.processed_beans, state.roasted_coffee
+            "{} {:.1}  |  {} {:.1}",
+            world_label(state, "processed_beans"),
+            state.processed_beans,
+            world_label(state, "roasted_bags"),
+            state.roasted_coffee
         )),
         TextFont {
             font_size: 20.0,
@@ -1397,10 +1524,7 @@ fn spawn_roastery_room(
         WorldVisual,
     ));
 
-    spawn_room_hint(
-        commands,
-        "Best buttons here: Collect beans, Roast coffee, Sell coffee.",
-    );
+    spawn_room_hint(commands, world_label(state, "roastery_hint"));
 }
 
 fn spawn_paperwork_office_room(
@@ -1485,8 +1609,11 @@ fn spawn_paperwork_office_room(
     }
     commands.spawn((
         Text2d::new(format!(
-            "Paperwork level {}  |  Suspicion {:.0}%",
-            state.paperwork_level, state.suspicion
+            "{} {}  |  {} {:.0}%",
+            world_label(state, "paperwork_level"),
+            state.paperwork_level,
+            world_label(state, "suspicion"),
+            state.suspicion
         )),
         TextFont {
             font_size: 20.0,
@@ -1508,18 +1635,21 @@ fn spawn_paperwork_office_room(
         ground_z(stamp_slot.y),
     );
     spawn_upgrade_buildings(commands, state);
-    spawn_helicopter(commands, props);
+    spawn_helicopter(commands, props, state);
     if state.goat_present {
-        spawn_goat(commands, props, 360.0, -150.0, "witness");
+        spawn_goat(
+            commands,
+            props,
+            360.0,
+            -150.0,
+            world_label(state, "witness"),
+        );
     }
 
-    spawn_room_hint(
-        commands,
-        "Best buttons here: Show paperwork, build office upgrades, stay calm.",
-    );
+    spawn_room_hint(commands, world_label(state, "office_hint"));
 }
 
-fn spawn_helicopter(commands: &mut Commands, props: &PropAssets) {
+fn spawn_helicopter(commands: &mut Commands, props: &PropAssets, state: &GameState) {
     commands.spawn((
         prop_sprite(props, 9),
         Transform::from_xyz(325.0, 245.0, 3.0).with_scale(Vec3::splat(0.38)),
@@ -1529,7 +1659,7 @@ fn spawn_helicopter(commands: &mut Commands, props: &PropAssets) {
         WorldVisual,
     ));
     commands.spawn((
-        Text2d::new("police helicopter"),
+        Text2d::new(world_label(state, "police_helicopter")),
         TextFont {
             font_size: 13.0,
             ..default()

@@ -176,11 +176,25 @@ pub enum ToolGroup {
     System,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Language {
-    #[default]
     English,
     Swedish,
+}
+
+impl Default for Language {
+    fn default() -> Self {
+        Self::from_system_locale()
+    }
+}
+
+impl Language {
+    pub fn from_system_locale() -> Self {
+        sys_locale::get_locale()
+            .map(|locale| locale.to_ascii_lowercase())
+            .filter(|locale| locale.starts_with("sv"))
+            .map_or(Language::English, |_| Language::Swedish)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
@@ -223,6 +237,7 @@ impl TimeScale {
 
 impl Default for GameState {
     fn default() -> Self {
+        let language = Language::default();
         Self {
             screen: GameScreen::MainMenu,
             current_room: PlantationRoom::Sanctuary,
@@ -241,7 +256,7 @@ impl Default for GameState {
             inventory_open: false,
             settings_open: false,
             show_layout_guides: false,
-            language: Language::English,
+            language,
             coffee_fruit: 8.0,
             civet_feed: 0.0,
             processed_beans: 0.0,
@@ -268,13 +283,24 @@ impl Default for GameState {
             day_report: None,
             game_result: None,
             rng_seed: 0xC1FE_CAFE_BA5E_BA11,
-            log: vec![
-                "Welcome to EutherCivet: fair-trade coffee, suspicious silhouettes.".to_string(),
-                "Reminder: no narcotics. Only fruit, civets, beans, and bureaucracy.".to_string(),
-            ],
+            log: initial_log(language),
             feedback: Vec::new(),
             dirty_visuals: true,
         }
+    }
+}
+
+fn initial_log(language: Language) -> Vec<String> {
+    if language == Language::Swedish {
+        vec![
+            "Välkommen till EutherCivet: rättvist kaffe, misstänkta silhuetter.".to_string(),
+            "Påminnelse: inga narkotika. Bara frukt, palmmårdar, bönor och byråkrati.".to_string(),
+        ]
+    } else {
+        vec![
+            "Welcome to EutherCivet: fair-trade coffee, suspicious silhouettes.".to_string(),
+            "Reminder: no narcotics. Only fruit, civets, beans, and bureaucracy.".to_string(),
+        ]
     }
 }
 
@@ -359,7 +385,10 @@ impl GameState {
                 event.due_day = (state.day + 2).min(7);
             }
         }
-        state.log_line("Loaded plantation ledger from disk.");
+        state.log_line(match state.language {
+            Language::Swedish => "Laddade plantageboken från disk.",
+            Language::English => "Loaded plantation ledger from disk.",
+        });
         state.dirty_visuals = true;
         Some(state)
     }
@@ -368,12 +397,21 @@ impl GameState {
         match serde_json::to_string_pretty(self) {
             Ok(text) => {
                 if fs::write(SAVE_PATH, text).is_ok() {
-                    self.log_line("Saved an alarmingly neat plantation ledger.");
+                    self.log_line(match self.language {
+                        Language::Swedish => "Sparade en oroväckande prydlig plantagebok.",
+                        Language::English => "Saved an alarmingly neat plantation ledger.",
+                    });
                 } else {
-                    self.log_line("Save failed. The paperwork drawer jammed.");
+                    self.log_line(match self.language {
+                        Language::Swedish => "Sparningen misslyckades. Papperslådan kärvade.",
+                        Language::English => "Save failed. The paperwork drawer jammed.",
+                    });
                 }
             }
-            _ => self.log_line("Save failed. The paperwork drawer jammed."),
+            _ => self.log_line(match self.language {
+                Language::Swedish => "Sparningen misslyckades. Papperslådan kärvade.",
+                Language::English => "Save failed. The paperwork drawer jammed.",
+            }),
         }
     }
 
@@ -454,7 +492,10 @@ impl GameState {
         if self.suspicion >= 100.0 {
             self.inspection = true;
             self.suspicion = 100.0;
-            self.log_line("Operation Bitter Bean begins.");
+            self.log_line(match self.language {
+                Language::Swedish => "Operation Bitter Bean börjar.",
+                Language::English => "Operation Bitter Bean begins.",
+            });
         }
     }
 
