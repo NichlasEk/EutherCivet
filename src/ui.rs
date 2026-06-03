@@ -96,24 +96,35 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                     position_type: PositionType::Absolute,
                     left: px(14),
                     top: px(92),
-                    width: px(430),
-                    max_height: px(150),
-                    padding: UiRect::all(px(10)),
+                    width: px(500),
+                    max_height: px(174),
+                    padding: UiRect::all(px(12)),
                     border: UiRect::all(px(1)),
                     border_radius: BorderRadius::all(px(8)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(5),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.025, 0.022, 0.016, 0.24)),
-                BorderColor::all(Color::srgba(1.0, 0.82, 0.48, 0.15)),
+                BackgroundColor(Color::srgba(0.025, 0.022, 0.016, 0.72)),
+                BorderColor::all(Color::srgba(1.0, 0.82, 0.48, 0.42)),
             ))
             .with_children(|debug| {
                 debug.spawn((
-                    Text::new(""),
+                    Text::new("Logg"),
                     TextFont {
                         font_size: 11.0,
                         ..default()
                     },
-                    TextColor(Color::srgba(0.95, 0.91, 0.76, 0.76)),
+                    TextColor(Color::srgba(1.0, 0.84, 0.48, 0.98)),
+                    LocalizedText("log"),
+                ));
+                debug.spawn((
+                    Text::new(""),
+                    TextFont {
+                        font_size: 12.5,
+                        ..default()
+                    },
+                    TextColor(Color::srgba(1.0, 0.96, 0.82, 0.96)),
                     LogText,
                 ));
             });
@@ -725,6 +736,7 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "upgrades" => "Byggen",
             "system" => "System",
             "settings" => "Inställningar",
+            "log" => "Logg",
             "save" => "Spara",
             "load" => "Ladda",
             "plant_coffee" => "Plantera kaffe",
@@ -854,6 +866,7 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "upgrades" => "Upgrades",
             "system" => "System",
             "settings" => "Settings",
+            "log" => "Log",
             "save" => "Save",
             "load" => "Load",
             "plant_coffee" => "Plant coffee",
@@ -1637,7 +1650,7 @@ pub fn update_log(state: Res<GameState>, mut logs: Query<&mut Text, With<LogText
         return;
     }
     for mut text in &mut logs {
-        **text = format!("\n{}", state.log.join("\n"));
+        **text = state.log.join("\n");
     }
 }
 

@@ -457,9 +457,10 @@ pub fn default_sfx_volume() -> f32 {
 
 fn short_feedback(line: &str) -> String {
     let first_sentence = line.split('.').next().unwrap_or(line).trim();
-    let mut text = first_sentence.to_string();
-    if text.len() > 54 {
-        text.truncate(51);
+    let mut chars = first_sentence.chars();
+    let mut text: String = chars.by_ref().take(54).collect();
+    if chars.next().is_some() {
+        text = text.chars().take(51).collect();
         text.push_str("...");
     }
     text
@@ -628,6 +629,19 @@ pub struct DayTick(pub Timer);
 
 #[derive(Resource)]
 pub struct OrderTick(pub Timer);
+
+#[cfg(test)]
+mod tests {
+    use super::short_feedback;
+
+    #[test]
+    fn short_feedback_truncates_utf8_safely() {
+        let text = "Pappershögen kräver åäö åäö åäö åäö åäö åäö åäö åäö åäö åäö.";
+        let feedback = short_feedback(text);
+        assert!(feedback.ends_with("..."));
+        assert!(feedback.chars().count() <= 54);
+    }
+}
 
 #[derive(Resource, Clone)]
 pub struct CharacterAssets {

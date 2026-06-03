@@ -1,3 +1,4 @@
+use bevy::pbr::PbrPlugin;
 use bevy::prelude::*;
 
 mod actions;
@@ -29,14 +30,19 @@ fn main() {
         .insert_resource(EventTick(Timer::from_seconds(36.0, TimerMode::Repeating)))
         .insert_resource(DayTick(Timer::from_seconds(180.0, TimerMode::Repeating)))
         .insert_resource(OrderTick(Timer::from_seconds(128.0, TimerMode::Repeating)))
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "EutherCivet".to_string(),
-                resolution: (1440, 820).into(),
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .build()
+                .disable::<PbrPlugin>()
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "EutherCivet".to_string(),
+                        resolution: (1440, 820).into(),
+                        ..default()
+                    }),
+                    ..default()
+                }),
+        )
         .add_systems(Startup, setup)
         .add_systems(Startup, setup_audio_assets)
         .add_systems(
