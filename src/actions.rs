@@ -2,7 +2,9 @@ use crate::localization::{
     care_item_name, civet_need_text, civet_status_key, civet_status_label, room_name_definite,
     state_text,
 };
-use crate::model::{Action, GameState, Language, PlantationRoom, RandomEventKind, ToolGroup};
+use crate::model::{
+    Action, DailyModifierKind, GameState, Language, PlantationRoom, RandomEventKind, ToolGroup,
+};
 
 pub fn run_action(state: &mut GameState, action: Action) {
     match action {
@@ -355,17 +357,28 @@ pub fn run_action(state: &mut GameState, action: Action) {
             let sold = state.roasted_coffee.min(8.0);
             if sold >= 1.0 {
                 let tasting_bonus = if state.tasting_room { 5.0 } else { 0.0 };
+                let market_bonus = if current_modifier(state) == Some(DailyModifierKind::MarketRush)
+                {
+                    1.24
+                } else {
+                    1.0
+                };
                 let earned =
-                    (sold * (13.0 + tasting_bonus + state.reputation as f32 * 0.7)).round() as i32;
+                    (sold * (13.0 + tasting_bonus + state.reputation as f32 * 0.7) * market_bonus)
+                        .round() as i32;
                 state.roasted_coffee -= sold;
                 state.money += earned;
                 state.daily_sales += earned;
                 state.reputation += 1 + (sold / 5.0) as i32 + i32::from(state.tasting_room);
-                state.suspicion += if sold > 6.0 {
+                let mut suspicion_gain = if sold > 6.0 {
                     if state.tasting_room { 2.5 } else { 4.0 }
                 } else {
                     1.2
                 };
+                if current_modifier(state) == Some(DailyModifierKind::MarketRush) {
+                    suspicion_gain *= 1.35;
+                }
+                state.suspicion += suspicion_gain;
                 state.dirty_visuals = true;
                 state.log_line(if state.language == Language::Swedish {
                     format!("Sålde {sold:.1} säckar palmmårdskaffe för ${earned}.")
@@ -416,17 +429,29 @@ pub fn run_action(state: &mut GameState, action: Action) {
             }
         }
         Action::ShowPaperwork => {
-            let cost = if state.legal_office {
+            let base_cost = if state.legal_office {
                 8 + state.paperwork_level as i32 * 2
             } else {
                 16 + state.paperwork_level as i32 * 3
+            };
+            let cost = if current_modifier(state) == Some(DailyModifierKind::BureaucracyDay) {
+                (base_cost as f32 * 0.72).round() as i32
+            } else {
+                base_cost
             };
             if state.money >= cost {
                 state.money -= cost;
                 state.daily_expenses += cost;
                 state.paperwork_level += 1;
                 let legal_bonus = if state.legal_office { 8.0 } else { 0.0 };
-                state.suspicion -= 18.0 + legal_bonus + state.paperwork_level as f32;
+                let modifier_bonus =
+                    if current_modifier(state) == Some(DailyModifierKind::BureaucracyDay) {
+                        6.0
+                    } else {
+                        0.0
+                    };
+                state.suspicion -=
+                    18.0 + legal_bonus + modifier_bonus + state.paperwork_level as f32;
                 state.reputation += 1;
                 state.dirty_visuals = true;
                 state.log_line(state_text(
@@ -570,6 +595,10 @@ fn switch_tool_group(state: &mut GameState, action: Action) {
         _ => return,
     };
     state.active_tool_group = group;
+}
+
+fn current_modifier(state: &GameState) -> Option<DailyModifierKind> {
+    state.daily_modifier.as_ref().map(|modifier| modifier.kind)
 }
 
 pub fn select_civet_by_index(state: &mut GameState, index: usize) {
@@ -1253,6 +1282,162 @@ fn resolve_event(state: &mut GameState, action: Action) {
                 state,
                 "You blame the goat preemptively. Oddly, morale improves.",
                 "Du skyller förebyggande på geten. Märkligt nog förbättras moralen.",
+            ));
+        }
+
+        (RandomEventKind::TouristGroup, Action::EventOptionA) => {
+            state.money += 34;
+            state.daily_sales += 34;
+            state.reputation += 3;
+            state.suspicion += 5.5;
+            state.log_line(state_text(
+                state,
+                "The full tour sells coffee and creates too many searchable photos.",
+                "Hela rundturen säljer kaffe och skapar för många sökbara foton.",
+            ));
+        }
+        (RandomEventKind::TouristGroup, Action::EventOptionB) => {
+            state.money += 18;
+            state.daily_sales += 18;
+            state.reputation += 2;
+            state.suspicion -= 1.5;
+            state.log_line(state_text(
+                state,
+                "A careful route shows the roastery, not the awkward angles.",
+                "En försiktig rutt visar rosteriet, inte de besvärliga vinklarna.",
+            ));
+        }
+        (RandomEventKind::TouristGroup, Action::EventOptionC) => {
+            state.reputation -= 2;
+            state.suspicion -= 3.0;
+            state.log_line(state_text(
+                state,
+                "The gates close. Tourists grumble, but nobody photographs the paperwork.",
+                "Grindarna stängs. Turister muttrar, men ingen fotograferar pappren.",
+            ));
+        }
+
+        (RandomEventKind::VeterinarianOffer, Action::EventOptionA) => {
+            state.money -= 28;
+            state.civet_happiness += 15.0;
+            state.reputation += 2;
+            state.suspicion -= 4.0;
+            state.log_line(state_text(
+                state,
+                "The vet signs every civet as healthy, opinionated, and well documented.",
+                "Veterinären intygar att varje palmmård är frisk, åsiktsstark och väl dokumenterad.",
+            ));
+        }
+        (RandomEventKind::VeterinarianOffer, Action::EventOptionB) => {
+            let coffee = state.roasted_coffee.min(3.0);
+            state.roasted_coffee -= coffee;
+            state.civet_happiness += 9.0 + coffee;
+            state.suspicion -= 2.5;
+            state.log_line(state_text(
+                state,
+                "The vet accepts coffee barter and leaves with excellent notes.",
+                "Veterinären godtar kaffe som byte och lämnar utmärkta anteckningar.",
+            ));
+        }
+        (RandomEventKind::VeterinarianOffer, Action::EventOptionC) => {
+            state.civet_happiness -= 5.0;
+            state.reputation -= 1;
+            state.suspicion += 3.0;
+            state.log_line(state_text(
+                state,
+                "You decline. The civets take this personally in a medically vague way.",
+                "Du avböjer. Palmmårdarna tar det personligt på ett medicinskt vagt sätt.",
+            ));
+        }
+
+        (RandomEventKind::Rainstorm, Action::EventOptionA) => {
+            state.coffee_fruit += state.coffee_plants as f32 * 1.4;
+            state.suspicion += 2.0;
+            state.log_line(state_text(
+                state,
+                "Workers harvest through rain. The fruit wins and the boots lose.",
+                "Personalen skördar i regnet. Frukten vinner och stövlarna förlorar.",
+            ));
+        }
+        (RandomEventKind::Rainstorm, Action::EventOptionB) => {
+            state.civet_happiness += 11.0;
+            state.suspicion -= 3.0;
+            state.log_line(state_text(
+                state,
+                "Everyone shelters the animals. Production waits, morale does not.",
+                "Alla skyddar djuren. Produktionen väntar, moralen gör det inte.",
+            ));
+        }
+        (RandomEventKind::Rainstorm, Action::EventOptionC) => {
+            state.money -= 8;
+            state.paperwork_level += 1;
+            state.suspicion -= 5.0;
+            state.log_line(state_text(
+                state,
+                "The office becomes a dry archive of very persuasive stamps.",
+                "Kontoret blir ett torrt arkiv av mycket övertygande stämplar.",
+            ));
+        }
+
+        (RandomEventKind::InfluencerVisit, Action::EventOptionA) => {
+            state.reputation += 5;
+            state.suspicion += 8.0;
+            state.civet_happiness -= 2.0;
+            state.log_line(state_text(
+                state,
+                "The video goes viral. So does the comment asking about permits.",
+                "Videon blir viral. Det blir också kommentaren som frågar om tillstånd.",
+            ));
+        }
+        (RandomEventKind::InfluencerVisit, Action::EventOptionB) => {
+            state.money += 22;
+            state.daily_sales += 22;
+            state.reputation += 2;
+            state.suspicion += 1.0;
+            state.log_line(state_text(
+                state,
+                "The camera sees cups, labels, and nothing with a tail.",
+                "Kameran ser koppar, etiketter och inget med svans.",
+            ));
+        }
+        (RandomEventKind::InfluencerVisit, Action::EventOptionC) => {
+            state.reputation -= 2;
+            state.suspicion -= 4.0;
+            state.log_line(state_text(
+                state,
+                "No phones pass the gate. The post becomes boring and legally helpful.",
+                "Inga mobiler passerar grinden. Inlägget blir tråkigt och juridiskt hjälpsamt.",
+            ));
+        }
+
+        (RandomEventKind::PaperworkAudit, Action::EventOptionA) => {
+            state.money -= 26;
+            state.paperwork_level += 1;
+            state.suspicion -= 9.0;
+            state.reputation += 1;
+            state.log_line(state_text(
+                state,
+                "Legal prep turns the audit into a footnote with coffee stains.",
+                "Juridisk förberedelse gör revisionen till en fotnot med kaffefläckar.",
+            ));
+        }
+        (RandomEventKind::PaperworkAudit, Action::EventOptionB) => {
+            state.money -= 10;
+            state.paperwork_level += 2;
+            state.suspicion -= 5.0;
+            state.log_line(state_text(
+                state,
+                "Annexes flood the room. The auditor accepts defeat by pagination.",
+                "Bilagor fyller rummet. Revisorn accepterar nederlag via sidnumrering.",
+            ));
+        }
+        (RandomEventKind::PaperworkAudit, Action::EventOptionC) => {
+            state.suspicion += 8.0;
+            state.reputation -= 2;
+            state.log_line(state_text(
+                state,
+                "You improvise. The auditor underlines silence twice.",
+                "Du improviserar. Revisorn stryker under tystnaden två gånger.",
             ));
         }
         _ => {}

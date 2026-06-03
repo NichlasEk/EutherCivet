@@ -63,6 +63,8 @@ pub struct GameState {
     pub goat_present: bool,
     pub inspection: bool,
     #[serde(default)]
+    pub daily_modifier: Option<DailyModifier>,
+    #[serde(default)]
     pub event: Option<EventState>,
     #[serde(default)]
     pub pending_order: Option<OrderOffer>,
@@ -106,6 +108,11 @@ pub enum RandomEventKind {
     BinturongEscape,
     PickyCivet,
     GoatAppearance,
+    TouristGroup,
+    VeterinarianOffer,
+    Rainstorm,
+    InfluencerVisit,
+    PaperworkAudit,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -120,11 +127,37 @@ pub struct EventState {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct OrderOffer {
     pub client: String,
+    #[serde(default)]
+    pub style: OrderStyle,
     pub bags: f32,
     pub payout: i32,
     pub reputation_reward: i32,
     pub suspicion_risk: f32,
     pub due_day: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OrderStyle {
+    #[default]
+    Steady,
+    Rush,
+    Discreet,
+    Reputation,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DailyModifier {
+    pub kind: DailyModifierKind,
+    pub title: String,
+    pub body: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum DailyModifierKind {
+    RainyHarvest,
+    QuietNewsDay,
+    BureaucracyDay,
+    MarketRush,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -285,6 +318,7 @@ impl Default for GameState {
             binturong_home: true,
             goat_present: true,
             inspection: false,
+            daily_modifier: None,
             event: None,
             pending_order: None,
             active_order: None,
@@ -718,6 +752,7 @@ pub enum StatKind {
     Mailbox,
     Upgrades,
     Order,
+    Modifier,
     Goal,
 }
 

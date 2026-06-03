@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use crate::localization::{civet_status_key, state_text};
 use crate::model::{
-    DayReport, DayTick, EventState, EventTick, GameResult, GameScreen, GameState, GameTick,
-    Language, OrderOffer, OrderTick, RandomEventKind,
+    DailyModifier, DailyModifierKind, DayReport, DayTick, EventState, EventTick, GameResult,
+    GameScreen, GameState, GameTick, Language, OrderOffer, OrderStyle, OrderTick, RandomEventKind,
 };
 
 pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut<GameState>) {
@@ -17,7 +17,15 @@ pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut
         return;
     }
 
-    let fruit_growth = state.coffee_plants as f32 * 0.42;
+    if state.daily_modifier.is_none() {
+        assign_daily_modifier(&mut state);
+    }
+
+    let harvest_multiplier = match current_modifier(&state) {
+        Some(DailyModifierKind::RainyHarvest) => 1.28,
+        _ => 1.0,
+    };
+    let fruit_growth = state.coffee_plants as f32 * 0.42 * harvest_multiplier;
     state.coffee_fruit += fruit_growth * if state.fruit_sorter { 1.08 } else { 1.0 };
 
     let appetite = state.civets as f32 * 0.65;
@@ -122,6 +130,79 @@ fn update_animal_care(state: &mut GameState, eaten: f32) {
     }
 }
 
+fn current_modifier(state: &GameState) -> Option<DailyModifierKind> {
+    state.daily_modifier.as_ref().map(|modifier| modifier.kind)
+}
+
+fn assign_daily_modifier(state: &mut GameState) {
+    let kind = match state.rand_index(4) {
+        0 => DailyModifierKind::RainyHarvest,
+        1 => DailyModifierKind::QuietNewsDay,
+        2 => DailyModifierKind::BureaucracyDay,
+        _ => DailyModifierKind::MarketRush,
+    };
+    state.daily_modifier = Some(DailyModifier {
+        kind,
+        title: modifier_title(kind, state.language).to_string(),
+        body: modifier_body(kind, state.language).to_string(),
+    });
+    let title = state
+        .daily_modifier
+        .as_ref()
+        .map(|modifier| modifier.title.clone());
+    if let Some(title) = title {
+        state.log_line(if state.language == Language::Swedish {
+            format!("Dagens läge: {title}.")
+        } else {
+            format!("Daily modifier: {title}.")
+        });
+    }
+}
+
+fn modifier_title(kind: DailyModifierKind, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match kind {
+            DailyModifierKind::RainyHarvest => "Regnig skördedag",
+            DailyModifierKind::QuietNewsDay => "Lugn nyhetsdag",
+            DailyModifierKind::BureaucracyDay => "Byråkratisk medvind",
+            DailyModifierKind::MarketRush => "Marknadsrusning",
+        }
+    } else {
+        match kind {
+            DailyModifierKind::RainyHarvest => "Rainy Harvest",
+            DailyModifierKind::QuietNewsDay => "Quiet News Day",
+            DailyModifierKind::BureaucracyDay => "Bureaucratic Tailwind",
+            DailyModifierKind::MarketRush => "Market Rush",
+        }
+    }
+}
+
+fn modifier_body(kind: DailyModifierKind, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match kind {
+            DailyModifierKind::RainyHarvest => "Kaffefrukten växer snabbare i regnet.",
+            DailyModifierKind::QuietNewsDay => {
+                "Misstanke svalnar snabbare när ingen jagar rubriker."
+            }
+            DailyModifierKind::BureaucracyDay => "Pappersarbete biter bättre och kostar mindre.",
+            DailyModifierKind::MarketRush => {
+                "Kunder betalar mer, men stora försäljningar märks tydligare."
+            }
+        }
+    } else {
+        match kind {
+            DailyModifierKind::RainyHarvest => "Coffee fruit grows faster in the rain.",
+            DailyModifierKind::QuietNewsDay => {
+                "Suspicion cools faster while no one chases headlines."
+            }
+            DailyModifierKind::BureaucracyDay => "Paperwork works harder and costs less.",
+            DailyModifierKind::MarketRush => {
+                "Buyers pay more, but big sales draw sharper attention."
+            }
+        }
+    }
+}
+
 pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMut<GameState>) {
     if state.screen != GameScreen::Playing
         || state.inspection
@@ -170,16 +251,44 @@ pub fn generate_order_offers(
         3 => "Very Normal Import Cooperative",
         _ => "Monaco Goat-Free Espresso Bar",
     };
-    let bags = 3.0 + state.rand_index(5) as f32;
+    let style = match state.rand_index(4) {
+        0 => OrderStyle::Rush,
+        1 => OrderStyle::Discreet,
+        2 => OrderStyle::Reputation,
+        _ => OrderStyle::Steady,
+    };
+    let mut bags = 3.0 + state.rand_index(5) as f32;
     let base_price = 22.0 + state.reputation.max(0) as f32 * 0.9;
     let tasting_bonus = if state.tasting_room { 1.15 } else { 1.0 };
-    let payout = (bags * base_price * tasting_bonus).round() as i32;
-    let reputation_reward = 2 + (bags / 4.0) as i32;
-    let suspicion_risk = 2.5 + bags * 0.55;
-    let due_day = (state.day + 3).min(7);
+    let mut payout_multiplier = tasting_bonus;
+    let mut reputation_reward = 2 + (bags / 4.0) as i32;
+    let mut suspicion_risk = 2.5 + bags * 0.55;
+    let mut due_day = (state.day + 3).min(7);
+
+    match style {
+        OrderStyle::Rush => {
+            bags += 1.0;
+            payout_multiplier *= 1.32;
+            reputation_reward += 1;
+            suspicion_risk += 2.2;
+            due_day = (state.day + 1).min(7);
+        }
+        OrderStyle::Discreet => {
+            payout_multiplier *= 1.18;
+            suspicion_risk += 4.6;
+        }
+        OrderStyle::Reputation => {
+            payout_multiplier *= 0.88;
+            reputation_reward += 4;
+            suspicion_risk = (suspicion_risk - 1.2).max(0.8);
+        }
+        OrderStyle::Steady => {}
+    }
+    let payout = (bags * base_price * payout_multiplier).round() as i32;
 
     state.pending_order = Some(OrderOffer {
         client: client.to_string(),
+        style,
         bags,
         payout,
         reputation_reward,
@@ -233,6 +342,19 @@ fn settle_day(state: &mut GameState) -> DayReport {
     }
     if state.paperwork_level >= state.day {
         suspicion_delta -= 2.5;
+    }
+    if matches!(
+        current_modifier(state),
+        Some(DailyModifierKind::QuietNewsDay | DailyModifierKind::BureaucracyDay)
+    ) {
+        suspicion_delta -= if matches!(
+            current_modifier(state),
+            Some(DailyModifierKind::QuietNewsDay)
+        ) {
+            1.8
+        } else {
+            state.paperwork_level as f32 * 0.45
+        };
     }
     if state.legal_office {
         suspicion_delta -= 2.0;
@@ -396,6 +518,7 @@ fn settle_day(state: &mut GameState) -> DayReport {
         }
     } else {
         state.day += 1;
+        assign_daily_modifier(state);
     }
 
     DayReport {
@@ -490,14 +613,19 @@ pub fn trigger_random_events(
         return;
     }
 
-    let kind = match state.rand_index(7) {
+    let kind = match state.rand_index(12) {
         0 => RandomEventKind::PoliceVisit,
         1 => RandomEventKind::JournalistQuestions,
         2 => RandomEventKind::WelfareInspection,
         3 => RandomEventKind::HelicopterOverhead,
         4 => RandomEventKind::BinturongEscape,
         5 => RandomEventKind::PickyCivet,
-        _ => RandomEventKind::GoatAppearance,
+        6 => RandomEventKind::GoatAppearance,
+        7 => RandomEventKind::TouristGroup,
+        8 => RandomEventKind::VeterinarianOffer,
+        9 => RandomEventKind::Rainstorm,
+        10 => RandomEventKind::InfluencerVisit,
+        _ => RandomEventKind::PaperworkAudit,
     };
 
     state.event = Some(EventState {
@@ -524,6 +652,11 @@ fn event_title(kind: RandomEventKind, language: Language) -> &'static str {
             RandomEventKind::BinturongEscape => "Binturong rymmer",
             RandomEventKind::PickyCivet => "Palmmård vägrar frukt",
             RandomEventKind::GoatAppearance => "Oplanerad get",
+            RandomEventKind::TouristGroup => "Turistgrupp vid grindarna",
+            RandomEventKind::VeterinarianOffer => "Veterinär erbjuder hjälp",
+            RandomEventKind::Rainstorm => "Skyfall över plantagen",
+            RandomEventKind::InfluencerVisit => "Influencer vill filma",
+            RandomEventKind::PaperworkAudit => "Pappersrevision",
         }
     } else {
         match kind {
@@ -534,6 +667,11 @@ fn event_title(kind: RandomEventKind, language: Language) -> &'static str {
             RandomEventKind::BinturongEscape => "Binturong Escape",
             RandomEventKind::PickyCivet => "Civet Refuses Fruit",
             RandomEventKind::GoatAppearance => "Unscheduled Goat",
+            RandomEventKind::TouristGroup => "Tourist Group at the Gate",
+            RandomEventKind::VeterinarianOffer => "Veterinarian Offers Help",
+            RandomEventKind::Rainstorm => "Rainstorm Over the Plantation",
+            RandomEventKind::InfluencerVisit => "Influencer Wants to Film",
+            RandomEventKind::PaperworkAudit => "Paperwork Audit",
         }
     }
 }
@@ -562,6 +700,21 @@ fn event_body(kind: RandomEventKind, language: Language) -> &'static str {
             RandomEventKind::GoatAppearance => {
                 "En get dyker upp i pappersrummet. Ingen anställde den. Ingen kan bevisa motsatsen."
             }
+            RandomEventKind::TouristGroup => {
+                "En buss med kaffeturister vill se fristaden, köpa påsar och ta alldeles för närgångna bilder."
+            }
+            RandomEventKind::VeterinarianOffer => {
+                "En resande veterinär erbjuder en snabb hälsorond mot kontanter, byteskaffe eller ett bestämt nej."
+            }
+            RandomEventKind::Rainstorm => {
+                "Regnet slår mot fältet. Skörden kan räddas, djuren kan lugnas eller pappren kan sorteras."
+            }
+            RandomEventKind::InfluencerVisit => {
+                "En lokal influencer har hittat plantagen och uttalar redan 'autentiskt' framför kameran."
+            }
+            RandomEventKind::PaperworkAudit => {
+                "En revisor vill jämföra kvitton, tanddiagram och varför geten har tre olika titlar."
+            }
         }
     } else {
         match kind {
@@ -585,6 +738,21 @@ fn event_body(kind: RandomEventKind, language: Language) -> &'static str {
             }
             RandomEventKind::GoatAppearance => {
                 "A goat appears inside the paperwork room. No one hired it. No one can prove that."
+            }
+            RandomEventKind::TouristGroup => {
+                "A bus of coffee tourists wants to see the sanctuary, buy bags, and take very close photos."
+            }
+            RandomEventKind::VeterinarianOffer => {
+                "A traveling veterinarian offers a quick health round for cash, barter coffee, or a firm no."
+            }
+            RandomEventKind::Rainstorm => {
+                "Rain hammers the field. Harvest can be saved, animals can be soothed, or paperwork can be sorted."
+            }
+            RandomEventKind::InfluencerVisit => {
+                "A local influencer has found the plantation and is already saying 'authentic' into a camera."
+            }
+            RandomEventKind::PaperworkAudit => {
+                "An auditor wants to compare receipts, dental charts, and why the goat has three job titles."
             }
         }
     }

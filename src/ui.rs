@@ -75,6 +75,7 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                     StatKind::Reputation,
                     StatKind::Mailbox,
                     StatKind::Order,
+                    StatKind::Modifier,
                     StatKind::Goal,
                 ] {
                     hud.spawn((
@@ -752,6 +753,7 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "paper" => "Papper",
             "mail" => "Post",
             "order" => "Order",
+            "modifier" => "Läge",
             "offer" => "erbjudande",
             "none" => "ingen",
             "settings_language" => "Språk: Svenska",
@@ -871,6 +873,7 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "paper" => "Paper",
             "mail" => "Mail",
             "order" => "Order",
+            "modifier" => "Modifier",
             "offer" => "offer",
             "none" => "none",
             "settings_language" => "Language: English",
@@ -1396,6 +1399,7 @@ pub fn update_stats(
                 format!("{}: {}", tr(&state, "upgrades"), upgrade_summary(&state))
             }
             StatKind::Order => order_summary(&state),
+            StatKind::Modifier => modifier_summary(&state),
             StatKind::Goal => current_goal(&state),
         };
         **text = value;
@@ -1407,6 +1411,7 @@ pub fn update_stats(
             StatKind::Mailbox if state.event.is_some() || state.pending_order.is_some() => {
                 Color::srgb(1.0, 0.82, 0.42)
             }
+            StatKind::Modifier => Color::srgb(0.72, 0.92, 1.0),
             StatKind::Goal => Color::srgb(1.0, 0.84, 0.42),
             _ => Color::srgb(0.97, 0.92, 0.78),
         };
@@ -1460,8 +1465,9 @@ fn mailbox_summary(state: &GameState) -> String {
 fn order_summary(state: &GameState) -> String {
     if let Some(order) = &state.active_order {
         format!(
-            "{} {:.1} d{}",
+            "{} {} {:.1} d{}",
             tr(state, "order"),
+            order_style_short(order.style, state.language),
             order.bags,
             order.due_day
         )
@@ -1469,6 +1475,14 @@ fn order_summary(state: &GameState) -> String {
         format!("{} {}", tr(state, "order"), tr(state, "offer"))
     } else {
         format!("{} {}", tr(state, "order"), tr(state, "none"))
+    }
+}
+
+fn modifier_summary(state: &GameState) -> String {
+    if let Some(modifier) = &state.daily_modifier {
+        format!("{}: {}", tr(state, "modifier"), modifier.title)
+    } else {
+        format!("{}: {}", tr(state, "modifier"), tr(state, "none"))
     }
 }
 
@@ -1875,7 +1889,9 @@ pub fn refresh_event_modal(
                 if let Some(order) = state.pending_order.as_ref() {
                     let body = if state.language == Language::Swedish {
                         format!(
-                            "{} {} {:.1} {} {}. {} ${}, {} +{}, {} +{:.1}%.\n{}",
+                            "{}: {}.\n{} {} {:.1} {} {}. {} ${}, {} +{}, {} +{:.1}%.\n{}",
+                            order_style_label(order.style, state.language),
+                            order_style_body(order.style, state.language),
                             order.client,
                             tr(&state, "order_wants"),
                             order.bags,
@@ -1891,7 +1907,9 @@ pub fn refresh_event_modal(
                         )
                     } else {
                         format!(
-                            "{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\n{}",
+                            "{}: {}.\n{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\n{}",
+                            order_style_label(order.style, state.language),
+                            order_style_body(order.style, state.language),
                             order.client,
                             order.bags,
                             order.due_day,
@@ -2449,6 +2467,21 @@ fn event_option_labels(
                 "Ta bort geten diskret",
                 "Skyll på geten tidigt",
             ),
+            RandomEventKind::TouristGroup => (
+                "Öppna hela rundturen",
+                "Visa bara rosteriet",
+                "Stäng grindarna",
+            ),
+            RandomEventKind::VeterinarianOffer => {
+                ("Betala hälsorond", "Byt mot kaffe", "Avböj bestämt")
+            }
+            RandomEventKind::Rainstorm => ("Skörda i regnet", "Skydda djuren", "Sortera papper"),
+            RandomEventKind::InfluencerVisit => {
+                ("Låt filma allt", "Visa bara koppar", "Förbjud mobiler")
+            }
+            RandomEventKind::PaperworkAudit => {
+                ("Förbered juridiskt", "Dränk i bilagor", "Improvisera")
+            }
         }
     } else {
         match kind {
@@ -2483,6 +2516,71 @@ fn event_option_labels(
                 "Remove goat quietly",
                 "Blame goat early",
             ),
+            RandomEventKind::TouristGroup => {
+                ("Open full tour", "Show roastery only", "Close the gate")
+            }
+            RandomEventKind::VeterinarianOffer => {
+                ("Pay health round", "Barter coffee", "Decline firmly")
+            }
+            RandomEventKind::Rainstorm => ("Harvest in rain", "Shelter animals", "Sort paperwork"),
+            RandomEventKind::InfluencerVisit => {
+                ("Let them film all", "Show cups only", "Ban phones")
+            }
+            RandomEventKind::PaperworkAudit => ("Prepare legally", "Drown in annexes", "Improvise"),
+        }
+    }
+}
+
+fn order_style_short(style: OrderStyle, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match style {
+            OrderStyle::Steady => "standard",
+            OrderStyle::Rush => "akut",
+            OrderStyle::Discreet => "diskret",
+            OrderStyle::Reputation => "PR",
+        }
+    } else {
+        match style {
+            OrderStyle::Steady => "steady",
+            OrderStyle::Rush => "rush",
+            OrderStyle::Discreet => "discreet",
+            OrderStyle::Reputation => "PR",
+        }
+    }
+}
+
+fn order_style_label(style: OrderStyle, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match style {
+            OrderStyle::Steady => "Stabil beställning",
+            OrderStyle::Rush => "Akutorder",
+            OrderStyle::Discreet => "Diskret kund",
+            OrderStyle::Reputation => "Ryktesbyggare",
+        }
+    } else {
+        match style {
+            OrderStyle::Steady => "Steady order",
+            OrderStyle::Rush => "Rush order",
+            OrderStyle::Discreet => "Discreet client",
+            OrderStyle::Reputation => "Reputation builder",
+        }
+    }
+}
+
+fn order_style_body(style: OrderStyle, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match style {
+            OrderStyle::Steady => "Normal betalning, normal deadline och begripliga risker",
+            OrderStyle::Rush => "Kort deadline, högre betalt och mer uppmärksamhet",
+            OrderStyle::Discreet => "Bättre marginal, men kontraktet drar blickar",
+            OrderStyle::Reputation => "Lägre betalt, men mycket bättre PR",
+        }
+    } else {
+        match style {
+            OrderStyle::Steady => "Normal pay, normal deadline, and understandable risk",
+            OrderStyle::Rush => "Short deadline, higher pay, and more attention",
+            OrderStyle::Discreet => "Better margin, but the contract draws eyes",
+            OrderStyle::Reputation => "Lower pay, but much stronger PR",
         }
     }
 }
