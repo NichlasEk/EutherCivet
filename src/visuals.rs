@@ -2,13 +2,14 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::actions::{run_action, select_civet_by_index};
-use crate::localization::{civet_status_label, room_name, world_label};
+use crate::localization::{civet_status_label, room_name, state_text, world_label};
 use crate::model::{
     Action, BackgroundAssets, CharacterAssets, CivetBehavior, CivetClickTarget,
     EnvironmentBackdrop, GameScreen, GameState, Helicopter, MovingCivet, ParallaxLayer,
     PlantationRoom, PlayerAvatar, PlayerLabel, PlayerShadow, PropAssets, RetroSkyBand,
     SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
 };
+use crate::ui::{can_run, unavailable_reason};
 
 const BACKDROP_TILE_SIZE: f32 = 627.0;
 const BACKDROP_OVERSCAN: f32 = 1.04;
@@ -1008,7 +1009,7 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
                 prop_sprite(props, 2),
                 Transform::from_xyz(x, y, ground_z(y)).with_scale(Vec3::splat(0.22)),
                 Pickable::default(),
-                WorldActionTarget(Action::FeedCivets),
+                WorldActionTarget(Action::HarvestFruit),
                 WorldVisual,
             ))
             .observe(world_action_on_click)
@@ -1072,6 +1073,22 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
         Transform::from_xyz(205.0, -128.0, 5.0),
         WorldVisual,
     ));
+    spawn_action_plaque(
+        commands,
+        world_label(state, "field_harvest_sign"),
+        Action::HarvestFruit,
+        pots.x,
+        pots.y - 58.0,
+        126.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "field_plant_sign"),
+        Action::PlantCoffee,
+        seedlings.x,
+        seedlings.y - 58.0,
+        118.0,
+    );
 
     spawn_prop(commands, props, 15, 525.0, -170.0, 0.34, ground_z(-170.0));
     if state.goat_present {
@@ -1084,7 +1101,7 @@ fn spawn_coffee_field_room(commands: &mut Commands, state: &GameState, props: &P
         );
     }
 
-    spawn_room_hint(commands, world_label(state, "field_hint"));
+    spawn_room_hint(commands, &field_hint(state));
 }
 
 fn spawn_sanctuary_room(
@@ -1237,8 +1254,48 @@ fn spawn_sanctuary_room(
         Transform::from_xyz(snack_slot.x, snack_slot.y, 5.0),
         WorldVisual,
     ));
+    spawn_action_plaque(
+        commands,
+        world_label(state, "sanctuary_feed_sign"),
+        Action::FeedCivets,
+        snack_slot.x,
+        snack_slot.y - 46.0,
+        116.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "sanctuary_beans_sign"),
+        Action::CollectBeans,
+        0.0,
+        -241.0,
+        122.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "care_brush_sign"),
+        Action::UseTinyBrush,
+        -176.0,
+        -241.0,
+        82.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "care_collar_sign"),
+        Action::UseRibbonCollar,
+        -88.0,
+        -241.0,
+        86.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "care_puzzle_sign"),
+        Action::UseFruitPuzzle,
+        88.0,
+        -241.0,
+        86.0,
+    );
 
-    spawn_room_hint(commands, world_label(state, "sanctuary_hint"));
+    spawn_room_hint(commands, &sanctuary_hint(state));
 }
 
 fn civet_behavior(profile: &crate::model::CivetProfile) -> CivetBehavior {
@@ -1351,6 +1408,14 @@ fn spawn_roastery_room(
         ),
         WorldVisual,
     ));
+    spawn_action_plaque(
+        commands,
+        world_label(state, "roast_sign"),
+        Action::RoastCoffee,
+        roaster_slot.x,
+        roaster_slot.y - 58.0,
+        88.0,
+    );
     for i in 0..6 {
         let slot = anchor_slot(bag_table, i % 3, 3, (i / 3) as f32 * 22.0);
         let x = slot.x;
@@ -1425,8 +1490,24 @@ fn spawn_roastery_room(
         Transform::from_xyz(135.0, -50.0, 4.0),
         WorldVisual,
     ));
+    spawn_action_plaque(
+        commands,
+        world_label(state, "sell_sign"),
+        Action::SellCoffee,
+        bag_table.x - 76.0,
+        bag_table.y - 58.0,
+        82.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "deliver_sign"),
+        Action::DeliverOrder,
+        bag_table.x + 54.0,
+        bag_table.y - 58.0,
+        132.0,
+    );
 
-    spawn_room_hint(commands, world_label(state, "roastery_hint"));
+    spawn_room_hint(commands, &roastery_hint(state));
 }
 
 fn spawn_paperwork_office_room(
@@ -1525,6 +1606,14 @@ fn spawn_paperwork_office_room(
         Transform::from_xyz(30.0, -84.0, 4.0),
         WorldVisual,
     ));
+    spawn_action_plaque(
+        commands,
+        world_label(state, "paperwork_sign"),
+        Action::ShowPaperwork,
+        desk.x,
+        desk.y - 56.0,
+        126.0,
+    );
 
     let stamp_slot = anchor_slot(desk, 6, 7, 0.0);
     spawn_prop(
@@ -1537,6 +1626,46 @@ fn spawn_paperwork_office_room(
         ground_z(stamp_slot.y),
     );
     spawn_upgrade_buildings(commands, state);
+    spawn_action_plaque(
+        commands,
+        world_label(state, "legal_plan_sign"),
+        Action::BuildLegalOffice,
+        -410.0,
+        -241.0,
+        78.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "caretaker_plan_sign"),
+        Action::HireCaretaker,
+        -310.0,
+        -241.0,
+        94.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "sorter_plan_sign"),
+        Action::BuildFruitSorter,
+        -202.0,
+        -241.0,
+        90.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "shed_plan_sign"),
+        Action::BuildRoastingShed,
+        -94.0,
+        -241.0,
+        94.0,
+    );
+    spawn_action_plaque(
+        commands,
+        world_label(state, "tasting_plan_sign"),
+        Action::BuildTastingRoom,
+        18.0,
+        -241.0,
+        96.0,
+    );
     spawn_helicopter(commands, props, state);
     if state.goat_present {
         spawn_goat(
@@ -1548,7 +1677,7 @@ fn spawn_paperwork_office_room(
         );
     }
 
-    spawn_room_hint(commands, world_label(state, "office_hint"));
+    spawn_room_hint(commands, &office_hint(state));
 }
 
 fn spawn_helicopter(commands: &mut Commands, props: &PropAssets, state: &GameState) {
@@ -1704,6 +1833,109 @@ fn spawn_goat(commands: &mut Commands, props: &PropAssets, x: f32, y: f32, label
     ));
 }
 
+fn field_hint(state: &GameState) -> String {
+    if state.coffee_fruit < state.civets as f32 * 2.0 {
+        state_text(
+            state,
+            "Click fruit or plants to harvest enough coffee fruit for the civets.",
+            "Klicka frukt eller plantor för att skörda nog med kaffefrukt åt palmmårdarna.",
+        )
+    } else if state.money >= 14 {
+        state_text(
+            state,
+            "Click the seedling sign to plant more coffee, or harvest fruit from the field.",
+            "Klicka plant-skylten för mer kaffe, eller skörda frukt från fältet.",
+        )
+    } else {
+        state_text(
+            state,
+            "Harvest fruit here, then turn it into care, beans, roasted coffee, and money.",
+            "Skörda frukt här och gör den till omsorg, bönor, rostat kaffe och pengar.",
+        )
+    }
+    .to_string()
+}
+
+fn sanctuary_hint(state: &GameState) -> String {
+    if state.selected_civet.is_none() {
+        state_text(
+            state,
+            "Click a civet first, then use the care plaques for food, affection, and enrichment.",
+            "Klicka på en palmmård först, använd sedan omsorgsskyltarna för mat, närhet och berikning.",
+        )
+    } else if state.coffee_fruit >= 2.0 {
+        state_text(
+            state,
+            "Use the feed tray or a favorite care item to improve this civet's status.",
+            "Använd matbrickan eller favoritomsorgen för att förbättra palmmårdens status.",
+        )
+    } else {
+        state_text(
+            state,
+            "This room needs coffee fruit from the field before feeding gets serious.",
+            "Det här rummet behöver kaffefrukt från fältet innan matningen kommer igång.",
+        )
+    }
+    .to_string()
+}
+
+fn roastery_hint(state: &GameState) -> String {
+    if state.active_order.is_some()
+        && state
+            .active_order
+            .as_ref()
+            .is_some_and(|order| state.roasted_coffee >= order.bags)
+    {
+        state_text(
+            state,
+            "The order is ready. Click Deliver order at the packing table.",
+            "Ordern är redo. Klicka Leverera order vid packbordet.",
+        )
+    } else if state.processed_beans >= 1.0 {
+        state_text(
+            state,
+            "Click the roaster to turn processed beans into sellable coffee.",
+            "Klicka rostaren för att göra processade bönor till säljbart kaffe.",
+        )
+    } else if state.roasted_coffee >= 1.0 {
+        state_text(
+            state,
+            "Click coffee bags to sell, or save stock for an active contract.",
+            "Klicka kaffesäckar för att sälja, eller spara lager till ett aktivt kontrakt.",
+        )
+    } else {
+        state_text(
+            state,
+            "Bring processed beans from the sanctuary, then roast and sell here.",
+            "Ta processade bönor från fristaden, rosta och sälj dem här.",
+        )
+    }
+    .to_string()
+}
+
+fn office_hint(state: &GameState) -> String {
+    if state.event.is_some() || state.pending_order.is_some() {
+        state_text(
+            state,
+            "Mailbox work is waiting. Handle letters before deadlines turn into penalties.",
+            "Post väntar. Hantera brev innan deadlines blir straff.",
+        )
+    } else if state.suspicion >= 55.0 {
+        state_text(
+            state,
+            "Suspicion is warm. Click paperwork before the helicopter gets ideas.",
+            "Misstanken är varm. Klicka papper innan helikoptern får idéer.",
+        )
+    } else {
+        state_text(
+            state,
+            "Use office plaques for paperwork and upgrades that make the plantation safer.",
+            "Använd kontorsskyltarna för papper och uppgraderingar som gör plantagen tryggare.",
+        )
+    }
+    .to_string()
+}
+
 fn spawn_room_hint(commands: &mut Commands, text: &str) {
     commands.spawn((
         Text2d::new(text),
@@ -1713,6 +1945,39 @@ fn spawn_room_hint(commands: &mut Commands, text: &str) {
         },
         TextColor(Color::srgba(1.0, 0.90, 0.66, 0.80)),
         Transform::from_xyz(-20.0, -315.0, 3.0),
+        WorldVisual,
+    ));
+}
+
+fn spawn_action_plaque(
+    commands: &mut Commands,
+    label: &str,
+    action: Action,
+    x: f32,
+    y: f32,
+    width: f32,
+) {
+    let base = Color::srgb(0.40, 0.22, 0.09);
+    let hover = Color::srgb(0.62, 0.36, 0.14);
+    commands
+        .spawn((
+            Sprite::from_color(base, Vec2::new(width, 28.0)),
+            Transform::from_xyz(x, y, ground_z(y) + 0.55),
+            Pickable::default(),
+            WorldActionTarget(action),
+            WorldVisual,
+        ))
+        .observe(world_action_on_click)
+        .observe(tint_sprite_on_hover(hover))
+        .observe(tint_sprite_on_out(base));
+    commands.spawn((
+        Text2d::new(label),
+        TextFont {
+            font_size: 12.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.91, 0.68)),
+        Transform::from_xyz(x, y, ground_z(y) + 0.9),
         WorldVisual,
     ));
 }
@@ -1753,6 +2018,11 @@ fn world_action_on_click(
     let Ok(target) = targets.get(click.event_target()) else {
         return;
     };
+    if !can_run(target.0, &state) {
+        let reason = unavailable_reason(target.0, &state);
+        state.log_line(reason);
+        return;
+    }
     run_action(&mut state, target.0);
 }
 

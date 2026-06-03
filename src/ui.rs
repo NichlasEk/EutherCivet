@@ -1106,7 +1106,7 @@ fn upgrade_label(state: &GameState, key: &'static str, cost: i32, bought: bool) 
     }
 }
 
-fn can_run(action: Action, state: &GameState) -> bool {
+pub(crate) fn can_run(action: Action, state: &GameState) -> bool {
     match action {
         Action::PlantCoffee => state.money >= 14 && state.near_field_workbench(),
         Action::HarvestFruit => state.coffee_plants > 0 && state.near_field_workbench(),
@@ -1174,7 +1174,7 @@ fn can_run(action: Action, state: &GameState) -> bool {
     }
 }
 
-fn unavailable_reason(action: Action, state: &GameState) -> String {
+pub(crate) fn unavailable_reason(action: Action, state: &GameState) -> String {
     match action {
         Action::PlantCoffee => {
             if state.money < 14 {
