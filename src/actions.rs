@@ -5,8 +5,10 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::StartGame => {
             if state.game_result.is_some() {
                 let language = state.language;
+                let time_scale = state.time_scale;
                 *state = GameState::default();
                 state.language = language;
+                state.time_scale = time_scale;
             }
             state.screen = crate::model::GameScreen::Playing;
             state.log_line(
@@ -16,8 +18,10 @@ pub fn run_action(state: &mut GameState, action: Action) {
         }
         Action::StartNewRun => {
             let language = state.language;
+            let time_scale = state.time_scale;
             *state = GameState::default();
             state.language = language;
+            state.time_scale = time_scale;
             state.screen = crate::model::GameScreen::Playing;
             state.log_line("New run started. The paperwork is blank and already judgemental.");
             return;
@@ -90,6 +94,12 @@ pub fn run_action(state: &mut GameState, action: Action) {
         } else {
             "Inventory tray folds back into a coffee sack."
         });
+        return;
+    }
+
+    if matches!(action, Action::CycleTimeScale) {
+        state.time_scale = state.time_scale.next();
+        state.log_line(format!("Time speed set to {}.", state.time_scale.label()));
         return;
     }
 
@@ -369,7 +379,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::EventOptionA | Action::EventOptionB | Action::EventOptionC => {}
         Action::AcceptOrder | Action::DeclineOrder => {}
         Action::CloseAnimalPanel => {}
-        Action::ToggleInventory => {}
+        Action::ToggleInventory | Action::CycleTimeScale => {}
         Action::GoSanctuary
         | Action::GoCoffeeField
         | Action::GoRoastery

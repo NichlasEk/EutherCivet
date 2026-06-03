@@ -13,6 +13,10 @@ pub struct GameState {
     #[serde(default)]
     pub active_tool_group: ToolGroup,
     pub day: u32,
+    #[serde(default)]
+    pub day_progress: f32,
+    #[serde(default)]
+    pub time_scale: TimeScale,
     pub coffee_plants: u32,
     pub civets: u32,
     #[serde(default = "default_civet_names")]
@@ -171,6 +175,44 @@ pub enum Language {
     Swedish,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TimeScale {
+    #[default]
+    Normal,
+    Fast2,
+    Fast4,
+    Fast10,
+}
+
+impl TimeScale {
+    pub fn multiplier(self) -> f32 {
+        match self {
+            TimeScale::Normal => 1.0,
+            TimeScale::Fast2 => 2.0,
+            TimeScale::Fast4 => 4.0,
+            TimeScale::Fast10 => 10.0,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            TimeScale::Normal => "x1",
+            TimeScale::Fast2 => "x2",
+            TimeScale::Fast4 => "x4",
+            TimeScale::Fast10 => "x10",
+        }
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            TimeScale::Normal => TimeScale::Fast2,
+            TimeScale::Fast2 => TimeScale::Fast4,
+            TimeScale::Fast4 => TimeScale::Fast10,
+            TimeScale::Fast10 => TimeScale::Normal,
+        }
+    }
+}
+
 impl Default for GameState {
     fn default() -> Self {
         Self {
@@ -178,6 +220,8 @@ impl Default for GameState {
             current_room: PlantationRoom::Sanctuary,
             active_tool_group: ToolGroup::Care,
             day: 1,
+            day_progress: 0.0,
+            time_scale: TimeScale::Normal,
             coffee_plants: 6,
             civets: 3,
             civet_names: default_civet_names(),
@@ -520,6 +564,7 @@ pub struct DynamicButtonText(pub Action);
 #[derive(Clone, Copy)]
 pub enum StatKind {
     Day,
+    Clock,
     Plants,
     Civets,
     Fruit,
@@ -562,6 +607,7 @@ pub enum Action {
     GiveFruitFromInventory,
     PickUpBeansToInventory,
     ToggleInventory,
+    CycleTimeScale,
     ShowSettings,
     CloseSettings,
     ToggleLayoutGuides,

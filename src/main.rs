@@ -19,10 +19,10 @@ fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.10, 0.21, 0.17)))
         .insert_resource(GameState::load().unwrap_or_default())
-        .insert_resource(GameTick(Timer::from_seconds(1.0, TimerMode::Repeating)))
-        .insert_resource(EventTick(Timer::from_seconds(9.0, TimerMode::Repeating)))
-        .insert_resource(DayTick(Timer::from_seconds(45.0, TimerMode::Repeating)))
-        .insert_resource(OrderTick(Timer::from_seconds(32.0, TimerMode::Repeating)))
+        .insert_resource(GameTick(Timer::from_seconds(4.0, TimerMode::Repeating)))
+        .insert_resource(EventTick(Timer::from_seconds(36.0, TimerMode::Repeating)))
+        .insert_resource(DayTick(Timer::from_seconds(180.0, TimerMode::Repeating)))
+        .insert_resource(OrderTick(Timer::from_seconds(128.0, TimerMode::Repeating)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EutherCivet".to_string(),

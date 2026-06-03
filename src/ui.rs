@@ -63,6 +63,7 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
 
                 for kind in [
                     StatKind::Day,
+                    StatKind::Clock,
                     StatKind::Fruit,
                     StatKind::Beans,
                     StatKind::Roasted,
@@ -83,6 +84,7 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                         StatText(kind),
                     ));
                 }
+                spawn_dynamic_button(hud, skin, "Speed x1", Action::CycleTimeScale, 86.0);
             });
 
             root.spawn((
@@ -433,6 +435,7 @@ fn button_base_color(action: Action) -> Color {
         Action::Save
         | Action::Load
         | Action::StartNewRun
+        | Action::CycleTimeScale
         | Action::ShowSettings
         | Action::CloseSettings
         | Action::ToggleLayoutGuides
@@ -494,6 +497,7 @@ fn button_border_color(action: Action) -> Color {
         Action::Save
         | Action::Load
         | Action::StartNewRun
+        | Action::CycleTimeScale
         | Action::ShowSettings
         | Action::CloseSettings
         | Action::ToggleLayoutGuides
@@ -726,6 +730,7 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::Save => "Save".to_string(),
         Action::Load => "Load".to_string(),
         Action::StartNewRun => "Start new run".to_string(),
+        Action::CycleTimeScale => format!("Speed {}", state.time_scale.label()),
         Action::ShowSettings => "Settings".to_string(),
         Action::CloseSettings => "Close".to_string(),
         Action::ToggleLayoutGuides => {
@@ -795,7 +800,7 @@ fn can_run(action: Action, state: &GameState) -> bool {
             .active_order
             .as_ref()
             .is_some_and(|order| state.roasted_coffee >= order.bags),
-        Action::ToggleInventory => true,
+        Action::ToggleInventory | Action::CycleTimeScale => true,
         Action::GiveFruitFromInventory => {
             state.current_room == PlantationRoom::Sanctuary && state.coffee_fruit >= 1.0
         }
@@ -873,6 +878,13 @@ fn unavailable_reason(action: Action, state: &GameState) -> &'static str {
     }
 }
 
+fn game_clock_label(day_progress: f32) -> String {
+    let minutes_total = (6.0 * 60.0 + day_progress.clamp(0.0, 1.0) * 16.0 * 60.0).round() as u32;
+    let hour = minutes_total / 60;
+    let minute = minutes_total % 60;
+    format!("{hour:02}:{minute:02}")
+}
+
 pub fn update_stats(
     state: Res<GameState>,
     mut stats: Query<(&StatText, &mut Text, &mut TextColor)>,
@@ -889,6 +901,11 @@ pub fn update_stats(
                     format!("Day {}/7", state.day)
                 }
             }
+            StatKind::Clock => format!(
+                "{} {}",
+                game_clock_label(state.day_progress),
+                state.time_scale.label()
+            ),
             StatKind::Plants => format!("Plants {}", state.coffee_plants),
             StatKind::Civets => format!("Civets {}", state.civets),
             StatKind::Fruit => format!("Fruit {:.0}", state.coffee_fruit),

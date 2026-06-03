@@ -6,7 +6,8 @@ use crate::model::{
 };
 
 pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut<GameState>) {
-    if !timer.0.tick(time.delta()).just_finished()
+    let delta = time.delta().mul_f32(state.time_scale.multiplier());
+    if !timer.0.tick(delta).just_finished()
         || state.screen != GameScreen::Playing
         || state.inspection
         || state.day_report.is_some()
@@ -88,8 +89,7 @@ fn update_animal_care(state: &mut GameState, eaten: f32) {
 }
 
 pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMut<GameState>) {
-    if !timer.0.tick(time.delta()).just_finished()
-        || state.screen != GameScreen::Playing
+    if state.screen != GameScreen::Playing
         || state.inspection
         || state.day_report.is_some()
         || state.game_result.is_some()
@@ -97,8 +97,18 @@ pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMu
         return;
     }
 
+    let delta = time.delta().mul_f32(state.time_scale.multiplier());
+    let finished = timer.0.tick(delta).just_finished();
+    let duration = timer.0.duration().as_secs_f32().max(1.0);
+    state.day_progress = (timer.0.elapsed().as_secs_f32() / duration).clamp(0.0, 1.0);
+
+    if !finished {
+        return;
+    }
+
     let report = settle_day(&mut state);
     state.day_report = Some(report);
+    state.day_progress = 0.0;
 }
 
 pub fn generate_order_offers(
@@ -106,7 +116,8 @@ pub fn generate_order_offers(
     mut timer: ResMut<OrderTick>,
     mut state: ResMut<GameState>,
 ) {
-    if !timer.0.tick(time.delta()).just_finished()
+    let delta = time.delta().mul_f32(state.time_scale.multiplier());
+    if !timer.0.tick(delta).just_finished()
         || state.screen != GameScreen::Playing
         || state.inspection
         || state.pending_order.is_some()
@@ -299,7 +310,8 @@ pub fn trigger_random_events(
     mut timer: ResMut<EventTick>,
     mut state: ResMut<GameState>,
 ) {
-    if !timer.0.tick(time.delta()).just_finished()
+    let delta = time.delta().mul_f32(state.time_scale.multiplier());
+    if !timer.0.tick(delta).just_finished()
         || state.screen != GameScreen::Playing
         || state.inspection
         || state.event.is_some()
