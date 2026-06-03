@@ -306,6 +306,7 @@ fn settle_day(state: &mut GameState) -> DayReport {
             state.daily_sales, state.daily_expenses, reputation_delta, suspicion_delta
         )
     };
+    let recommendation = day_recommendation(state, reputation_delta, suspicion_delta);
 
     state.log_line(if state.language == Language::Swedish {
         format!(
@@ -368,10 +369,76 @@ fn settle_day(state: &mut GameState) -> DayReport {
         day,
         title,
         summary,
+        recommendation,
         upkeep,
         reputation_delta,
         suspicion_delta,
     }
+}
+
+fn day_recommendation(state: &GameState, reputation_delta: i32, suspicion_delta: f32) -> String {
+    if state.inspection || state.suspicion >= 85.0 {
+        return state_text(
+            state,
+            "Tomorrow starts with the authorities. Improve paperwork or spend coffee on a tasting.",
+            "Morgondagen börjar med myndigheterna. Förbättra pappren eller lägg kaffe på en provning.",
+        )
+        .to_string();
+    }
+    if state.civet_happiness < 45.0 {
+        return state_text(
+            state,
+            "Feed and care for the civets before chasing more production.",
+            "Mata och ta hand om palmmårdarna innan du jagar mer produktion.",
+        )
+        .to_string();
+    }
+    if state.active_order.is_some() {
+        return state_text(
+            state,
+            "Prioritize the active contract: roast enough bags and deliver from the roastery.",
+            "Prioritera det aktiva kontraktet: rosta nog med säckar och leverera från rosteriet.",
+        )
+        .to_string();
+    }
+    if state.pending_order.is_some() || state.event.is_some() {
+        return state_text(
+            state,
+            "Visit the paperwork office early; unanswered mail turns into penalties.",
+            "Besök papperskontoret tidigt; obesvarad post blir straff.",
+        )
+        .to_string();
+    }
+    if state.roasted_coffee >= 4.0 {
+        return state_text(
+            state,
+            "Sell roasted coffee while reputation is warm, then reinvest in care or paperwork.",
+            "Sälj rostat kaffe medan ryktet är varmt, investera sedan i omsorg eller papper.",
+        )
+        .to_string();
+    }
+    if state.processed_beans >= 2.0 {
+        return state_text(
+            state,
+            "Move beans through the roaster so tomorrow has money, not just inventory.",
+            "Flytta bönorna genom rostaren så morgondagen har pengar, inte bara lager.",
+        )
+        .to_string();
+    }
+    if reputation_delta < 0 || suspicion_delta > 4.0 {
+        return state_text(
+            state,
+            "Slow down and stabilize: paperwork, animal care, and modest sales will lower risk.",
+            "Sakta ner och stabilisera: papper, djurvård och måttlig försäljning sänker risken.",
+        )
+        .to_string();
+    }
+    state_text(
+        state,
+        "Keep the pipeline moving: harvest fruit, feed civets, roast beans, then sell.",
+        "Håll kedjan igång: skörda frukt, mata palmmårdar, rosta bönor och sälj.",
+    )
+    .to_string()
 }
 
 pub fn trigger_random_events(

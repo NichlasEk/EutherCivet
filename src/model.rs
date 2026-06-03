@@ -84,6 +84,8 @@ pub struct DayReport {
     pub day: u32,
     pub title: String,
     pub summary: String,
+    #[serde(default)]
+    pub recommendation: String,
     pub upkeep: i32,
     pub reputation_delta: i32,
     pub suspicion_delta: f32,
@@ -691,6 +693,7 @@ pub enum StatKind {
     Mailbox,
     Upgrades,
     Order,
+    Goal,
 }
 
 #[derive(Clone, Copy)]

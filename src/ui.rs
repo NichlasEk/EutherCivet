@@ -74,6 +74,7 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                     StatKind::Reputation,
                     StatKind::Mailbox,
                     StatKind::Order,
+                    StatKind::Goal,
                 ] {
                     hud.spawn((
                         Text::new("..."),
@@ -795,6 +796,18 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "mood" => "Humör",
             "hunger" => "Hunger",
             "favorite" => "Favorit",
+            "goal" => "Mål",
+            "goal_inspection" => "Hantera Operation Bitter Bean",
+            "goal_read_report" => "Läs dagsrapporten",
+            "goal_check_mail" => "Gå till kontoret och hantera posten",
+            "goal_feed_civets" => "Mata palmmårdarna",
+            "goal_roast_order" => "Rosta kaffe till ordern",
+            "goal_deliver_order" => "Leverera den aktiva ordern",
+            "goal_roast_beans" => "Rosta processade bönor",
+            "goal_sell_coffee" => "Sälj rostat kaffe",
+            "goal_feed_or_harvest" => "Mata djuren eller skörda mer frukt",
+            "goal_grow_pipeline" => "Bygg upp kaffeproduktionen",
+            "recommendation" => "Rekommendation",
             _ => key,
         }
     } else {
@@ -901,6 +914,18 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "mood" => "Mood",
             "hunger" => "Hunger",
             "favorite" => "Favorite",
+            "goal" => "Goal",
+            "goal_inspection" => "Handle Operation Bitter Bean",
+            "goal_read_report" => "Read the day report",
+            "goal_check_mail" => "Go to the office and handle mail",
+            "goal_feed_civets" => "Feed the civets",
+            "goal_roast_order" => "Roast coffee for the order",
+            "goal_deliver_order" => "Deliver the active order",
+            "goal_roast_beans" => "Roast processed beans",
+            "goal_sell_coffee" => "Sell roasted coffee",
+            "goal_feed_or_harvest" => "Feed the animals or harvest more fruit",
+            "goal_grow_pipeline" => "Build the coffee pipeline",
+            "recommendation" => "Recommendation",
             _ => key,
         }
     }
@@ -1143,70 +1168,177 @@ fn can_run(action: Action, state: &GameState) -> bool {
 }
 
 fn unavailable_reason(action: Action, state: &GameState) -> String {
-    let text = if state.language == Language::Swedish {
-        match action {
-            Action::PlantCoffee => {
-                "Stå vid kaffefältets arbetsbord och ha tillräckligt med pengar."
+    match action {
+        Action::PlantCoffee => {
+            if state.money < 14 {
+                need_money(state, 14)
+            } else {
+                need_place(state, "Kaffefältets arbetsbord", "Coffee Field workbench")
             }
-            Action::HarvestFruit => "Stå vid kaffefältets plantor.",
-            Action::FeedCivets => "Stå nära palmmårdarna med kaffefrukt.",
-            Action::CollectBeans => "Stå nära palmmårdarnas arbetsyta.",
-            Action::RoastCoffee => "Stå vid rostaren med processade bönor.",
-            Action::SellCoffee => "Stå vid rosteriets packbord med rostat kaffe.",
-            Action::DeliverOrder if state.active_order.is_none() => "Det finns ingen aktiv order.",
-            Action::DeliverOrder => "Det finns inte tillräckligt rostat kaffe för ordern.",
-            Action::GiveFruitFromInventory => "Gå till palmmårdarna med kaffefrukt i säcken.",
-            Action::PickUpBeansToInventory => "Gå till palmmårdarnas arbetsyta.",
-            Action::ShowPaperwork => "Det saknas pengar eller närhet till pappersdisken.",
-            Action::ImproveEnclosure => "Det saknas pengar för att förbättra hägnet.",
-            Action::BuildLegalOffice
-            | Action::HireCaretaker
-            | Action::BuildFruitSorter
-            | Action::BuildRoastingShed
-            | Action::BuildTastingRoom => "Bygget är inte tillgängligt eller redan klart.",
-            Action::FeedSelectedCivet if state.selected_civet.is_none() => {
-                "Välj en palmmård först."
-            }
-            Action::FeedSelectedCivet => "En personlig fruktbricka kräver 2 kaffefrukter.",
-            Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
-                "Välj en palmmård först."
-            }
-            Action::UseTinyBrush | Action::UseRibbonCollar | Action::UseFruitPuzzle => {
-                "Välj en palmmård först."
-            }
-            _ => "Den handlingen är inte tillgänglig just nu.",
         }
+        Action::HarvestFruit => need_place(state, "Kaffefältets plantor", "Coffee Field plants"),
+        Action::FeedCivets => {
+            if state.coffee_fruit <= 0.0 {
+                need_resource(state, "kaffefrukt", "coffee fruit")
+            } else {
+                need_place(
+                    state,
+                    "palmmårdarna i fristaden",
+                    "the civets in the Sanctuary",
+                )
+            }
+        }
+        Action::CollectBeans => need_place(
+            state,
+            "palmmårdarnas arbetsyta",
+            "the civet enclosure work area",
+        ),
+        Action::RoastCoffee => {
+            if state.processed_beans < 1.0 {
+                need_resource(state, "processade bönor", "processed beans")
+            } else {
+                need_place(state, "rostaren", "the roaster")
+            }
+        }
+        Action::SellCoffee => {
+            if state.roasted_coffee < 1.0 {
+                need_resource(state, "rostat kaffe", "roasted coffee")
+            } else {
+                need_place(state, "rosteriets packbord", "the roastery packing table")
+            }
+        }
+        Action::DeliverOrder => {
+            if let Some(order) = &state.active_order {
+                if state.roasted_coffee < order.bags {
+                    if state.language == Language::Swedish {
+                        format!(
+                            "Ordern kräver {:.1} rostade säckar. Du har {:.1}.",
+                            order.bags, state.roasted_coffee
+                        )
+                    } else {
+                        format!(
+                            "Order needs {:.1} roasted bags. You have {:.1}.",
+                            order.bags, state.roasted_coffee
+                        )
+                    }
+                } else {
+                    need_place(
+                        state,
+                        "rosteriets leveransbord",
+                        "the roastery delivery table",
+                    )
+                }
+            } else {
+                local_text(
+                    state,
+                    "Det finns ingen aktiv order.",
+                    "No active order to deliver.",
+                )
+            }
+        }
+        Action::GiveFruitFromInventory => {
+            if state.coffee_fruit < 1.0 {
+                need_resource(state, "kaffefrukt i säcken", "coffee fruit in the sack")
+            } else {
+                need_place(
+                    state,
+                    "palmmårdarna i fristaden",
+                    "the civets in the Sanctuary",
+                )
+            }
+        }
+        Action::PickUpBeansToInventory => need_place(
+            state,
+            "palmmårdarnas arbetsyta",
+            "the civet enclosure work area",
+        ),
+        Action::ShowPaperwork => {
+            let cost = if state.legal_office {
+                8 + state.paperwork_level as i32 * 2
+            } else {
+                16 + state.paperwork_level as i32 * 3
+            };
+            if state.money < cost {
+                need_money(state, cost)
+            } else {
+                need_place(state, "pappersdisken", "the paperwork desk")
+            }
+        }
+        Action::ImproveEnclosure => need_money(state, 45 + state.enclosure_level as i32 * 20),
+        Action::BuildLegalOffice => upgrade_reason(state, state.legal_office, 110),
+        Action::HireCaretaker => upgrade_reason(state, state.caretaker, 85),
+        Action::BuildFruitSorter => upgrade_reason(state, state.fruit_sorter, 95),
+        Action::BuildRoastingShed => upgrade_reason(state, state.roasting_shed, 125),
+        Action::BuildTastingRoom => upgrade_reason(state, state.tasting_room, 140),
+        Action::FeedSelectedCivet => {
+            if state.selected_civet.is_none() {
+                local_text(state, "Välj en palmmård först.", "Select a civet first.")
+            } else {
+                local_text(
+                    state,
+                    "En personlig fruktbricka kräver 2 kaffefrukter.",
+                    "A personal fruit tray needs 2 coffee fruit.",
+                )
+            }
+        }
+        Action::PetSelectedCivet
+        | Action::InspectSelectedCivet
+        | Action::CloseAnimalPanel
+        | Action::UseTinyBrush
+        | Action::UseRibbonCollar
+        | Action::UseFruitPuzzle => {
+            local_text(state, "Välj en palmmård först.", "Select a civet first.")
+        }
+        _ => local_text(
+            state,
+            "Den handlingen är inte tillgänglig just nu.",
+            "That action is unavailable right now.",
+        ),
+    }
+}
+
+fn local_text(state: &GameState, sv: &'static str, en: &'static str) -> String {
+    if state.language == Language::Swedish {
+        sv.to_string()
     } else {
-        match action {
-            Action::PlantCoffee => "Stand by the Coffee Field workbench with enough money.",
-            Action::HarvestFruit => "Stand by the Coffee Field plants.",
-            Action::FeedCivets => "Stand near the civets with coffee fruit.",
-            Action::CollectBeans => "Stand near the civet enclosure work area.",
-            Action::RoastCoffee => "Stand by the roaster with processed beans.",
-            Action::SellCoffee => "Stand by the roastery packing table with roasted coffee.",
-            Action::DeliverOrder if state.active_order.is_none() => "No active order to deliver.",
-            Action::DeliverOrder => "Not enough roasted coffee for the active order.",
-            Action::GiveFruitFromInventory => "Walk to the civets with coffee fruit in the sack.",
-            Action::PickUpBeansToInventory => "Walk to the civet enclosure work area.",
-            Action::ShowPaperwork => "Not enough money for paperwork.",
-            Action::ImproveEnclosure => "Not enough money for enclosure work.",
-            Action::BuildLegalOffice
-            | Action::HireCaretaker
-            | Action::BuildFruitSorter
-            | Action::BuildRoastingShed
-            | Action::BuildTastingRoom => "Upgrade is unavailable or already built.",
-            Action::FeedSelectedCivet if state.selected_civet.is_none() => "Select a civet first.",
-            Action::FeedSelectedCivet => "A personal fruit tray needs 2 coffee fruit.",
-            Action::PetSelectedCivet | Action::InspectSelectedCivet | Action::CloseAnimalPanel => {
-                "Select a civet first."
-            }
-            Action::UseTinyBrush | Action::UseRibbonCollar | Action::UseFruitPuzzle => {
-                "Select a civet first."
-            }
-            _ => "That action is unavailable right now.",
-        }
-    };
-    text.to_string()
+        en.to_string()
+    }
+}
+
+fn need_money(state: &GameState, cost: i32) -> String {
+    if state.language == Language::Swedish {
+        format!("Behöver ${cost}. Du har ${}.", state.money)
+    } else {
+        format!("Needs ${cost}. You have ${}.", state.money)
+    }
+}
+
+fn need_resource(state: &GameState, sv: &'static str, en: &'static str) -> String {
+    if state.language == Language::Swedish {
+        format!("Behöver {sv}.")
+    } else {
+        format!("Needs {en}.")
+    }
+}
+
+fn need_place(state: &GameState, sv: &'static str, en: &'static str) -> String {
+    if state.language == Language::Swedish {
+        format!("Gå till {sv}.")
+    } else {
+        format!("Go to {en}.")
+    }
+}
+
+fn upgrade_reason(state: &GameState, bought: bool, cost: i32) -> String {
+    if bought {
+        local_text(
+            state,
+            "Uppgraderingen är redan byggd.",
+            "Upgrade is already built.",
+        )
+    } else {
+        need_money(state, cost)
+    }
 }
 
 fn game_clock_label(day_progress: f32) -> String {
@@ -1257,6 +1389,7 @@ pub fn update_stats(
                 format!("{}: {}", tr(&state, "upgrades"), upgrade_summary(&state))
             }
             StatKind::Order => order_summary(&state),
+            StatKind::Goal => current_goal(&state),
         };
         **text = value;
         color.0 = match stat.0 {
@@ -1267,9 +1400,39 @@ pub fn update_stats(
             StatKind::Mailbox if state.event.is_some() || state.pending_order.is_some() => {
                 Color::srgb(1.0, 0.82, 0.42)
             }
+            StatKind::Goal => Color::srgb(1.0, 0.84, 0.42),
             _ => Color::srgb(0.97, 0.92, 0.78),
         };
     }
+}
+
+fn current_goal(state: &GameState) -> String {
+    let goal = if state.inspection {
+        tr(state, "goal_inspection")
+    } else if state.day_report.is_some() {
+        tr(state, "goal_read_report")
+    } else if state.event.is_some() || state.pending_order.is_some() {
+        tr(state, "goal_check_mail")
+    } else if state.civet_happiness < 45.0 || state.civet_feed < state.civets as f32 * 2.0 {
+        tr(state, "goal_feed_civets")
+    } else if state.active_order.is_some() && state.roasted_coffee < active_order_bags(state) {
+        tr(state, "goal_roast_order")
+    } else if state.active_order.is_some() {
+        tr(state, "goal_deliver_order")
+    } else if state.processed_beans >= 1.0 && state.roasted_coffee < 4.0 {
+        tr(state, "goal_roast_beans")
+    } else if state.roasted_coffee >= 1.0 {
+        tr(state, "goal_sell_coffee")
+    } else if state.coffee_fruit >= 4.0 {
+        tr(state, "goal_feed_or_harvest")
+    } else {
+        tr(state, "goal_grow_pipeline")
+    };
+    format!("{}: {goal}", tr(state, "goal"))
+}
+
+fn active_order_bags(state: &GameState) -> f32 {
+    state.active_order.as_ref().map_or(0.0, |order| order.bags)
 }
 
 fn mailbox_summary(state: &GameState) -> String {
@@ -1570,6 +1733,20 @@ pub fn refresh_day_modal(
                         },
                         TextColor(Color::srgb(0.78, 0.88, 0.70)),
                     ));
+                    if !report.recommendation.is_empty() {
+                        modal.spawn((
+                            Text::new(format!(
+                                "{}: {}",
+                                tr(&state, "recommendation"),
+                                report.recommendation
+                            )),
+                            TextFont {
+                                font_size: 16.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.86, 0.50)),
+                        ));
+                    }
 
                     if state.game_result.is_none() {
                         spawn_button(
