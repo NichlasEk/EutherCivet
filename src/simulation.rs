@@ -1,17 +1,10 @@
 use bevy::prelude::*;
 
+use crate::localization::state_text;
 use crate::model::{
     DayReport, DayTick, EventState, EventTick, GameResult, GameScreen, GameState, GameTick,
     Language, OrderOffer, OrderTick, RandomEventKind,
 };
-
-fn t(state: &GameState, en: &'static str, sv: &'static str) -> &'static str {
-    if state.language == Language::Swedish {
-        sv
-    } else {
-        en
-    }
-}
 
 pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut<GameState>) {
     let delta = time.delta().mul_f32(state.time_scale.multiplier());
@@ -160,7 +153,7 @@ pub fn generate_order_offers(
         suspicion_risk,
         due_day,
     });
-    let message = t(
+    let message = state_text(
         &state,
         "New mailbox letter: a premium buyer sends a contract.",
         "Nytt brev i postlådan: en premiumköpare skickar ett kontrakt.",
@@ -223,7 +216,7 @@ fn settle_day(state: &mut GameState) -> DayReport {
         state.active_order = None;
         reputation_delta -= 3;
         suspicion_delta += 6.0;
-        state.log_line(t(
+        state.log_line(state_text(
             state,
             "Missed a premium order. The buyer files a complaint with adjectives.",
             "Missade en premiumorder. Köparen lämnar ett klagomål med adjektiv.",
@@ -238,7 +231,7 @@ fn settle_day(state: &mut GameState) -> DayReport {
         state.pending_order = None;
         reputation_delta -= 1;
         suspicion_delta += 2.0;
-        state.log_line(t(
+        state.log_line(state_text(
             state,
             "An unopened contract expires in the mailbox. Mildly bad optics.",
             "Ett oöppnat kontrakt löper ut i postlådan. Milt dålig optik.",
@@ -254,7 +247,9 @@ fn settle_day(state: &mut GameState) -> DayReport {
             .event
             .as_ref()
             .map(|event| event.title.clone())
-            .unwrap_or_else(|| t(state, "Mailbox incident", "Postlådeincident").to_string());
+            .unwrap_or_else(|| {
+                state_text(state, "Mailbox incident", "Postlådeincident").to_string()
+            });
         state.event = None;
         reputation_delta -= 1;
         suspicion_delta += 2.5;
@@ -271,28 +266,28 @@ fn settle_day(state: &mut GameState) -> DayReport {
     state.clamp();
 
     let title = if state.suspicion >= 85.0 {
-        t(
+        state_text(
             state,
             "Daily Report: Everyone Is Being Very Calm",
             "Dagsrapport: Alla är väldigt lugna",
         )
         .to_string()
     } else if state.civet_happiness < 40.0 {
-        t(
+        state_text(
             state,
             "Daily Report: Civet Morale Committee Convenes",
             "Dagsrapport: Palmmårdarnas moralkommitté sammanträder",
         )
         .to_string()
     } else if state.daily_sales >= 120 {
-        t(
+        state_text(
             state,
             "Daily Report: Premium Beans, Premium Questions",
             "Dagsrapport: Premiumbönor, premiumfrågor",
         )
         .to_string()
     } else {
-        t(
+        state_text(
             state,
             "Daily Report: Boring Coffee, Dramatic Shadows",
             "Dagsrapport: Tråkigt kaffe, dramatiska skuggor",
@@ -329,7 +324,7 @@ fn settle_day(state: &mut GameState) -> DayReport {
 
     if state.money < -80 {
         state.game_result = Some(GameResult::Failed(
-            t(
+            state_text(
                 state,
                 "The plantation collapses under debt. The goat denies fiduciary responsibility.",
                 "Plantagen kollapsar under skulder. Geten förnekar ekonomiskt ansvar.",
@@ -338,7 +333,7 @@ fn settle_day(state: &mut GameState) -> DayReport {
         ));
     } else if state.reputation <= -8 {
         state.game_result = Some(GameResult::Failed(
-            t(
+            state_text(
                 state,
                 "Reputation bottoms out. Reviewers describe the coffee as 'procedurally concerning'.",
                 "Ryktet bottnar. Recensenter beskriver kaffet som 'procedurmässigt oroande'.",
@@ -348,7 +343,7 @@ fn settle_day(state: &mut GameState) -> DayReport {
     } else if day >= 7 {
         if state.money >= 320 && state.reputation >= 18 && state.suspicion < 80.0 {
             state.game_result = Some(GameResult::Won(
-                t(
+                state_text(
                     state,
                     "Seven days survived: profitable, reputable, and only moderately surveilled.",
                     "Sju dagar överlevda: lönsamt, ansett och bara måttligt övervakat.",
@@ -357,7 +352,7 @@ fn settle_day(state: &mut GameState) -> DayReport {
             ));
         } else {
             state.game_result = Some(GameResult::Failed(
-                t(
+                state_text(
                     state,
                     "Seven days pass, but the board calls the result 'not yet investable'.",
                     "Sju dagar går, men styrelsen kallar resultatet 'ännu inte investerbart'.",
@@ -411,7 +406,7 @@ pub fn trigger_random_events(
         body: event_body(kind, state.language).to_string(),
         due_day: (state.day + 2).min(7),
     });
-    let message = t(
+    let message = state_text(
         &state,
         "New mailbox letter: an incident needs attention in the office.",
         "Nytt brev i postlådan: en incident kräver uppmärksamhet på kontoret.",

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 mod actions;
+mod localization;
 mod model;
 mod simulation;
 mod ui;
@@ -9,10 +10,10 @@ mod visuals;
 use model::*;
 use simulation::{advance_day, generate_order_offers, tick_game, trigger_random_events};
 use ui::{
-    animate_buttons, handle_buttons, refresh_animal_panel, refresh_day_modal, refresh_event_modal,
-    refresh_feedback_panel, refresh_inspection_modal, refresh_order_modal, refresh_screen_modal,
-    refresh_settings_modal, spawn_ui, update_button_labels, update_feedback, update_log,
-    update_stats, update_status_bars,
+    animate_buttons, apply_text_font, handle_buttons, refresh_animal_panel, refresh_day_modal,
+    refresh_event_modal, refresh_feedback_panel, refresh_inspection_modal, refresh_order_modal,
+    refresh_screen_modal, refresh_settings_modal, spawn_ui, update_button_labels, update_feedback,
+    update_log, update_stats, update_status_bars,
 };
 use visuals::{animate_world, move_player, refresh_world_visuals, spawn_world};
 
@@ -47,6 +48,7 @@ fn main() {
                 update_status_bars,
                 update_log,
                 update_feedback,
+                apply_text_font,
             ),
         )
         .add_systems(
@@ -128,6 +130,9 @@ fn setup(
         atlas: ui_skin_atlas,
     };
     commands.insert_resource(ui_skin_assets.clone());
+    commands.insert_resource(GameFontAssets {
+        regular: asset_server.load("fonts/NotoSans-Regular.ttf"),
+    });
 
     commands.spawn(Camera2d);
     spawn_world(&mut commands, &background_assets);

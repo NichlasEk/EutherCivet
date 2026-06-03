@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::actions::{run_action, select_civet_by_index};
+use crate::localization::{room_name, world_label};
 use crate::model::{
     Action, BackgroundAssets, CharacterAssets, CivetBehavior, CivetClickTarget,
     EnvironmentBackdrop, GameScreen, GameState, Helicopter, MovingCivet, ParallaxLayer,
@@ -371,12 +372,9 @@ fn walk_to_room(state: &mut GameState, room: PlantationRoom, player_x: f32) {
     state.selected_civet = None;
     state.dirty_visuals = true;
     if state.language == crate::model::Language::Swedish {
-        state.log_line(format!(
-            "Gick till {}.",
-            room_name_lang(room, state.language)
-        ));
+        state.log_line(format!("Gick till {}.", room_name(room, state.language)));
     } else {
-        state.log_line(format!("Walked to {}.", room_name(room)));
+        state.log_line(format!("Walked to {}.", room_name(room, state.language)));
     }
 }
 
@@ -395,96 +393,6 @@ fn exit_right(room: PlantationRoom) -> PlantationRoom {
         PlantationRoom::CoffeeField => PlantationRoom::Roastery,
         PlantationRoom::Roastery => PlantationRoom::PaperworkOffice,
         PlantationRoom::PaperworkOffice => PlantationRoom::Sanctuary,
-    }
-}
-
-fn room_name(room: PlantationRoom) -> &'static str {
-    match room {
-        PlantationRoom::Sanctuary => "Sanctuary",
-        PlantationRoom::CoffeeField => "Coffee Field",
-        PlantationRoom::Roastery => "Roastery",
-        PlantationRoom::PaperworkOffice => "Paperwork Office",
-    }
-}
-
-fn room_name_lang(room: PlantationRoom, language: crate::model::Language) -> &'static str {
-    if language == crate::model::Language::Swedish {
-        match room {
-            PlantationRoom::Sanctuary => "Fristad",
-            PlantationRoom::CoffeeField => "Kaffefält",
-            PlantationRoom::Roastery => "Rosteri",
-            PlantationRoom::PaperworkOffice => "Papperskontor",
-        }
-    } else {
-        room_name(room)
-    }
-}
-
-fn world_label(state: &GameState, key: &'static str) -> &'static str {
-    if state.language == crate::model::Language::Swedish {
-        match key {
-            "owner" => "plantageägare",
-            "fruit" => "frukt",
-            "seedlings" => "plantor",
-            "fruit_on_hand" => "Kaffefrukt i säcken",
-            "civet_garden" => "palmmårdsträdgård",
-            "binturong" => "binturong",
-            "snack_trays" => "snackbrickor",
-            "roaster" => "ROSTARE",
-            "coffee" => "kaffe",
-            "bean_crate" => "bönlåda",
-            "police_helicopter" => "polishelikopter",
-            "suspicion" => "Misstanke",
-            "field_goat" => "fältget?",
-            "goat" => "get?",
-            "witness" => "vittne",
-            "field_hint" => "Bästa knapparna här: Plantera kaffe, Skörda frukt, Mata palmmårdar.",
-            "sanctuary_hint" => {
-                "Klicka på en palmmård för att mata, klappa, granska anteckningar och bygga tillgivenhet."
-            }
-            "roastery_hint" => "Bästa knapparna här: Samla bönor, Rosta kaffe, Sälj kaffe.",
-            "office_hint" => {
-                "Bästa knapparna här: Visa papper, bygg kontorsuppgraderingar, håll dig lugn."
-            }
-            "processed_beans" => "Processade bönor",
-            "roasted_bags" => "Rostade säckar",
-            "paperwork_level" => "Pappersnivå",
-            "sleepy" => "sömnig",
-            "hungry" => "hungrig",
-            "curious" => "nyfiken",
-            "content" => "nöjd",
-            _ => key,
-        }
-    } else {
-        match key {
-            "owner" => "plantation owner",
-            "fruit" => "fruit",
-            "seedlings" => "seedlings",
-            "fruit_on_hand" => "Coffee fruit on hand",
-            "civet_garden" => "civet garden",
-            "binturong" => "binturong",
-            "snack_trays" => "snack trays",
-            "roaster" => "ROASTER",
-            "coffee" => "coffee",
-            "bean_crate" => "bean crate",
-            "police_helicopter" => "police helicopter",
-            "suspicion" => "Suspicion",
-            "field_goat" => "field goat?",
-            "goat" => "goat?",
-            "witness" => "witness",
-            "field_hint" => "Best buttons here: Plant coffee, Harvest fruit, Feed civets.",
-            "sanctuary_hint" => "Click a civet to feed, pet, inspect notes, and build affection.",
-            "roastery_hint" => "Best buttons here: Collect beans, Roast coffee, Sell coffee.",
-            "office_hint" => "Best buttons here: Show paperwork, build office upgrades, stay calm.",
-            "processed_beans" => "Processed beans",
-            "roasted_bags" => "Roasted bags",
-            "paperwork_level" => "Paperwork level",
-            "sleepy" => "sleepy",
-            "hungry" => "hungry",
-            "curious" => "curious",
-            "content" => "content",
-            _ => key,
-        }
     }
 }
 
@@ -957,14 +865,14 @@ fn spawn_room_exits(commands: &mut Commands, state: &GameState) {
         commands,
         layout.left_sign.x,
         layout.left_sign.y,
-        format!("< {}", room_name_lang(left, state.language)),
+        format!("< {}", room_name(left, state.language)),
         room_action(left),
     );
     spawn_exit_sign(
         commands,
         layout.right_sign.x,
         layout.right_sign.y,
-        format!("{} >", room_name_lang(right, state.language)),
+        format!("{} >", room_name(right, state.language)),
         room_action(right),
     );
 }

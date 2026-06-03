@@ -546,6 +546,11 @@ pub struct UiSkinAssets {
     pub atlas: Handle<TextureAtlasLayout>,
 }
 
+#[derive(Resource, Clone)]
+pub struct GameFontAssets {
+    pub regular: Handle<Font>,
+}
+
 #[derive(Component)]
 pub struct StatText(pub StatKind);
 

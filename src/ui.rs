@@ -220,6 +220,15 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
         });
 }
 
+pub fn apply_text_font(
+    fonts: Res<GameFontAssets>,
+    mut text_fonts: Query<&mut TextFont, Changed<TextFont>>,
+) {
+    for mut text_font in &mut text_fonts {
+        text_font.font = fonts.regular.clone();
+    }
+}
+
 fn ui_skin_node(skin: &UiSkinAssets, index: usize, color: Color) -> ImageNode {
     ImageNode::from_atlas_image(
         skin.texture.clone(),
