@@ -5,7 +5,7 @@ use crate::actions::{run_action, select_civet_by_index};
 use crate::localization::{civet_status_label, room_name, state_text, world_label};
 use crate::model::{
     Action, BackgroundAssets, CharacterAssets, CivetBehavior, CivetClickTarget, DailyModifierKind,
-    EnvironmentBackdrop, GameScreen, GameState, Helicopter, MovingCivet, ParallaxLayer,
+    EnvironmentBackdrop, GameScreen, GameState, Helicopter, Language, MovingCivet, ParallaxLayer,
     PlantationRoom, PlayerAvatar, PlayerLabel, PlayerShadow, PropAssets, RandomEventKind,
     RetroSkyBand, SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
 };
@@ -1735,13 +1735,7 @@ fn spawn_paperwork_office_room(
             .observe(tint_sprite_on_out(Color::srgb(0.92, 0.86, 0.70)));
     }
     commands.spawn((
-        Text2d::new(format!(
-            "{} {}  |  {} {:.0}%",
-            world_label(state, "paperwork_level"),
-            state.paperwork_level,
-            world_label(state, "suspicion"),
-            state.suspicion
-        )),
+        Text2d::new(paperwork_desk_label(state)),
         TextFont {
             font_size: 20.0,
             ..default()
@@ -1822,6 +1816,49 @@ fn spawn_paperwork_office_room(
     }
 
     spawn_room_hint(commands, &office_hint(state));
+}
+
+fn paperwork_desk_label(state: &GameState) -> String {
+    let base_cost = if state.legal_office {
+        8 + state.paperwork_level as i32 * 2
+    } else {
+        16 + state.paperwork_level as i32 * 3
+    };
+    let cost = if state
+        .daily_modifier
+        .as_ref()
+        .is_some_and(|modifier| modifier.kind == DailyModifierKind::BureaucracyDay)
+    {
+        (base_cost as f32 * 0.72).round() as i32
+    } else {
+        base_cost
+    };
+    let reduction = 18.0
+        + if state.legal_office { 8.0 } else { 0.0 }
+        + if state
+            .daily_modifier
+            .as_ref()
+            .is_some_and(|modifier| modifier.kind == DailyModifierKind::BureaucracyDay)
+        {
+            6.0
+        } else {
+            0.0
+        }
+        + (state.paperwork_level + 1) as f32;
+
+    if state.language == Language::Swedish {
+        format!(
+            "{} {}  |  Kostnad ${cost}  |  Misstanke -{reduction:.0}%",
+            world_label(state, "paperwork_level"),
+            state.paperwork_level
+        )
+    } else {
+        format!(
+            "{} {}  |  Cost ${cost}  |  Suspicion -{reduction:.0}%",
+            world_label(state, "paperwork_level"),
+            state.paperwork_level
+        )
+    }
 }
 
 fn spawn_helicopter(commands: &mut Commands, props: &PropAssets, state: &GameState) {

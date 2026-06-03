@@ -27,6 +27,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 "The plantation opens for business. Everyone looks adorable and audited.",
                 "Plantagen öppnar. Alla ser bedårande och granskade ut.",
             ));
+            state.log_line(state_text(
+                state,
+                "Plan: harvest fruit, feed civets, collect beans, roast, then sell. Check the office when mail appears.",
+                "Plan: skörda frukt, mata palmmårdar, samla bönor, rosta och sälj. Kolla kontoret när post dyker upp.",
+            ));
             return;
         }
         Action::StartNewRun => {
@@ -40,6 +45,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state,
                 "New run started. The paperwork is blank and already judgemental.",
                 "Ny omgång startad. Pappersarbetet är tomt och redan dömande.",
+            ));
+            state.log_line(state_text(
+                state,
+                "Plan: build a calm loop before taking risky contracts.",
+                "Plan: bygg en lugn produktionskedja innan du tar riskabla kontrakt.",
             ));
             return;
         }
@@ -504,16 +514,22 @@ pub fn run_action(state: &mut GameState, action: Action) {
                     } else {
                         0.0
                     };
-                state.suspicion -=
-                    18.0 + legal_bonus + modifier_bonus + state.paperwork_level as f32;
+                let reduction = 18.0 + legal_bonus + modifier_bonus + state.paperwork_level as f32;
+                state.suspicion -= reduction;
                 state.reputation += 1;
                 state.dirty_visuals = true;
                 state.cue_audio(AudioCue::PaperworkStamp);
-                state.log_line(state_text(
-                    state,
-                    "Presented receipts, permits, civet dental charts, and bean custody forms.",
-                    "Visade kvitton, tillstånd, tanddiagram för palmmårdar och bönkedjeformulär.",
-                ));
+                state.log_line(if state.language == Language::Swedish {
+                    format!(
+                        "Visade papperspaket nivå {} för ${cost}. Misstanke -{reduction:.0}%, rykte +1.",
+                        state.paperwork_level
+                    )
+                } else {
+                    format!(
+                        "Presented paperwork level {} for ${cost}. Suspicion -{reduction:.0}%, reputation +1.",
+                        state.paperwork_level
+                    )
+                });
             } else {
                 state.log_line(state_text(
                     state,
@@ -642,6 +658,39 @@ fn switch_room(state: &mut GameState, action: Action) {
     } else {
         format!("Moved to {label}. Everything is still legal.")
     });
+    state.log_line(room_tip(state, room));
+}
+
+fn room_tip(state: &GameState, room: PlantationRoom) -> &'static str {
+    if state.language == Language::Swedish {
+        match room {
+            PlantationRoom::Sanctuary => {
+                "Rumstips: mata eller välj en palmmård för personlig omsorg."
+            }
+            PlantationRoom::CoffeeField => {
+                "Rumstips: skörda frukt när plantorna är igång; plantera bara om ekonomin tål det."
+            }
+            PlantationRoom::Roastery => {
+                "Rumstips: rosta processade bönor och sälj i lagom stora partier."
+            }
+            PlantationRoom::PaperworkOffice => {
+                "Rumstips: hantera post först, stämpla papper när misstanken blir varm."
+            }
+        }
+    } else {
+        match room {
+            PlantationRoom::Sanctuary => "Room tip: feed civets or select one for personal care.",
+            PlantationRoom::CoffeeField => {
+                "Room tip: harvest once plants are moving; plant only when cash can handle it."
+            }
+            PlantationRoom::Roastery => {
+                "Room tip: roast processed beans and sell in measured batches."
+            }
+            PlantationRoom::PaperworkOffice => {
+                "Room tip: handle mail first, stamp paperwork when suspicion heats up."
+            }
+        }
+    }
 }
 
 fn switch_tool_group(state: &mut GameState, action: Action) {

@@ -519,7 +519,7 @@ impl GameState {
             self.feedback.remove(0);
         }
         self.log.push(line);
-        while self.log.len() > 8 {
+        while self.log.len() > 10 {
             self.log.remove(0);
         }
     }

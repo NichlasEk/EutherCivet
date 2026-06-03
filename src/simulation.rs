@@ -299,12 +299,15 @@ pub fn generate_order_offers(
         due_day,
     });
     state.cue_audio(AudioCue::EventNotice);
-    let message = state_text(
-        &state,
-        "New mailbox letter: a premium buyer sends a contract.",
-        "Nytt brev i postlådan: en premiumköpare skickar ett kontrakt.",
-    );
-    state.log_line(message);
+    let order_message = if state.language == Language::Swedish {
+        format!(
+            "Nytt kontrakt i papperskontoret: {:.1} säckar till dag {due_day}, ${payout}.",
+            bags
+        )
+    } else {
+        format!("New office contract: {bags:.1} bags by day {due_day}, ${payout}.")
+    };
+    state.log_line(order_message);
 }
 
 fn settle_day(state: &mut GameState) -> DayReport {
@@ -640,12 +643,16 @@ pub fn trigger_random_events(
     });
     state.dirty_visuals = true;
     state.cue_audio(AudioCue::EventNotice);
-    let message = state_text(
-        &state,
-        "New mailbox letter: an incident needs attention in the office.",
-        "Nytt brev i postlådan: en incident kräver uppmärksamhet på kontoret.",
-    );
-    state.log_line(message);
+    let due_day = state
+        .event
+        .as_ref()
+        .map_or(state.day, |event| event.due_day);
+    let event_message = if state.language == Language::Swedish {
+        format!("Ny incident i papperskontoret: svara före slutet av dag {due_day}.")
+    } else {
+        format!("New office incident: respond before the end of day {due_day}.")
+    };
+    state.log_line(event_message);
 }
 
 fn event_title(kind: RandomEventKind, language: Language) -> &'static str {

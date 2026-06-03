@@ -119,12 +119,11 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                     LocalizedText("log"),
                 ));
                 debug.spawn((
-                    Text::new(""),
-                    TextFont {
-                        font_size: 12.5,
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(3),
                         ..default()
                     },
-                    TextColor(Color::srgba(1.0, 0.96, 0.82, 0.96)),
                     LogText,
                 ));
             });
@@ -841,6 +840,7 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "need" => "Behov",
             "goal" => "Mål",
             "goal_inspection" => "Hantera Operation Bitter Bean",
+            "goal_reduce_suspicion" => "Sänk misstanken med papper eller provsmakning",
             "goal_read_report" => "Läs dagsrapporten",
             "goal_check_mail" => "Gå till kontoret och hantera posten",
             "goal_feed_civets" => "Mata palmmårdarna",
@@ -973,6 +973,7 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "need" => "Need",
             "goal" => "Goal",
             "goal_inspection" => "Handle Operation Bitter Bean",
+            "goal_reduce_suspicion" => "Lower suspicion with paperwork or a tasting",
             "goal_read_report" => "Read the day report",
             "goal_check_mail" => "Go to the office and handle mail",
             "goal_feed_civets" => "Feed the civets",
@@ -1509,6 +1510,8 @@ fn audio_settings_summary(state: &GameState) -> String {
 fn current_goal(state: &GameState) -> String {
     let goal = if state.inspection {
         tr(state, "goal_inspection")
+    } else if state.suspicion >= 72.0 {
+        tr(state, "goal_reduce_suspicion")
     } else if state.day_report.is_some() {
         tr(state, "goal_read_report")
     } else if state.event.is_some() || state.pending_order.is_some() {
@@ -1645,12 +1648,75 @@ pub fn update_status_bars(
     }
 }
 
-pub fn update_log(state: Res<GameState>, mut logs: Query<&mut Text, With<LogText>>) {
+pub fn update_log(
+    mut commands: Commands,
+    state: Res<GameState>,
+    logs: Query<Entity, With<LogText>>,
+) {
     if !state.is_changed() {
         return;
     }
-    for mut text in &mut logs {
-        **text = state.log.join("\n");
+    for entity in &logs {
+        commands.entity(entity).despawn_related::<Children>();
+        commands.entity(entity).with_children(|log| {
+            for line in state.log.iter().rev().take(7) {
+                let (prefix, color) = log_line_style(line);
+                log.spawn((
+                    Text::new(format!("{prefix} {line}")),
+                    TextFont {
+                        font_size: 12.5,
+                        ..default()
+                    },
+                    TextColor(color),
+                ));
+            }
+        });
+    }
+}
+
+fn log_line_style(line: &str) -> (&'static str, Color) {
+    let lower = line.to_lowercase();
+    if lower.contains("misstanke")
+        || lower.contains("suspicion")
+        || lower.contains("myndighet")
+        || lower.contains("authorit")
+        || lower.contains("inspekt")
+        || lower.contains("inspection")
+        || lower.contains("revision")
+        || lower.contains("audit")
+        || lower.contains("straff")
+        || lower.contains("penalt")
+        || lower.contains("missade")
+        || lower.contains("missed")
+    {
+        ("[!]", Color::srgba(1.0, 0.47, 0.28, 0.98))
+    } else if lower.contains("order")
+        || lower.contains("kontrakt")
+        || lower.contains("contract")
+        || lower.contains("brev")
+        || lower.contains("letter")
+        || lower.contains("post")
+        || lower.contains("mail")
+    {
+        ("[@]", Color::srgba(1.0, 0.82, 0.42, 0.98))
+    } else if lower.contains("sålde")
+        || lower.contains("sold")
+        || lower.contains("bygg")
+        || lower.contains("built")
+        || lower.contains("anställde")
+        || lower.contains("hired")
+        || lower.contains("rykte")
+        || lower.contains("reputation")
+    {
+        ("[+]", Color::srgba(0.62, 1.0, 0.70, 0.98))
+    } else if lower.contains("palmmård")
+        || lower.contains("civet")
+        || lower.contains("frukt")
+        || lower.contains("fruit")
+    {
+        ("[*]", Color::srgba(0.78, 0.94, 1.0, 0.96))
+    } else {
+        ("[-]", Color::srgba(1.0, 0.96, 0.82, 0.94))
     }
 }
 
@@ -1944,16 +2010,18 @@ pub fn refresh_event_modal(
     modal: Query<Entity, With<EventModal>>,
 ) {
     let should_show = state.screen == GameScreen::Playing
-        && state.current_room == PlantationRoom::PaperworkOffice
-        && (state.event.is_some() || state.pending_order.is_some());
+        && state.current_room == PlantationRoom::PaperworkOffice;
     let exists = !modal.is_empty();
 
-    if should_show && !exists {
+    if should_show && (!exists || state.is_changed()) {
+        for entity in &modal {
+            commands.entity(entity).despawn();
+        }
         commands
             .spawn((
                 Node {
                     position_type: PositionType::Absolute,
-                    left: percent(2),
+                    right: percent(2),
                     top: percent(11),
                     width: percent(32),
                     padding: UiRect::all(px(14)),
@@ -1979,7 +2047,19 @@ pub fn refresh_event_modal(
                 ));
 
                 if let Some(event) = state.event.as_ref() {
-                    spawn_inbox_card(modal, &event.title, &event.body, |card| {
+                    let days_left = event.due_day.saturating_sub(state.day);
+                    let body = if state.language == Language::Swedish {
+                        format!(
+                            "{}\n\nPrioritet: incident. Dagar kvar: {days_left}. Rekommendation: välj ett svar innan dagens rapport.",
+                            event.body
+                        )
+                    } else {
+                        format!(
+                            "{}\n\nPriority: incident. Days left: {days_left}. Recommendation: choose a response before the day report.",
+                            event.body
+                        )
+                    };
+                    spawn_inbox_card(modal, &event.title, &body, |card| {
                         let (a, b, c) = event_option_labels(event.kind, state.language);
                         spawn_button(card, &skin, a, Action::EventOptionA);
                         spawn_button(card, &skin, b, Action::EventOptionB);
@@ -1992,7 +2072,7 @@ pub fn refresh_event_modal(
                     let missing = (order.bags - state.roasted_coffee).max(0.0);
                     let body = if state.language == Language::Swedish {
                         format!(
-                            "{}: {}.\n{} {} {:.1} {} {}. {} ${}, {} +{}, {} +{:.1}%.\n{}: {}. {} {:.1}.\n{}",
+                            "{}: {}.\n{} {} {:.1} {} {}. {} ${}, {} +{}, {} +{:.1}%.\n{}: {}. {} {:.1}.\n{}\n{}",
                             order_style_label(order.style, state.language),
                             order_style_body(order.style, state.language),
                             order.client,
@@ -2010,11 +2090,12 @@ pub fn refresh_event_modal(
                             days_left,
                             tr(&state, "missing"),
                             missing,
-                            tr(&state, "legitimate_contract")
+                            tr(&state, "legitimate_contract"),
+                            order_guidance(order.style, state.language)
                         )
                     } else {
                         format!(
-                            "{}: {}.\n{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\n{}: {}. {} {:.1}.\n{}",
+                            "{}: {}.\n{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\n{}: {}. {} {:.1}.\n{}\n{}",
                             order_style_label(order.style, state.language),
                             order_style_body(order.style, state.language),
                             order.client,
@@ -2027,7 +2108,8 @@ pub fn refresh_event_modal(
                             days_left,
                             tr(&state, "missing"),
                             missing,
-                            tr(&state, "legitimate_contract")
+                            tr(&state, "legitimate_contract"),
+                            order_guidance(order.style, state.language)
                         )
                     };
                     spawn_inbox_card(modal, tr(&state, "premium_contract"), &body, |card| {
@@ -2050,6 +2132,24 @@ pub fn refresh_event_modal(
     } else if !should_show && exists {
         for entity in &modal {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn order_guidance(style: OrderStyle, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match style {
+            OrderStyle::Rush => "Råd: acceptera bara om rosteriet redan har fart.",
+            OrderStyle::Discreet => "Råd: bra pengar, men höj pappersnivån efteråt.",
+            OrderStyle::Reputation => "Råd: svagare betalt, starkt för ryktet.",
+            OrderStyle::Steady => "Råd: trygg order om produktionen är stabil.",
+        }
+    } else {
+        match style {
+            OrderStyle::Rush => "Advice: accept only if the roastery is already moving.",
+            OrderStyle::Discreet => "Advice: good money, but raise paperwork afterward.",
+            OrderStyle::Reputation => "Advice: weaker payout, strong reputation play.",
+            OrderStyle::Steady => "Advice: safe order if production is stable.",
         }
     }
 }
