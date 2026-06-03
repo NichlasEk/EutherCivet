@@ -74,6 +74,8 @@ pub struct GameState {
     pub game_result: Option<GameResult>,
     pub rng_seed: u64,
     pub log: Vec<String>,
+    #[serde(skip)]
+    pub feedback: Vec<FeedbackToast>,
     pub dirty_visuals: bool,
 }
 
@@ -130,6 +132,12 @@ pub struct CivetProfile {
     pub mood: f32,
     pub favorite_fruit: String,
     pub note: String,
+}
+
+#[derive(Clone)]
+pub struct FeedbackToast {
+    pub text: String,
+    pub age: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -264,6 +272,7 @@ impl Default for GameState {
                 "Welcome to EutherCivet: fair-trade coffee, suspicious silhouettes.".to_string(),
                 "Reminder: no narcotics. Only fruit, civets, beans, and bureaucracy.".to_string(),
             ],
+            feedback: Vec::new(),
             dirty_visuals: true,
         }
     }
@@ -327,6 +336,16 @@ pub fn default_player_y() -> f32 {
     -244.0
 }
 
+fn short_feedback(line: &str) -> String {
+    let first_sentence = line.split('.').next().unwrap_or(line).trim();
+    let mut text = first_sentence.to_string();
+    if text.len() > 54 {
+        text.truncate(51);
+        text.push_str("...");
+    }
+    text
+}
+
 impl GameState {
     pub fn load() -> Option<Self> {
         let text = fs::read_to_string(SAVE_PATH).ok()?;
@@ -359,10 +378,42 @@ impl GameState {
     }
 
     pub fn log_line(&mut self, line: impl Into<String>) {
-        self.log.push(line.into());
+        let line = line.into();
+        self.feedback.push(FeedbackToast {
+            text: short_feedback(&line),
+            age: 2.8,
+        });
+        while self.feedback.len() > 4 {
+            self.feedback.remove(0);
+        }
+        self.log.push(line);
         while self.log.len() > 8 {
             self.log.remove(0);
         }
+    }
+
+    pub fn near_civets(&self) -> bool {
+        self.current_room == PlantationRoom::Sanctuary
+            && (-230.0..=260.0).contains(&self.player_x)
+            && (-252.0..=-236.0).contains(&self.player_y)
+    }
+
+    pub fn near_field_workbench(&self) -> bool {
+        self.current_room == PlantationRoom::CoffeeField
+            && (-500.0..=480.0).contains(&self.player_x)
+            && (-252.0..=-236.0).contains(&self.player_y)
+    }
+
+    pub fn near_roastery(&self) -> bool {
+        self.current_room == PlantationRoom::Roastery
+            && (-430.0..=360.0).contains(&self.player_x)
+            && (-252.0..=-236.0).contains(&self.player_y)
+    }
+
+    pub fn near_paperwork_desk(&self) -> bool {
+        self.current_room == PlantationRoom::PaperworkOffice
+            && (-420.0..=380.0).contains(&self.player_x)
+            && (-252.0..=-236.0).contains(&self.player_y)
     }
 
     pub fn ensure_civet_profiles(&mut self) {
@@ -464,6 +515,9 @@ pub struct StatusBar(pub StatusKind);
 pub struct LogText;
 
 #[derive(Component)]
+pub struct LocalizedText(pub &'static str);
+
+#[derive(Component)]
 pub struct WorldVisual;
 
 #[derive(Component)]
@@ -522,6 +576,9 @@ pub struct ScreenModal;
 pub struct AnimalPanel;
 
 #[derive(Component)]
+pub struct FeedbackPanel;
+
+#[derive(Component)]
 pub struct CivetClickTarget {
     pub index: usize,
 }
@@ -530,6 +587,15 @@ pub struct CivetClickTarget {
 pub struct MovingCivet {
     pub base: Vec3,
     pub phase: f32,
+    pub behavior: CivetBehavior,
+}
+
+#[derive(Clone, Copy)]
+pub enum CivetBehavior {
+    Asleep,
+    Hungry,
+    Curious,
+    Content,
 }
 
 #[derive(Component)]

@@ -10,8 +10,9 @@ use model::*;
 use simulation::{advance_day, generate_order_offers, tick_game, trigger_random_events};
 use ui::{
     animate_buttons, handle_buttons, refresh_animal_panel, refresh_day_modal, refresh_event_modal,
-    refresh_inspection_modal, refresh_order_modal, refresh_screen_modal, refresh_settings_modal,
-    spawn_ui, update_button_labels, update_log, update_stats, update_status_bars,
+    refresh_feedback_panel, refresh_inspection_modal, refresh_order_modal, refresh_screen_modal,
+    refresh_settings_modal, spawn_ui, update_button_labels, update_feedback, update_log,
+    update_stats, update_status_bars,
 };
 use visuals::{animate_world, move_player, refresh_world_visuals, spawn_world};
 
@@ -45,6 +46,12 @@ fn main() {
                 update_stats,
                 update_status_bars,
                 update_log,
+                update_feedback,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
                 move_player,
                 animate_world,
                 refresh_world_visuals,
@@ -54,6 +61,7 @@ fn main() {
                 refresh_animal_panel,
                 refresh_day_modal,
                 refresh_settings_modal,
+                refresh_feedback_panel,
                 refresh_screen_modal,
             ),
         )

@@ -3,10 +3,10 @@ use bevy::window::PrimaryWindow;
 
 use crate::actions::{run_action, select_civet_by_index};
 use crate::model::{
-    Action, BackgroundAssets, CharacterAssets, CivetClickTarget, EnvironmentBackdrop, GameScreen,
-    GameState, Helicopter, MovingCivet, ParallaxLayer, PlantationRoom, PlayerAvatar, PlayerLabel,
-    PlayerShadow, PropAssets, RetroSkyBand, SuspicionGlow, UiSkinAssets, WorldActionTarget,
-    WorldVisual,
+    Action, BackgroundAssets, CharacterAssets, CivetBehavior, CivetClickTarget,
+    EnvironmentBackdrop, GameScreen, GameState, Helicopter, MovingCivet, ParallaxLayer,
+    PlantationRoom, PlayerAvatar, PlayerLabel, PlayerShadow, PropAssets, RetroSkyBand,
+    SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
 };
 
 const BACKDROP_TILE_SIZE: f32 = 627.0;
@@ -199,12 +199,19 @@ pub fn animate_world(
     }
 
     for (civet, mut transform) in &mut civets {
-        let walk = (t * 1.35 + civet.phase).sin();
-        let bob = (t * 2.7 + civet.phase).cos();
-        transform.translation.x = civet.base.x + walk * 18.0;
-        transform.translation.y = civet.base.y + bob * 4.0;
+        let (speed, walk_range, bob_range, scale_y) = match civet.behavior {
+            CivetBehavior::Asleep => (0.28, 2.0, 1.0, 0.90),
+            CivetBehavior::Hungry => (2.20, 24.0, 5.5, 1.02),
+            CivetBehavior::Curious => (1.55, 18.0, 6.0, 1.04),
+            CivetBehavior::Content => (1.05, 12.0, 3.0, 1.0),
+        };
+        let walk = (t * speed + civet.phase).sin();
+        let bob = (t * speed * 1.8 + civet.phase).cos();
+        transform.translation.x = civet.base.x + walk * walk_range;
+        transform.translation.y = civet.base.y + bob * bob_range;
         transform.translation.z = ground_z(transform.translation.y) + 0.2;
         transform.rotation = Quat::from_rotation_z(walk * 0.035);
+        transform.scale.y = transform.scale.x.abs() * scale_y;
     }
 
     for (avatar, mut transform) in &mut players {
@@ -1104,6 +1111,11 @@ fn spawn_sanctuary_room(
                 MovingCivet {
                     base: Vec3::new(x, y + 2.0, ground_z(y) + 0.2),
                     phase: i as f32 * 1.7,
+                    behavior: state
+                        .civet_profiles
+                        .get(i as usize)
+                        .map(civet_behavior)
+                        .unwrap_or(CivetBehavior::Content),
                 },
                 WorldVisual,
             ))
@@ -1112,10 +1124,16 @@ fn spawn_sanctuary_room(
             .observe(tint_sprite_on_out(Color::WHITE));
         if let Some(profile) = state.civet_profiles.get(i as usize) {
             let selected = state.selected_civet == Some(i as usize);
+            let behavior = civet_behavior(profile);
             let label = if selected {
-                format!("{}  mood {:.0}%", profile.name, profile.mood)
+                format!(
+                    "{}  {}  mood {:.0}%",
+                    profile.name,
+                    civet_behavior_label(behavior),
+                    profile.mood
+                )
             } else {
-                profile.name.clone()
+                format!("{} {}", profile.name, civet_behavior_label(behavior))
             };
             commands.spawn((
                 Text2d::new(label),
@@ -1186,6 +1204,27 @@ fn spawn_sanctuary_room(
         commands,
         "Click a civet to feed, pet, inspect notes, and build affection.",
     );
+}
+
+fn civet_behavior(profile: &crate::model::CivetProfile) -> CivetBehavior {
+    if profile.hunger > 76.0 {
+        CivetBehavior::Hungry
+    } else if profile.mood < 35.0 {
+        CivetBehavior::Asleep
+    } else if profile.mood > 78.0 {
+        CivetBehavior::Curious
+    } else {
+        CivetBehavior::Content
+    }
+}
+
+fn civet_behavior_label(behavior: CivetBehavior) -> &'static str {
+    match behavior {
+        CivetBehavior::Asleep => "sleepy",
+        CivetBehavior::Hungry => "hungry",
+        CivetBehavior::Curious => "curious",
+        CivetBehavior::Content => "content",
+    }
 }
 
 fn spawn_roastery_room(

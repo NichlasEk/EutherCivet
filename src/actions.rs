@@ -506,11 +506,7 @@ fn give_fruit_from_inventory(state: &mut GameState) {
         state.log_line("No coffee fruit in the inventory sack.");
         return;
     }
-    if state.player_x < -130.0
-        || state.player_x > 280.0
-        || state.player_y < -230.0
-        || state.player_y > 50.0
-    {
+    if !state.near_civets() {
         state.log_line("Walk closer to the civets before offering fruit.");
         return;
     }
@@ -542,11 +538,7 @@ fn pick_up_beans_to_inventory(state: &mut GameState) {
         state.log_line("Processed beans are collected near the civets.");
         return;
     }
-    if state.player_x < -130.0
-        || state.player_x > 280.0
-        || state.player_y < -240.0
-        || state.player_y > 55.0
-    {
+    if !state.near_civets() {
         state.log_line("Walk into the enclosure work area before picking up beans.");
         return;
     }

@@ -55,11 +55,12 @@ pub fn spawn_ui(commands: &mut Commands, skin: &UiSkinAssets) {
                         ..default()
                     },
                     TextColor(Color::srgba(0.92, 0.86, 0.68, 0.86)),
+                    LocalizedText("tagline"),
                 ));
 
-                spawn_bar(hud, "Suspicion", StatusKind::Suspicion);
-                spawn_bar(hud, "Civets", StatusKind::Happiness);
-                spawn_bar(hud, "Coffee", StatusKind::CoffeePipeline);
+                spawn_bar(hud, "Suspicion", "suspicion", StatusKind::Suspicion);
+                spawn_bar(hud, "Civets", "civets", StatusKind::Happiness);
+                spawn_bar(hud, "Coffee", "coffee", StatusKind::CoffeePipeline);
 
                 for kind in [
                     StatKind::Day,
@@ -382,7 +383,7 @@ fn spawn_button(
         });
 }
 
-fn spawn_bar(parent: &mut ChildSpawnerCommands, label: &str, kind: StatusKind) {
+fn spawn_bar(parent: &mut ChildSpawnerCommands, label: &str, key: &'static str, kind: StatusKind) {
     parent
         .spawn(Node {
             width: px(128),
@@ -399,6 +400,7 @@ fn spawn_bar(parent: &mut ChildSpawnerCommands, label: &str, kind: StatusKind) {
                     ..default()
                 },
                 TextColor(Color::srgb(0.88, 0.82, 0.66)),
+                LocalizedText(key),
             ));
             bar.spawn((
                 Node {
@@ -681,33 +683,110 @@ fn is_active_group_action(action: Action, state: &GameState) -> bool {
     )
 }
 
+fn tr(state: &GameState, key: &'static str) -> &'static str {
+    if state.language == Language::Swedish {
+        match key {
+            "tagline" => "Rattvis kaffe. Tveksam optik.",
+            "suspicion" => "Misstanke",
+            "civets" => "Palmmardar",
+            "coffee" => "Kaffe",
+            "care" => "Omsorg",
+            "field" => "Falt",
+            "production" => "Produktion",
+            "compliance" => "Papper",
+            "upgrades" => "Byggen",
+            "system" => "System",
+            "settings" => "Installningar",
+            "save" => "Spara",
+            "load" => "Ladda",
+            "plant_coffee" => "Plantera kaffe",
+            "harvest_fruit" => "Skorda frukt",
+            "feed_civets" => "Mata palmmardar",
+            "collect_beans" => "Samla bonor",
+            "sell_coffee" => "Salj kaffe",
+            "deliver_order" => "Leverera order",
+            "show_paperwork" => "Visa papper",
+            "inventory" => "Inventariesack",
+            _ => key,
+        }
+    } else {
+        match key {
+            "tagline" => "Fair-trade coffee. Questionable optics.",
+            "suspicion" => "Suspicion",
+            "civets" => "Civets",
+            "coffee" => "Coffee",
+            "care" => "Care",
+            "field" => "Field",
+            "production" => "Production",
+            "compliance" => "Compliance",
+            "upgrades" => "Upgrades",
+            "system" => "System",
+            "settings" => "Settings",
+            "save" => "Save",
+            "load" => "Load",
+            "plant_coffee" => "Plant coffee",
+            "harvest_fruit" => "Harvest fruit",
+            "feed_civets" => "Feed civets",
+            "collect_beans" => "Collect beans",
+            "sell_coffee" => "Sell coffee",
+            "deliver_order" => "Deliver order",
+            "show_paperwork" => "Show paperwork",
+            "inventory" => "Inventory sack",
+            _ => key,
+        }
+    }
+}
+
 fn action_label(action: Action, state: &GameState) -> String {
     match action {
-        Action::PlantCoffee => "Plant coffee ($14)".to_string(),
-        Action::HarvestFruit => format!("Harvest fruit (+{:.0})", state.coffee_plants as f32 * 1.6),
-        Action::FeedCivets => format!("Feed civets (needs fruit)"),
-        Action::CollectBeans => "Collect beans".to_string(),
+        Action::PlantCoffee => format!("{} ($14)", tr(state, "plant_coffee")),
+        Action::HarvestFruit => {
+            format!(
+                "{} (+{:.0})",
+                tr(state, "harvest_fruit"),
+                state.coffee_plants as f32 * 1.6
+            )
+        }
+        Action::FeedCivets => format!("{} (needs fruit)", tr(state, "feed_civets")),
+        Action::CollectBeans => tr(state, "collect_beans").to_string(),
         Action::RoastCoffee => {
             let rate = if state.roasting_shed { "96%" } else { "82%" };
-            format!("Roast coffee ({rate} yield)")
+            format!("Use beans at roaster ({rate})")
         }
         Action::SellCoffee => {
             let bonus = if state.tasting_room { "+ tasting" } else { "" };
-            format!("Sell coffee {bonus}")
+            format!("{} {bonus}", tr(state, "sell_coffee"))
         }
-        Action::DeliverOrder => "Deliver order".to_string(),
+        Action::DeliverOrder => tr(state, "deliver_order").to_string(),
         Action::ToggleInventory => {
+            let where_hint = if state.near_civets() {
+                "near civets"
+            } else if state.near_roastery() {
+                "near roastery"
+            } else if state.near_field_workbench() {
+                "near field"
+            } else if state.near_paperwork_desk() {
+                "near office"
+            } else {
+                "walk closer"
+            };
             if state.inventory_open {
-                "Close sack".to_string()
+                format!("Close sack ({where_hint})")
             } else {
                 format!(
-                    "Inventory sack ({:.0} fruit, {:.1} beans)",
-                    state.coffee_fruit, state.processed_beans
+                    "{} ({:.0} fruit, {:.1} beans, {where_hint})",
+                    tr(state, "inventory"),
+                    state.coffee_fruit,
+                    state.processed_beans
                 )
             }
         }
-        Action::GiveFruitFromInventory => format!("Give fruit ({:.0})", state.coffee_fruit),
-        Action::PickUpBeansToInventory => "Pick up beans".to_string(),
+        Action::GiveFruitFromInventory => {
+            format!("Offer fruit from sack ({:.0})", state.coffee_fruit)
+        }
+        Action::PickUpBeansToInventory => {
+            format!("Collect beans into sack ({:.1})", state.processed_beans)
+        }
         Action::ImproveEnclosure => {
             format!(
                 "Improve enclosure (${})",
@@ -720,18 +799,18 @@ fn action_label(action: Action, state: &GameState) -> String {
             } else {
                 16 + state.paperwork_level as i32 * 3
             };
-            format!("Show paperwork (${cost})")
+            format!("{} (${cost})", tr(state, "show_paperwork"))
         }
         Action::BuildLegalOffice => upgrade_label("Legal office", 110, state.legal_office),
         Action::HireCaretaker => upgrade_label("Caretaker", 85, state.caretaker),
         Action::BuildFruitSorter => upgrade_label("Fruit sorter", 95, state.fruit_sorter),
         Action::BuildRoastingShed => upgrade_label("Roasting shed", 125, state.roasting_shed),
         Action::BuildTastingRoom => upgrade_label("Tasting room", 140, state.tasting_room),
-        Action::Save => "Save".to_string(),
-        Action::Load => "Load".to_string(),
+        Action::Save => tr(state, "save").to_string(),
+        Action::Load => tr(state, "load").to_string(),
         Action::StartNewRun => "Start new run".to_string(),
         Action::CycleTimeScale => format!("Speed {}", state.time_scale.label()),
-        Action::ShowSettings => "Settings".to_string(),
+        Action::ShowSettings => tr(state, "settings").to_string(),
         Action::CloseSettings => "Close".to_string(),
         Action::ToggleLayoutGuides => {
             if state.show_layout_guides {
@@ -754,12 +833,16 @@ fn action_label(action: Action, state: &GameState) -> String {
         Action::GoPaperworkOffice => {
             room_label("Paperwork Office", PlantationRoom::PaperworkOffice, state)
         }
-        Action::ShowCareTools => group_label("Care", ToolGroup::Care, state),
-        Action::ShowFieldTools => group_label("Field", ToolGroup::Field, state),
-        Action::ShowProductionTools => group_label("Production", ToolGroup::Production, state),
-        Action::ShowComplianceTools => group_label("Compliance", ToolGroup::Compliance, state),
-        Action::ShowUpgradeTools => group_label("Upgrades", ToolGroup::Upgrades, state),
-        Action::ShowSystemTools => group_label("System", ToolGroup::System, state),
+        Action::ShowCareTools => group_label(tr(state, "care"), ToolGroup::Care, state),
+        Action::ShowFieldTools => group_label(tr(state, "field"), ToolGroup::Field, state),
+        Action::ShowProductionTools => {
+            group_label(tr(state, "production"), ToolGroup::Production, state)
+        }
+        Action::ShowComplianceTools => {
+            group_label(tr(state, "compliance"), ToolGroup::Compliance, state)
+        }
+        Action::ShowUpgradeTools => group_label(tr(state, "upgrades"), ToolGroup::Upgrades, state),
+        Action::ShowSystemTools => group_label(tr(state, "system"), ToolGroup::System, state),
         _ => "Action".to_string(),
     }
 }
@@ -790,21 +873,28 @@ fn upgrade_label(name: &str, cost: i32, bought: bool) -> String {
 
 fn can_run(action: Action, state: &GameState) -> bool {
     match action {
-        Action::PlantCoffee => state.money >= 14,
-        Action::HarvestFruit => state.coffee_plants > 0,
-        Action::FeedCivets => state.coffee_fruit > 0.0,
-        Action::CollectBeans => true,
-        Action::RoastCoffee => state.processed_beans >= 1.0,
-        Action::SellCoffee => state.roasted_coffee >= 1.0,
-        Action::DeliverOrder => state
-            .active_order
-            .as_ref()
-            .is_some_and(|order| state.roasted_coffee >= order.bags),
+        Action::PlantCoffee => state.money >= 14 && state.near_field_workbench(),
+        Action::HarvestFruit => state.coffee_plants > 0 && state.near_field_workbench(),
+        Action::FeedCivets => state.coffee_fruit > 0.0 && state.near_civets(),
+        Action::CollectBeans => state.near_civets(),
+        Action::RoastCoffee => state.processed_beans >= 1.0 && state.near_roastery(),
+        Action::SellCoffee => state.roasted_coffee >= 1.0 && state.near_roastery(),
+        Action::DeliverOrder => {
+            state
+                .active_order
+                .as_ref()
+                .is_some_and(|order| state.roasted_coffee >= order.bags)
+                && state.near_roastery()
+        }
         Action::ToggleInventory | Action::CycleTimeScale => true,
         Action::GiveFruitFromInventory => {
-            state.current_room == PlantationRoom::Sanctuary && state.coffee_fruit >= 1.0
+            state.current_room == PlantationRoom::Sanctuary
+                && state.coffee_fruit >= 1.0
+                && state.near_civets()
         }
-        Action::PickUpBeansToInventory => state.current_room == PlantationRoom::Sanctuary,
+        Action::PickUpBeansToInventory => {
+            state.current_room == PlantationRoom::Sanctuary && state.near_civets()
+        }
         Action::ImproveEnclosure => state.money >= 45 + state.enclosure_level as i32 * 20,
         Action::ShowPaperwork => {
             let cost = if state.legal_office {
@@ -812,7 +902,7 @@ fn can_run(action: Action, state: &GameState) -> bool {
             } else {
                 16 + state.paperwork_level as i32 * 3
             };
-            state.money >= cost
+            state.money >= cost && state.near_paperwork_desk()
         }
         Action::BuildLegalOffice => !state.legal_office && state.money >= 110,
         Action::HireCaretaker => !state.caretaker && state.money >= 85,
@@ -851,10 +941,12 @@ fn can_run(action: Action, state: &GameState) -> bool {
 
 fn unavailable_reason(action: Action, state: &GameState) -> &'static str {
     match action {
-        Action::PlantCoffee => "Not enough money to plant coffee.",
-        Action::FeedCivets => "No coffee fruit available for feeding.",
-        Action::RoastCoffee => "Not enough processed beans to roast.",
-        Action::SellCoffee => "No roasted coffee ready to sell.",
+        Action::PlantCoffee => "Stand by the Coffee Field workbench with enough money.",
+        Action::HarvestFruit => "Stand by the Coffee Field plants.",
+        Action::FeedCivets => "Stand near the civets with coffee fruit.",
+        Action::CollectBeans => "Stand near the civet enclosure work area.",
+        Action::RoastCoffee => "Stand by the roaster with processed beans.",
+        Action::SellCoffee => "Stand by the roastery packing table with roasted coffee.",
         Action::DeliverOrder if state.active_order.is_none() => "No active order to deliver.",
         Action::DeliverOrder => "Not enough roasted coffee for the active order.",
         Action::GiveFruitFromInventory => "Walk to the civets with coffee fruit in the sack.",
@@ -888,9 +980,13 @@ fn game_clock_label(day_progress: f32) -> String {
 pub fn update_stats(
     state: Res<GameState>,
     mut stats: Query<(&StatText, &mut Text, &mut TextColor)>,
+    mut localized: Query<(&LocalizedText, &mut Text), Without<StatText>>,
 ) {
     if !state.is_changed() {
         return;
+    }
+    for (localized, mut text) in &mut localized {
+        **text = tr(&state, localized.0).to_string();
     }
     for (stat, mut text, mut color) in &mut stats {
         let value = match stat.0 {
@@ -1025,6 +1121,60 @@ pub fn update_log(state: Res<GameState>, mut logs: Query<&mut Text, With<LogText
     for mut text in &mut logs {
         **text = format!("\n{}", state.log.join("\n"));
     }
+}
+
+pub fn update_feedback(time: Res<Time>, mut state: ResMut<GameState>) {
+    if state.feedback.is_empty() {
+        return;
+    }
+    for feedback in &mut state.feedback {
+        feedback.age -= time.delta_secs();
+    }
+    state.feedback.retain(|feedback| feedback.age > 0.0);
+}
+
+pub fn refresh_feedback_panel(
+    mut commands: Commands,
+    state: Res<GameState>,
+    panel: Query<Entity, With<FeedbackPanel>>,
+) {
+    for entity in &panel {
+        commands.entity(entity).despawn();
+    }
+    if state.feedback.is_empty() || state.screen != GameScreen::Playing {
+        return;
+    }
+
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: percent(34),
+                right: percent(34),
+                bottom: px(154),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                row_gap: px(4),
+                ..default()
+            },
+            Pickable::IGNORE,
+            GlobalZIndex(7),
+            FeedbackPanel,
+        ))
+        .with_children(|panel| {
+            for feedback in state.feedback.iter().rev() {
+                let alpha = (feedback.age / 2.8).clamp(0.0, 1.0);
+                panel.spawn((
+                    Text::new(feedback.text.clone()),
+                    TextFont {
+                        font_size: 15.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgba(1.0, 0.92, 0.58, alpha)),
+                    BackgroundColor(Color::srgba(0.04, 0.03, 0.018, alpha * 0.42)),
+                ));
+            }
+        });
 }
 
 pub fn refresh_inspection_modal(
