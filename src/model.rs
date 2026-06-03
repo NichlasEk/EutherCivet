@@ -133,7 +133,11 @@ pub struct CivetProfile {
     pub hunger: f32,
     pub mood: f32,
     pub favorite_fruit: String,
+    #[serde(default = "default_favorite_care_item")]
+    pub favorite_care_item: InventoryItem,
     pub note: String,
+    #[serde(default)]
+    pub note_sv: String,
 }
 
 #[derive(Clone)]
@@ -147,6 +151,10 @@ pub enum InventoryItem {
     TinyBrush,
     RibbonCollar,
     FruitPuzzle,
+}
+
+fn default_favorite_care_item() -> InventoryItem {
+    InventoryItem::TinyBrush
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
@@ -320,31 +328,41 @@ pub fn default_civet_profiles() -> Vec<CivetProfile> {
             24.0,
             78.0,
             "ruby coffee cherries",
+            InventoryItem::TinyBrush,
             "chief fruit critic",
+            "chefsgranskare av frukt",
         ),
         (
             "Kanel",
             32.0,
             72.0,
             "soft yellow fruit",
+            InventoryItem::RibbonCollar,
             "night-shift bean philosopher",
+            "nattskiftets bönfilosof",
         ),
         (
             "Beanie",
             27.0,
             80.0,
             "tiny overripe fruit",
+            InventoryItem::FruitPuzzle,
             "small paws, large opinions",
+            "små tassar, stora åsikter",
         ),
     ]
     .into_iter()
-    .map(|(name, hunger, mood, favorite_fruit, note)| CivetProfile {
-        name: name.to_string(),
-        hunger,
-        mood,
-        favorite_fruit: favorite_fruit.to_string(),
-        note: note.to_string(),
-    })
+    .map(
+        |(name, hunger, mood, favorite_fruit, favorite_care_item, note, note_sv)| CivetProfile {
+            name: name.to_string(),
+            hunger,
+            mood,
+            favorite_fruit: favorite_fruit.to_string(),
+            favorite_care_item,
+            note: note.to_string(),
+            note_sv: note_sv.to_string(),
+        },
+    )
     .collect()
 }
 
@@ -467,8 +485,15 @@ impl GameState {
                 hunger: 35.0,
                 mood: 68.0,
                 favorite_fruit: "carefully documented coffee fruit".to_string(),
+                favorite_care_item: InventoryItem::TinyBrush,
                 note: "new sanctuary resident".to_string(),
+                note_sv: "ny boende i fristaden".to_string(),
             });
+        }
+        for profile in &mut self.civet_profiles {
+            if profile.note_sv.is_empty() {
+                profile.note_sv = profile.note.clone();
+            }
         }
         self.civet_names = self
             .civet_profiles

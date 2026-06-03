@@ -1,4 +1,7 @@
-use crate::localization::{room_name_definite, state_text};
+use crate::localization::{
+    care_item_name, civet_need_text, civet_status_key, civet_status_label, room_name_definite,
+    state_text,
+};
 use crate::model::{Action, GameState, Language, PlantationRoom, RandomEventKind, ToolGroup};
 
 pub fn run_action(state: &mut GameState, action: Action) {
@@ -620,17 +623,31 @@ fn feed_selected_civet(state: &mut GameState) {
 
     state.coffee_fruit -= 2.0;
     state.civet_feed += 1.0;
+    let status = civet_status_key(&state.civet_profiles[index]);
+    let hungry_bonus = if status == "civet_status_hungry" {
+        8.0
+    } else {
+        0.0
+    };
     let profile = &mut state.civet_profiles[index];
-    profile.hunger -= 28.0;
-    profile.mood += 8.0;
+    profile.hunger -= 28.0 + hungry_bonus;
+    profile.mood += 8.0 + hungry_bonus * 0.25;
     let name = profile.name.clone();
-    state.civet_happiness += 4.0;
-    state.suspicion -= 0.8;
+    state.civet_happiness += 4.0 + hungry_bonus * 0.12;
+    state.suspicion -= 0.8 + hungry_bonus * 0.03;
     state.dirty_visuals = true;
     state.log_line(if state.language == Language::Swedish {
-        format!("{name} får en handplockad fruktbricka och godkänner den med gravallvarlig professionalism.")
+        if hungry_bonus > 0.0 {
+            format!("{name} får en handplockad fruktbricka precis i tid och slappnar av märkbart.")
+        } else {
+            format!("{name} får en handplockad fruktbricka och godkänner den med gravallvarlig professionalism.")
+        }
     } else {
-        format!("{name} gets a hand-picked fruit tray and approves with grave professionalism.")
+        if hungry_bonus > 0.0 {
+            format!("{name} gets a hand-picked fruit tray just in time and visibly settles.")
+        } else {
+            format!("{name} gets a hand-picked fruit tray and approves with grave professionalism.")
+        }
     });
     state.clamp();
 }
@@ -670,9 +687,15 @@ fn give_fruit_from_inventory(state: &mut GameState) {
     state.coffee_fruit -= 1.0;
     state.civet_feed += 1.0;
 
+    let status = civet_status_key(&state.civet_profiles[index]);
+    let hungry_bonus = if status == "civet_status_hungry" {
+        5.0
+    } else {
+        0.0
+    };
     let profile = &mut state.civet_profiles[index];
-    profile.hunger -= 15.0;
-    profile.mood += 5.0;
+    profile.hunger -= 15.0 + hungry_bonus;
+    profile.mood += 5.0 + hungry_bonus * 0.2;
     let name = profile.name.clone();
     state.civet_happiness += 2.0;
     state.suspicion -= 0.3;
@@ -726,12 +749,18 @@ fn pet_selected_civet(state: &mut GameState) {
     };
 
     let profile = &mut state.civet_profiles[index];
-    profile.mood += 11.0;
+    let status = civet_status_key(profile);
+    let stress_bonus = if status == "civet_status_stressed" {
+        6.0
+    } else {
+        0.0
+    };
+    profile.mood += 11.0 + stress_bonus;
     profile.hunger += 1.0;
     let name = profile.name.clone();
-    state.civet_happiness += 2.5;
+    state.civet_happiness += 2.5 + stress_bonus * 0.18;
     state.reputation += 1;
-    state.suspicion -= 0.4;
+    state.suspicion -= 0.4 + stress_bonus * 0.05;
     state.dirty_visuals = true;
     state.log_line(if state.language == Language::Swedish {
         format!("{name} får omsorg i fristadsklass. Det här är utmärkt PR, om någon frågar.")
@@ -756,13 +785,25 @@ fn inspect_selected_civet(state: &mut GameState) {
     let profile = &state.civet_profiles[index];
     state.log_line(if state.language == Language::Swedish {
         format!(
-            "{}: favorit {}, humör {:.0}%, hunger {:.0}%. Anteckning: {}.",
-            profile.name, profile.favorite_fruit, profile.mood, profile.hunger, profile.note
+            "{}: {}, humör {:.0}%, hunger {:.0}%. Favoritfrukt: {}. Favoritomsorg: {}. {}",
+            profile.name,
+            civet_status_label(profile, state.language),
+            profile.mood,
+            profile.hunger,
+            profile.favorite_fruit,
+            care_item_name(profile.favorite_care_item, state.language),
+            civet_need_text(profile, state.language)
         )
     } else {
         format!(
-            "{}: favorite {}, mood {:.0}%, hunger {:.0}%. Note: {}.",
-            profile.name, profile.favorite_fruit, profile.mood, profile.hunger, profile.note
+            "{}: {}, mood {:.0}%, hunger {:.0}%. Favorite fruit: {}. Favorite care: {}. {}",
+            profile.name,
+            civet_status_label(profile, state.language),
+            profile.mood,
+            profile.hunger,
+            profile.favorite_fruit,
+            care_item_name(profile.favorite_care_item, state.language),
+            civet_need_text(profile, state.language)
         )
     });
 }
@@ -788,37 +829,65 @@ fn use_inventory_item(state: &mut GameState, item: crate::model::InventoryItem) 
 
     let profile = &mut state.civet_profiles[index];
     let name = profile.name.clone();
+    let favorite = profile.favorite_care_item == item;
+    let item_name = care_item_name(item, state.language);
+    let mood_bonus = if favorite { 4.0 } else { 0.0 };
+    let happiness_bonus = if favorite { 1.0 } else { 0.0 };
     match item {
         crate::model::InventoryItem::TinyBrush => {
-            profile.mood += 7.0;
+            profile.mood += 7.0 + mood_bonus;
             profile.hunger += 0.5;
-            state.civet_happiness += 2.0;
+            state.civet_happiness += 2.0 + happiness_bonus;
             state.reputation += 1;
             state.log_line(if state.language == Language::Swedish {
-                format!("{name} blir borstad. Pälsläget blir investerarklart.")
+                if favorite {
+                    format!("{name} får favoritverktyget {item_name}. Pälsläget blir investerarklart.")
+                } else {
+                    format!("{name} blir borstad. Pälsläget blir investerarklart.")
+                }
             } else {
-                format!("{name} gets brushed. The fur situation becomes investor-ready.")
+                if favorite {
+                    format!("{name} gets favorite care item {item_name}. The fur situation becomes investor-ready.")
+                } else {
+                    format!("{name} gets brushed. The fur situation becomes investor-ready.")
+                }
             });
         }
         crate::model::InventoryItem::RibbonCollar => {
-            profile.mood += 5.0;
-            state.civet_happiness += 1.5;
-            state.suspicion -= 0.7;
+            profile.mood += 5.0 + mood_bonus;
+            state.civet_happiness += 1.5 + happiness_bonus;
+            state.suspicion -= 0.7 + if favorite { 0.4 } else { 0.0 };
             state.log_line(if state.language == Language::Swedish {
-                format!("{name} provar ett rosetthalsband och ser extremt icke-kartell ut.")
+                if favorite {
+                    format!("{name} väljer glatt favoritverktyget {item_name} och ser extremt icke-kartell ut.")
+                } else {
+                    format!("{name} provar ett rosetthalsband och ser extremt icke-kartell ut.")
+                }
             } else {
-                format!("{name} tries a ribbon collar and looks extremely non-cartel.")
+                if favorite {
+                    format!("{name} happily picks favorite care item {item_name} and looks extremely non-cartel.")
+                } else {
+                    format!("{name} tries a ribbon collar and looks extremely non-cartel.")
+                }
             });
         }
         crate::model::InventoryItem::FruitPuzzle => {
-            profile.mood += 8.0;
+            profile.mood += 8.0 + mood_bonus;
             profile.hunger -= 4.0;
-            state.civet_happiness += 2.5;
-            state.suspicion -= 0.4;
+            state.civet_happiness += 2.5 + happiness_bonus;
+            state.suspicion -= 0.4 + if favorite { 0.3 } else { 0.0 };
             state.log_line(if state.language == Language::Swedish {
-                format!("{name} arbetar med ett fruktpussel med små, seriösa tassar.")
+                if favorite {
+                    format!("{name} får favoritverktyget {item_name} och arbetar med små, seriösa tassar.")
+                } else {
+                    format!("{name} arbetar med ett fruktpussel med små, seriösa tassar.")
+                }
             } else {
-                format!("{name} works on a fruit puzzle with tiny, serious paws.")
+                if favorite {
+                    format!("{name} gets favorite care item {item_name} and works with tiny, serious paws.")
+                } else {
+                    format!("{name} works on a fruit puzzle with tiny, serious paws.")
+                }
             });
         }
     }

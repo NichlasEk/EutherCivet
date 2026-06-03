@@ -1,4 +1,4 @@
-use crate::model::{GameState, Language, PlantationRoom};
+use crate::model::{CivetProfile, GameState, InventoryItem, Language, PlantationRoom};
 
 pub fn state_text(state: &GameState, en: &'static str, sv: &'static str) -> &'static str {
     language_text(state.language, en, sv)
@@ -108,5 +108,69 @@ pub fn world_label(state: &GameState, key: &'static str) -> &'static str {
             "content" => "content",
             _ => key,
         }
+    }
+}
+
+pub fn care_item_name(item: InventoryItem, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match item {
+            InventoryItem::TinyBrush => "liten borste",
+            InventoryItem::RibbonCollar => "rosetthalsband",
+            InventoryItem::FruitPuzzle => "fruktpussel",
+        }
+    } else {
+        match item {
+            InventoryItem::TinyBrush => "tiny brush",
+            InventoryItem::RibbonCollar => "ribbon collar",
+            InventoryItem::FruitPuzzle => "fruit puzzle",
+        }
+    }
+}
+
+pub fn civet_status_key(profile: &CivetProfile) -> &'static str {
+    if profile.hunger > 78.0 {
+        "civet_status_hungry"
+    } else if profile.mood < 38.0 {
+        "civet_status_stressed"
+    } else if profile.hunger < 35.0 && profile.mood >= 72.0 {
+        "civet_status_content"
+    } else if profile.mood > 82.0 {
+        "civet_status_curious"
+    } else {
+        "civet_status_settled"
+    }
+}
+
+pub fn civet_status_label(profile: &CivetProfile, language: Language) -> &'static str {
+    match (language, civet_status_key(profile)) {
+        (Language::Swedish, "civet_status_hungry") => "Hungrig",
+        (Language::Swedish, "civet_status_stressed") => "Stressad",
+        (Language::Swedish, "civet_status_content") => "Nöjd",
+        (Language::Swedish, "civet_status_curious") => "Nyfiken",
+        (Language::Swedish, _) => "Stabil",
+        (_, "civet_status_hungry") => "Hungry",
+        (_, "civet_status_stressed") => "Stressed",
+        (_, "civet_status_content") => "Content",
+        (_, "civet_status_curious") => "Curious",
+        _ => "Settled",
+    }
+}
+
+pub fn civet_need_text(profile: &CivetProfile, language: Language) -> &'static str {
+    match (language, civet_status_key(profile)) {
+        (Language::Swedish, "civet_status_hungry") => "Behöver mat innan produktionen pressas.",
+        (Language::Swedish, "civet_status_stressed") => {
+            "Behöver lugn omsorg eller favoritberikning."
+        }
+        (Language::Swedish, "civet_status_content") => "Är redo för stabil produktion.",
+        (Language::Swedish, "civet_status_curious") => {
+            "Är mottaglig för berikning och positiv uppmärksamhet."
+        }
+        (Language::Swedish, _) => "Mår okej men kan stärkas med rätt omsorg.",
+        (_, "civet_status_hungry") => "Needs food before production pressure.",
+        (_, "civet_status_stressed") => "Needs calm care or favorite enrichment.",
+        (_, "civet_status_content") => "Ready for stable production.",
+        (_, "civet_status_curious") => "Open to enrichment and positive attention.",
+        _ => "Doing okay, but the right care will help.",
     }
 }

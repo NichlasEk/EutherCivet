@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::actions::run_action;
+use crate::localization::{care_item_name, civet_need_text, civet_status_label};
 use crate::model::*;
 
 const PANEL_PAPER: Color = Color::srgba(0.98, 0.84, 0.70, 0.10);
@@ -796,6 +797,9 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "mood" => "Humör",
             "hunger" => "Hunger",
             "favorite" => "Favorit",
+            "favorite_care" => "Favoritomsorg",
+            "status" => "Status",
+            "need" => "Behov",
             "goal" => "Mål",
             "goal_inspection" => "Hantera Operation Bitter Bean",
             "goal_read_report" => "Läs dagsrapporten",
@@ -914,6 +918,9 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "mood" => "Mood",
             "hunger" => "Hunger",
             "favorite" => "Favorite",
+            "favorite_care" => "Favorite care",
+            "status" => "Status",
+            "need" => "Need",
             "goal" => "Goal",
             "goal_inspection" => "Handle Operation Bitter Bean",
             "goal_read_report" => "Read the day report",
@@ -2098,7 +2105,14 @@ pub fn refresh_animal_panel(
                     TextColor(Color::srgb(0.25, 0.15, 0.10)),
                 ));
                 panel.spawn((
-                    Text::new(format!("{}.", profile.note)),
+                    Text::new(format!(
+                        "{}.",
+                        if state.language == Language::Swedish {
+                            &profile.note_sv
+                        } else {
+                            &profile.note
+                        }
+                    )),
                     TextFont {
                         font_size: 15.0,
                         ..default()
@@ -2107,16 +2121,22 @@ pub fn refresh_animal_panel(
                 ));
                 panel.spawn((
                     Text::new(format!(
-                        "{} {:.0}%  {} {:.0}%\n{}: {}",
+                        "{}: {}\n{} {:.0}%  {} {:.0}%\n{}: {}\n{}: {}\n{}: {}",
+                        tr(&state, "status"),
+                        civet_status_label(profile, state.language),
                         tr(&state, "mood"),
                         profile.mood,
                         tr(&state, "hunger"),
                         profile.hunger,
                         tr(&state, "favorite"),
-                        profile.favorite_fruit
+                        profile.favorite_fruit,
+                        tr(&state, "favorite_care"),
+                        care_item_name(profile.favorite_care_item, state.language),
+                        tr(&state, "need"),
+                        civet_need_text(profile, state.language)
                     )),
                     TextFont {
-                        font_size: 16.0,
+                        font_size: 15.0,
                         ..default()
                     },
                     TextColor(Color::srgb(0.30, 0.20, 0.14)),

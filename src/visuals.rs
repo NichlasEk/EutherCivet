@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::actions::{run_action, select_civet_by_index};
-use crate::localization::{room_name, world_label};
+use crate::localization::{civet_status_label, room_name, world_label};
 use crate::model::{
     Action, BackgroundAssets, CharacterAssets, CivetBehavior, CivetClickTarget,
     EnvironmentBackdrop, GameScreen, GameState, Helicopter, MovingCivet, ParallaxLayer,
@@ -1159,16 +1159,19 @@ fn spawn_sanctuary_room(
             .observe(tint_sprite_on_out(Color::WHITE));
         if let Some(profile) = state.civet_profiles.get(i as usize) {
             let selected = state.selected_civet == Some(i as usize);
-            let behavior = civet_behavior(profile);
             let label = if selected {
                 format!(
-                    "{}  {}  mood {:.0}%",
+                    "{}  {}  {:.0}%",
                     profile.name,
-                    civet_behavior_label(behavior, state),
+                    civet_status_label(profile, state.language),
                     profile.mood
                 )
             } else {
-                format!("{} {}", profile.name, civet_behavior_label(behavior, state))
+                format!(
+                    "{} {}",
+                    profile.name,
+                    civet_status_label(profile, state.language)
+                )
             };
             commands.spawn((
                 Text2d::new(label),
@@ -1247,15 +1250,6 @@ fn civet_behavior(profile: &crate::model::CivetProfile) -> CivetBehavior {
         CivetBehavior::Curious
     } else {
         CivetBehavior::Content
-    }
-}
-
-fn civet_behavior_label(behavior: CivetBehavior, state: &GameState) -> &'static str {
-    match behavior {
-        CivetBehavior::Asleep => world_label(state, "sleepy"),
-        CivetBehavior::Hungry => world_label(state, "hungry"),
-        CivetBehavior::Curious => world_label(state, "curious"),
-        CivetBehavior::Content => world_label(state, "content"),
     }
 }
 

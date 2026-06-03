@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::localization::state_text;
+use crate::localization::{civet_status_key, state_text};
 use crate::model::{
     DayReport, DayTick, EventState, EventTick, GameResult, GameScreen, GameState, GameTick,
     Language, OrderOffer, OrderTick, RandomEventKind,
@@ -27,7 +27,9 @@ pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut
         let happiness_bonus = (state.civet_happiness / 100.0).max(0.2);
         let enclosure_bonus = 1.0 + state.enclosure_level as f32 * 0.08;
         let caretaker_bonus = if state.caretaker { 1.12 } else { 1.0 };
-        state.processed_beans += eaten * 0.32 * happiness_bonus * enclosure_bonus * caretaker_bonus;
+        let strain_penalty = civet_production_penalty(&state);
+        state.processed_beans +=
+            eaten * 0.32 * happiness_bonus * enclosure_bonus * caretaker_bonus * strain_penalty;
         state.civet_happiness += if state.caretaker { 0.55 } else { 0.25 };
     } else {
         state.civet_happiness -= if state.caretaker { 0.6 } else { 1.4 };
@@ -47,6 +49,23 @@ pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut
     state.clamp();
 }
 
+fn civet_production_penalty(state: &GameState) -> f32 {
+    if state.civet_profiles.is_empty() {
+        return 1.0;
+    }
+    let strained = state
+        .civet_profiles
+        .iter()
+        .filter(|profile| {
+            matches!(
+                civet_status_key(profile),
+                "civet_status_hungry" | "civet_status_stressed"
+            )
+        })
+        .count() as f32;
+    (1.0 - strained * 0.08).clamp(0.65, 1.0)
+}
+
 fn update_animal_care(state: &mut GameState, eaten: f32) {
     state.ensure_civet_profiles();
     if state.civet_profiles.is_empty() {
@@ -64,6 +83,8 @@ fn update_animal_care(state: &mut GameState, eaten: f32) {
 
     let mut hunger_total = 0.0;
     let mut mood_total = 0.0;
+    let mut stressed_count = 0;
+    let mut hungry_count = 0;
     for profile in &mut state.civet_profiles {
         profile.hunger += hunger_drift - per_civet_food * 7.5;
         if profile.hunger > 72.0 {
@@ -74,6 +95,11 @@ fn update_animal_care(state: &mut GameState, eaten: f32) {
         profile.mood += mood_support;
         profile.hunger = profile.hunger.clamp(0.0, 100.0);
         profile.mood = profile.mood.clamp(0.0, 100.0);
+        match civet_status_key(profile) {
+            "civet_status_hungry" => hungry_count += 1,
+            "civet_status_stressed" => stressed_count += 1,
+            _ => {}
+        }
         hunger_total += profile.hunger;
         mood_total += profile.mood;
     }
@@ -83,6 +109,13 @@ fn update_animal_care(state: &mut GameState, eaten: f32) {
     let average_mood = mood_total / count;
     let care_score = (average_mood * 0.72 + (100.0 - average_hunger) * 0.28).clamp(0.0, 100.0);
     state.civet_happiness = (state.civet_happiness * 0.84 + care_score * 0.16).clamp(0.0, 100.0);
+    if stressed_count > 0 {
+        state.suspicion += stressed_count as f32 * 0.18;
+        state.reputation -= i32::from(stressed_count >= 2);
+    }
+    if hungry_count > 0 {
+        state.suspicion += hungry_count as f32 * 0.12;
+    }
     if average_hunger > 82.0 {
         state.suspicion += 0.45;
         state.reputation -= 1;
