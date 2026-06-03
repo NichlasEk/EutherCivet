@@ -2,8 +2,9 @@ use bevy::prelude::*;
 
 use crate::localization::{civet_status_key, state_text};
 use crate::model::{
-    DailyModifier, DailyModifierKind, DayReport, DayTick, EventState, EventTick, GameResult,
-    GameScreen, GameState, GameTick, Language, OrderOffer, OrderStyle, OrderTick, RandomEventKind,
+    AudioCue, DailyModifier, DailyModifierKind, DayReport, DayTick, EventState, EventTick,
+    GameResult, GameScreen, GameState, GameTick, Language, OrderOffer, OrderStyle, OrderTick,
+    RandomEventKind,
 };
 
 pub fn tick_game(time: Res<Time>, mut timer: ResMut<GameTick>, mut state: ResMut<GameState>) {
@@ -146,6 +147,7 @@ fn assign_daily_modifier(state: &mut GameState) {
         title: modifier_title(kind, state.language).to_string(),
         body: modifier_body(kind, state.language).to_string(),
     });
+    state.dirty_visuals = true;
     let title = state
         .daily_modifier
         .as_ref()
@@ -222,6 +224,7 @@ pub fn advance_day(time: Res<Time>, mut timer: ResMut<DayTick>, mut state: ResMu
     }
 
     let report = settle_day(&mut state);
+    state.cue_audio(AudioCue::DayReport);
     state.day_report = Some(report);
     state.day_progress = 0.0;
 }
@@ -267,15 +270,15 @@ pub fn generate_order_offers(
 
     match style {
         OrderStyle::Rush => {
-            bags += 1.0;
-            payout_multiplier *= 1.32;
+            bags += 0.5;
+            payout_multiplier *= 1.24;
             reputation_reward += 1;
-            suspicion_risk += 2.2;
-            due_day = (state.day + 1).min(7);
+            suspicion_risk += 1.6;
+            due_day = (state.day + 2).min(7);
         }
         OrderStyle::Discreet => {
-            payout_multiplier *= 1.18;
-            suspicion_risk += 4.6;
+            payout_multiplier *= 1.12;
+            suspicion_risk += 3.6;
         }
         OrderStyle::Reputation => {
             payout_multiplier *= 0.88;
@@ -295,6 +298,7 @@ pub fn generate_order_offers(
         suspicion_risk,
         due_day,
     });
+    state.cue_audio(AudioCue::EventNotice);
     let message = state_text(
         &state,
         "New mailbox letter: a premium buyer sends a contract.",
@@ -634,6 +638,8 @@ pub fn trigger_random_events(
         body: event_body(kind, state.language).to_string(),
         due_day: (state.day + 2).min(7),
     });
+    state.dirty_visuals = true;
+    state.cue_audio(AudioCue::EventNotice);
     let message = state_text(
         &state,
         "New mailbox letter: an incident needs attention in the office.",

@@ -3,10 +3,15 @@ use crate::localization::{
     state_text,
 };
 use crate::model::{
-    Action, DailyModifierKind, GameState, Language, PlantationRoom, RandomEventKind, ToolGroup,
+    Action, AudioCue, DailyModifierKind, GameState, Language, PlantationRoom, RandomEventKind,
+    ToolGroup,
 };
 
 pub fn run_action(state: &mut GameState, action: Action) {
+    if !matches!(action, Action::Load) {
+        state.cue_audio(AudioCue::UiClick);
+    }
+
     match action {
         Action::StartGame => {
             if state.game_result.is_some() {
@@ -168,6 +173,51 @@ pub fn run_action(state: &mut GameState, action: Action) {
             });
             return;
         }
+        Action::ToggleAudioMute => {
+            state.audio_muted = !state.audio_muted;
+            state.log_line(if state.audio_muted {
+                state_text(state, "Audio muted.", "Ljud avstängt.")
+            } else {
+                state_text(state, "Audio enabled.", "Ljud påslaget.")
+            });
+            return;
+        }
+        Action::MusicVolumeDown => {
+            state.music_volume = (state.music_volume - 0.12).clamp(0.0, 1.0);
+            state.log_line(if state.language == Language::Swedish {
+                format!("Musikvolym {:.0}%.", state.music_volume * 100.0)
+            } else {
+                format!("Music volume {:.0}%.", state.music_volume * 100.0)
+            });
+            return;
+        }
+        Action::MusicVolumeUp => {
+            state.music_volume = (state.music_volume + 0.12).clamp(0.0, 1.0);
+            state.log_line(if state.language == Language::Swedish {
+                format!("Musikvolym {:.0}%.", state.music_volume * 100.0)
+            } else {
+                format!("Music volume {:.0}%.", state.music_volume * 100.0)
+            });
+            return;
+        }
+        Action::SfxVolumeDown => {
+            state.sfx_volume = (state.sfx_volume - 0.12).clamp(0.0, 1.0);
+            state.log_line(if state.language == Language::Swedish {
+                format!("Effektvolym {:.0}%.", state.sfx_volume * 100.0)
+            } else {
+                format!("SFX volume {:.0}%.", state.sfx_volume * 100.0)
+            });
+            return;
+        }
+        Action::SfxVolumeUp => {
+            state.sfx_volume = (state.sfx_volume + 0.12).clamp(0.0, 1.0);
+            state.log_line(if state.language == Language::Swedish {
+                format!("Effektvolym {:.0}%.", state.sfx_volume * 100.0)
+            } else {
+                format!("SFX volume {:.0}%.", state.sfx_volume * 100.0)
+            });
+            return;
+        }
         Action::SetLanguageEnglish => {
             state.language = Language::English;
             state.settings_open = false;
@@ -305,6 +355,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.civet_happiness += 8.0 + sorter_bonus + fed * 0.25;
                 state.suspicion -= 1.0;
                 state.dirty_visuals = true;
+                state.cue_audio(AudioCue::CivetPurr);
                 state.log_line(state_text(
                     state,
                     "Civets receive fruit. Morale improves. Optics remain complex.",
@@ -325,6 +376,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
             state.processed_beans += found;
             state.suspicion += 0.7;
             state.dirty_visuals = true;
+            state.cue_audio(AudioCue::CivetChirp);
             state.log_line(if state.language == Language::Swedish {
                 format!("Samlade {found:.1} processade bönor från palmmårdsområdet.")
             } else {
@@ -340,6 +392,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 state.money -= if state.roasting_shed { 1 } else { 2 };
                 state.suspicion += if state.roasting_shed { 0.4 } else { 0.8 };
                 state.dirty_visuals = true;
+                state.cue_audio(AudioCue::CoffeeRoast);
                 state.log_line(state_text(
                     state,
                     "Roasted a premium batch. Smoke plume described as theatrical.",
@@ -359,7 +412,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                 let tasting_bonus = if state.tasting_room { 5.0 } else { 0.0 };
                 let market_bonus = if current_modifier(state) == Some(DailyModifierKind::MarketRush)
                 {
-                    1.24
+                    1.18
                 } else {
                     1.0
                 };
@@ -376,10 +429,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
                     1.2
                 };
                 if current_modifier(state) == Some(DailyModifierKind::MarketRush) {
-                    suspicion_gain *= 1.35;
+                    suspicion_gain *= 1.22;
                 }
                 state.suspicion += suspicion_gain;
                 state.dirty_visuals = true;
+                state.cue_audio(AudioCue::Cash);
                 state.log_line(if state.language == Language::Swedish {
                     format!("Sålde {sold:.1} säckar palmmårdskaffe för ${earned}.")
                 } else {
@@ -454,6 +508,7 @@ pub fn run_action(state: &mut GameState, action: Action) {
                     18.0 + legal_bonus + modifier_bonus + state.paperwork_level as f32;
                 state.reputation += 1;
                 state.dirty_visuals = true;
+                state.cue_audio(AudioCue::PaperworkStamp);
                 state.log_line(state_text(
                     state,
                     "Presented receipts, permits, civet dental charts, and bean custody forms.",
@@ -537,6 +592,11 @@ pub fn run_action(state: &mut GameState, action: Action) {
         Action::ShowSettings
         | Action::CloseSettings
         | Action::ToggleLayoutGuides
+        | Action::ToggleAudioMute
+        | Action::MusicVolumeDown
+        | Action::MusicVolumeUp
+        | Action::SfxVolumeDown
+        | Action::SfxVolumeUp
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish => {}
         Action::StartGame
@@ -608,6 +668,7 @@ pub fn select_civet_by_index(state: &mut GameState, index: usize) {
     }
 
     state.selected_civet = Some(index);
+    state.cue_audio(AudioCue::CivetChirp);
     let profile = &state.civet_profiles[index];
     state.log_line(if state.language == Language::Swedish {
         format!(
@@ -665,6 +726,7 @@ fn feed_selected_civet(state: &mut GameState) {
     state.civet_happiness += 4.0 + hungry_bonus * 0.12;
     state.suspicion -= 0.8 + hungry_bonus * 0.03;
     state.dirty_visuals = true;
+    state.cue_audio(AudioCue::CivetPurr);
     state.log_line(if state.language == Language::Swedish {
         if hungry_bonus > 0.0 {
             format!("{name} får en handplockad fruktbricka precis i tid och slappnar av märkbart.")
@@ -729,6 +791,7 @@ fn give_fruit_from_inventory(state: &mut GameState) {
     state.civet_happiness += 2.0;
     state.suspicion -= 0.3;
     state.dirty_visuals = true;
+    state.cue_audio(AudioCue::CivetChirp);
     state.log_line(if state.language == Language::Swedish {
         format!("{name} tar en kaffefrukt från inventariebrickan.")
     } else {
@@ -759,6 +822,7 @@ fn pick_up_beans_to_inventory(state: &mut GameState) {
     state.processed_beans += found;
     state.suspicion += 0.4;
     state.dirty_visuals = true;
+    state.cue_audio(AudioCue::CivetChirp);
     state.log_line(if state.language == Language::Swedish {
         format!("Plockade upp {found:.1} processade bönor och stoppade dem i inventariesäcken.")
     } else {
@@ -791,6 +855,7 @@ fn pet_selected_civet(state: &mut GameState) {
     state.reputation += 1;
     state.suspicion -= 0.4 + stress_bonus * 0.05;
     state.dirty_visuals = true;
+    state.cue_audio(AudioCue::CivetPurr);
     state.log_line(if state.language == Language::Swedish {
         format!("{name} får omsorg i fristadsklass. Det här är utmärkt PR, om någon frågar.")
     } else {
@@ -922,6 +987,7 @@ fn use_inventory_item(state: &mut GameState, item: crate::model::InventoryItem) 
     }
 
     state.dirty_visuals = true;
+    state.cue_audio(AudioCue::CivetPurr);
     state.clamp();
 }
 
@@ -937,6 +1003,7 @@ fn resolve_pending_order(state: &mut GameState, action: Action) {
 
     match action {
         Action::AcceptOrder => {
+            state.cue_audio(AudioCue::OrderAccept);
             state.log_line(if state.language == Language::Swedish {
                 format!(
                     "Accepterade order från {}: {:.1} säckar till dag {}.",
@@ -952,6 +1019,7 @@ fn resolve_pending_order(state: &mut GameState, action: Action) {
             state.suspicion += 1.5;
         }
         Action::DeclineOrder => {
+            state.cue_audio(AudioCue::OrderDecline);
             state.log_line(if state.language == Language::Swedish {
                 format!(
                     "Avböjde {}. Kontraktet använde för många lågmälda adjektiv.",
@@ -1003,6 +1071,7 @@ fn deliver_order(state: &mut GameState) {
     let legal_reduction = if state.legal_office { 1.5 } else { 0.0 };
     state.suspicion += (order.suspicion_risk - legal_reduction).max(0.5);
     state.active_order = None;
+    state.cue_audio(AudioCue::Cash);
     state.log_line(if state.language == Language::Swedish {
         format!(
             "Levererade premiumorder till {} för ${}.",
@@ -1060,6 +1129,22 @@ fn resolve_event(state: &mut GameState, action: Action) {
         ));
         return;
     };
+
+    state.cue_audio(AudioCue::EventNotice);
+    match event.kind {
+        RandomEventKind::PoliceVisit
+        | RandomEventKind::JournalistQuestions
+        | RandomEventKind::PaperworkAudit => state.cue_audio(AudioCue::PaperworkStamp),
+        RandomEventKind::WelfareInspection
+        | RandomEventKind::VeterinarianOffer
+        | RandomEventKind::PickyCivet => state.cue_audio(AudioCue::CivetChirp),
+        RandomEventKind::HelicopterOverhead => state.cue_audio(AudioCue::Suspicion),
+        RandomEventKind::BinturongEscape => state.cue_audio(AudioCue::CivetPurr),
+        RandomEventKind::GoatAppearance => state.cue_audio(AudioCue::GoatBleat),
+        RandomEventKind::TouristGroup => state.cue_audio(AudioCue::Cash),
+        RandomEventKind::Rainstorm => state.cue_audio(AudioCue::Rain),
+        RandomEventKind::InfluencerVisit => state.cue_audio(AudioCue::Camera),
+    }
 
     match (event.kind, action) {
         (RandomEventKind::PoliceVisit, Action::EventOptionA) => {

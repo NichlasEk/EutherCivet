@@ -453,6 +453,11 @@ fn button_base_color(action: Action) -> Color {
         | Action::ShowSettings
         | Action::CloseSettings
         | Action::ToggleLayoutGuides
+        | Action::ToggleAudioMute
+        | Action::MusicVolumeDown
+        | Action::MusicVolumeUp
+        | Action::SfxVolumeDown
+        | Action::SfxVolumeUp
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish => Color::srgb(0.18, 0.18, 0.18),
         Action::FeedSelectedCivet | Action::PetSelectedCivet | Action::InspectSelectedCivet => {
@@ -515,6 +520,11 @@ fn button_border_color(action: Action) -> Color {
         | Action::ShowSettings
         | Action::CloseSettings
         | Action::ToggleLayoutGuides
+        | Action::ToggleAudioMute
+        | Action::MusicVolumeDown
+        | Action::MusicVolumeUp
+        | Action::SfxVolumeDown
+        | Action::SfxVolumeUp
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish => Color::srgba(0.88, 0.88, 0.78, 0.30),
         _ => Color::srgba(1.0, 0.76, 0.42, 0.50),
@@ -592,7 +602,12 @@ pub fn animate_buttons(
     let t = time.elapsed_secs();
     for (button, interaction, mut image, mut border, mut node) in &mut buttons {
         let available = can_run(button.0, &state);
-        let pulse = 0.5 + 0.5 * (t * 2.8 + button_phase(button.0)).sin();
+        let pulse_strength = if state.screen == GameScreen::Playing {
+            1.0
+        } else {
+            0.0
+        };
+        let pulse = (0.5 + 0.5 * (t * 2.8 + button_phase(button.0)).sin()) * pulse_strength;
 
         if !available {
             image.color = Color::srgba(0.44, 0.40, 0.34, 0.72);
@@ -647,7 +662,8 @@ pub fn handle_buttons(
             Interaction::Pressed => {
                 run_action(&mut state, button.0);
             }
-            Interaction::Hovered | Interaction::None => {}
+            Interaction::Hovered => state.cue_audio(AudioCue::UiHover),
+            Interaction::None => {}
         }
     }
 }
@@ -754,9 +770,18 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "mail" => "Post",
             "order" => "Order",
             "modifier" => "Läge",
+            "missing" => "saknas",
+            "days_left" => "Dagar kvar",
             "offer" => "erbjudande",
             "none" => "ingen",
             "settings_language" => "Språk: Svenska",
+            "audio" => "Ljud",
+            "music" => "Musik",
+            "sfx" => "Effekter",
+            "audio_mute" => "Stäng av ljud",
+            "audio_enable" => "Slå på ljud",
+            "volume_down" => "-",
+            "volume_up" => "+",
             "english" => "Engelska",
             "swedish" => "Svenska",
             "paperwork_inbox" => "Pappersinkorg",
@@ -874,9 +899,18 @@ fn tr(state: &GameState, key: &'static str) -> &'static str {
             "mail" => "Mail",
             "order" => "Order",
             "modifier" => "Modifier",
+            "missing" => "missing",
+            "days_left" => "Days left",
             "offer" => "offer",
             "none" => "none",
             "settings_language" => "Language: English",
+            "audio" => "Audio",
+            "music" => "Music",
+            "sfx" => "SFX",
+            "audio_mute" => "Mute audio",
+            "audio_enable" => "Enable audio",
+            "volume_down" => "-",
+            "volume_up" => "+",
             "english" => "English",
             "swedish" => "Svenska",
             "paperwork_inbox" => "Paperwork Inbox",
@@ -1042,6 +1076,17 @@ fn action_label(action: Action, state: &GameState) -> String {
                 tr(state, "show_layout_guides").to_string()
             }
         }
+        Action::ToggleAudioMute => {
+            if state.audio_muted {
+                tr(state, "audio_enable").to_string()
+            } else {
+                tr(state, "audio_mute").to_string()
+            }
+        }
+        Action::MusicVolumeDown => format!("{} {}", tr(state, "music"), tr(state, "volume_down")),
+        Action::MusicVolumeUp => format!("{} {}", tr(state, "music"), tr(state, "volume_up")),
+        Action::SfxVolumeDown => format!("{} {}", tr(state, "sfx"), tr(state, "volume_down")),
+        Action::SfxVolumeUp => format!("{} {}", tr(state, "sfx"), tr(state, "volume_up")),
         Action::SetLanguageEnglish => tr(state, "english").to_string(),
         Action::SetLanguageSwedish => tr(state, "swedish").to_string(),
         Action::FeedSelectedCivet => tr(state, "feed_tray").to_string(),
@@ -1167,6 +1212,11 @@ pub(crate) fn can_run(action: Action, state: &GameState) -> bool {
         Action::ShowSettings => state.screen == GameScreen::Playing,
         Action::CloseSettings
         | Action::ToggleLayoutGuides
+        | Action::ToggleAudioMute
+        | Action::MusicVolumeDown
+        | Action::MusicVolumeUp
+        | Action::SfxVolumeDown
+        | Action::SfxVolumeUp
         | Action::SetLanguageEnglish
         | Action::SetLanguageSwedish
         | Action::StartNewRun => true,
@@ -1360,14 +1410,28 @@ fn game_clock_label(day_progress: f32) -> String {
 
 pub fn update_stats(
     state: Res<GameState>,
-    mut stats: Query<(&StatText, &mut Text, &mut TextColor)>,
-    mut localized: Query<(&LocalizedText, &mut Text), Without<StatText>>,
+    mut stats: Query<(&StatText, &mut Text, &mut TextColor), Without<AudioSettingsText>>,
+    mut localized: Query<
+        (&LocalizedText, &mut Text),
+        (Without<StatText>, Without<AudioSettingsText>),
+    >,
+    mut audio_settings: Query<
+        &mut Text,
+        (
+            With<AudioSettingsText>,
+            Without<StatText>,
+            Without<LocalizedText>,
+        ),
+    >,
 ) {
     if !state.is_changed() {
         return;
     }
     for (localized, mut text) in &mut localized {
         **text = tr(&state, localized.0).to_string();
+    }
+    for mut text in &mut audio_settings {
+        **text = audio_settings_summary(&state);
     }
     for (stat, mut text, mut color) in &mut stats {
         let value = match stat.0 {
@@ -1418,6 +1482,17 @@ pub fn update_stats(
     }
 }
 
+fn audio_settings_summary(state: &GameState) -> String {
+    format!(
+        "{}: {} {:.0}% / {} {:.0}%",
+        tr(state, "audio"),
+        tr(state, "music"),
+        state.music_volume * 100.0,
+        tr(state, "sfx"),
+        state.sfx_volume * 100.0
+    )
+}
+
 fn current_goal(state: &GameState) -> String {
     let goal = if state.inspection {
         tr(state, "goal_inspection")
@@ -1464,15 +1539,23 @@ fn mailbox_summary(state: &GameState) -> String {
 
 fn order_summary(state: &GameState) -> String {
     if let Some(order) = &state.active_order {
+        let missing = (order.bags - state.roasted_coffee).max(0.0);
         format!(
-            "{} {} {:.1} d{}",
+            "{} {} {:.1} d{} - {} {:.1}",
             tr(state, "order"),
             order_style_short(order.style, state.language),
             order.bags,
-            order.due_day
+            order.due_day,
+            tr(state, "missing"),
+            missing
         )
-    } else if state.pending_order.is_some() {
-        format!("{} {}", tr(state, "order"), tr(state, "offer"))
+    } else if let Some(order) = &state.pending_order {
+        format!(
+            "{} {} {}",
+            tr(state, "order"),
+            tr(state, "offer"),
+            order_style_short(order.style, state.language)
+        )
     } else {
         format!("{} {}", tr(state, "order"), tr(state, "none"))
     }
@@ -1480,7 +1563,12 @@ fn order_summary(state: &GameState) -> String {
 
 fn modifier_summary(state: &GameState) -> String {
     if let Some(modifier) = &state.daily_modifier {
-        format!("{}: {}", tr(state, "modifier"), modifier.title)
+        format!(
+            "{}: {} ({})",
+            tr(state, "modifier"),
+            modifier.title,
+            modifier_effect_short(modifier.kind, state.language)
+        )
     } else {
         format!("{}: {}", tr(state, "modifier"), tr(state, "none"))
     }
@@ -1887,9 +1975,11 @@ pub fn refresh_event_modal(
                 }
 
                 if let Some(order) = state.pending_order.as_ref() {
+                    let days_left = order.due_day.saturating_sub(state.day);
+                    let missing = (order.bags - state.roasted_coffee).max(0.0);
                     let body = if state.language == Language::Swedish {
                         format!(
-                            "{}: {}.\n{} {} {:.1} {} {}. {} ${}, {} +{}, {} +{:.1}%.\n{}",
+                            "{}: {}.\n{} {} {:.1} {} {}. {} ${}, {} +{}, {} +{:.1}%.\n{}: {}. {} {:.1}.\n{}",
                             order_style_label(order.style, state.language),
                             order_style_body(order.style, state.language),
                             order.client,
@@ -1903,11 +1993,15 @@ pub fn refresh_event_modal(
                             order.reputation_reward,
                             tr(&state, "suspicion"),
                             order.suspicion_risk,
+                            tr(&state, "days_left"),
+                            days_left,
+                            tr(&state, "missing"),
+                            missing,
                             tr(&state, "legitimate_contract")
                         )
                     } else {
                         format!(
-                            "{}: {}.\n{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\n{}",
+                            "{}: {}.\n{} wants {:.1} roasted bags by day {}. Payout ${}, reputation +{}, suspicion +{:.1}%.\n{}: {}. {} {:.1}.\n{}",
                             order_style_label(order.style, state.language),
                             order_style_body(order.style, state.language),
                             order.client,
@@ -1916,6 +2010,10 @@ pub fn refresh_event_modal(
                             order.payout,
                             order.reputation_reward,
                             order.suspicion_risk,
+                            tr(&state, "days_left"),
+                            days_left,
+                            tr(&state, "missing"),
+                            missing,
                             tr(&state, "legitimate_contract")
                         )
                     };
@@ -2065,6 +2163,60 @@ pub fn refresh_settings_modal(
                     tr(&state, "show_layout_guides")
                 };
                 spawn_button(modal, &skin, guide_label, Action::ToggleLayoutGuides);
+                modal.spawn((
+                    Text::new(audio_settings_summary(&state)),
+                    TextFont {
+                        font_size: 16.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.94, 0.91, 0.75)),
+                    AudioSettingsText,
+                ));
+                spawn_button(
+                    modal,
+                    &skin,
+                    &action_label(Action::ToggleAudioMute, &state),
+                    Action::ToggleAudioMute,
+                );
+                modal
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(8),
+                            ..default()
+                        },
+                        Pickable::IGNORE,
+                    ))
+                    .with_children(|row| {
+                        spawn_dynamic_button(
+                            row,
+                            &skin,
+                            &action_label(Action::MusicVolumeDown, &state),
+                            Action::MusicVolumeDown,
+                            92.0,
+                        );
+                        spawn_dynamic_button(
+                            row,
+                            &skin,
+                            &action_label(Action::MusicVolumeUp, &state),
+                            Action::MusicVolumeUp,
+                            92.0,
+                        );
+                        spawn_dynamic_button(
+                            row,
+                            &skin,
+                            &action_label(Action::SfxVolumeDown, &state),
+                            Action::SfxVolumeDown,
+                            92.0,
+                        );
+                        spawn_dynamic_button(
+                            row,
+                            &skin,
+                            &action_label(Action::SfxVolumeUp, &state),
+                            Action::SfxVolumeUp,
+                            92.0,
+                        );
+                    });
                 spawn_button(modal, &skin, tr(&state, "close"), Action::CloseSettings);
             });
     } else if !should_show && exists {
@@ -2208,13 +2360,6 @@ pub fn refresh_screen_modal(
 ) {
     let should_show = state.screen != GameScreen::Playing;
     let exists = !modal.is_empty();
-
-    if should_show && exists && state.is_changed() {
-        for entity in &modal {
-            commands.entity(entity).despawn();
-        }
-        return;
-    }
 
     if should_show && !exists {
         commands
@@ -2581,6 +2726,24 @@ fn order_style_body(style: OrderStyle, language: Language) -> &'static str {
             OrderStyle::Rush => "Short deadline, higher pay, and more attention",
             OrderStyle::Discreet => "Better margin, but the contract draws eyes",
             OrderStyle::Reputation => "Lower pay, but much stronger PR",
+        }
+    }
+}
+
+fn modifier_effect_short(kind: DailyModifierKind, language: Language) -> &'static str {
+    if language == Language::Swedish {
+        match kind {
+            DailyModifierKind::RainyHarvest => "+28% frukt",
+            DailyModifierKind::QuietNewsDay => "misstanke svalnar",
+            DailyModifierKind::BureaucracyDay => "billigare papper",
+            DailyModifierKind::MarketRush => "+18% försäljning",
+        }
+    } else {
+        match kind {
+            DailyModifierKind::RainyHarvest => "+28% fruit",
+            DailyModifierKind::QuietNewsDay => "suspicion cools",
+            DailyModifierKind::BureaucracyDay => "cheaper paperwork",
+            DailyModifierKind::MarketRush => "+18% sales",
         }
     }
 }

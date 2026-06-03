@@ -1,12 +1,16 @@
 use bevy::prelude::*;
 
 mod actions;
+mod audio;
 mod localization;
 mod model;
 mod simulation;
 mod ui;
 mod visuals;
 
+use audio::{
+    fade_audio, manage_room_music, play_audio_cues, setup_audio_assets, sync_music_volume,
+};
 use model::*;
 use simulation::{advance_day, generate_order_offers, tick_game, trigger_random_events};
 use ui::{
@@ -34,6 +38,7 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, setup)
+        .add_systems(Startup, setup_audio_assets)
         .add_systems(
             Update,
             (
@@ -49,11 +54,15 @@ fn main() {
                 update_log,
                 update_feedback,
                 apply_text_font,
+                play_audio_cues,
             ),
         )
         .add_systems(
             Update,
             (
+                manage_room_music,
+                sync_music_volume,
+                fade_audio,
                 move_player,
                 animate_world,
                 refresh_world_visuals,

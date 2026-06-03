@@ -4,10 +4,10 @@ use bevy::window::PrimaryWindow;
 use crate::actions::{run_action, select_civet_by_index};
 use crate::localization::{civet_status_label, room_name, state_text, world_label};
 use crate::model::{
-    Action, BackgroundAssets, CharacterAssets, CivetBehavior, CivetClickTarget,
+    Action, BackgroundAssets, CharacterAssets, CivetBehavior, CivetClickTarget, DailyModifierKind,
     EnvironmentBackdrop, GameScreen, GameState, Helicopter, MovingCivet, ParallaxLayer,
-    PlantationRoom, PlayerAvatar, PlayerLabel, PlayerShadow, PropAssets, RetroSkyBand,
-    SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
+    PlantationRoom, PlayerAvatar, PlayerLabel, PlayerShadow, PropAssets, RandomEventKind,
+    RetroSkyBand, SuspicionGlow, UiSkinAssets, WorldActionTarget, WorldVisual,
 };
 use crate::ui::{can_run, unavailable_reason};
 
@@ -185,7 +185,8 @@ pub fn animate_world(
         .unwrap_or(2.38);
     for (backdrop, mut sprite, mut transform) in &mut backdrops {
         let alpha = backdrop_alpha(cycle, backdrop.phase);
-        sprite.color = Color::srgba(1.0, 1.0, 1.0, alpha);
+        let tint = world_modifier_tint(&state);
+        sprite.color = tint.with_alpha(alpha);
         transform.scale = Vec3::splat(backdrop_scale);
     }
     for (layer, mut transform) in &mut parallax {
@@ -247,6 +248,12 @@ pub fn animate_world(
     let pulse = 0.5 + 0.5 * (t * 4.0).sin();
     let alpha = if state.inspection {
         0.30 + pulse * 0.18
+    } else if state
+        .daily_modifier
+        .as_ref()
+        .is_some_and(|modifier| modifier.kind == DailyModifierKind::MarketRush)
+    {
+        (state.suspicion / 100.0) * (0.07 + pulse * 0.13)
     } else {
         (state.suspicion / 100.0) * (0.04 + pulse * 0.10)
     };
@@ -588,6 +595,16 @@ fn backdrop_alpha(cycle: f32, phase: usize) -> f32 {
     }
 }
 
+fn world_modifier_tint(state: &GameState) -> Color {
+    match state.daily_modifier.as_ref().map(|modifier| modifier.kind) {
+        Some(DailyModifierKind::RainyHarvest) => Color::srgb(0.76, 0.88, 1.0),
+        Some(DailyModifierKind::QuietNewsDay) => Color::srgb(0.90, 0.96, 0.92),
+        Some(DailyModifierKind::BureaucracyDay) => Color::srgb(0.92, 0.95, 1.0),
+        Some(DailyModifierKind::MarketRush) => Color::srgb(1.0, 0.90, 0.70),
+        None => Color::WHITE,
+    }
+}
+
 fn circular_distance(a: f32, b: f32) -> f32 {
     let distance = (a - b).abs();
     distance.min(1.0 - distance)
@@ -622,6 +639,7 @@ pub fn refresh_world_visuals(
             spawn_paperwork_office_room(&mut commands, &state, &props, &skin)
         }
     }
+    spawn_world_context(&mut commands, &state);
     if state.show_layout_guides {
         spawn_layout_guides(&mut commands, state.current_room);
     }
@@ -786,6 +804,132 @@ fn spawn_room_title(commands: &mut Commands, state: &GameState) {
         },
         TextColor(Color::srgba(0.94, 0.86, 0.62, 0.86)),
         Transform::from_xyz(10.0, 270.0, 2.0),
+        WorldVisual,
+    ));
+}
+
+fn spawn_world_context(commands: &mut Commands, state: &GameState) {
+    if state.daily_modifier.as_ref().is_some_and(|modifier| {
+        modifier.kind == DailyModifierKind::RainyHarvest
+            && state.current_room == PlantationRoom::CoffeeField
+    }) {
+        for i in 0..18 {
+            let x = -520.0 + i as f32 * 62.0;
+            let y = 255.0 - (i % 5) as f32 * 34.0;
+            commands.spawn((
+                Sprite::from_color(Color::srgba(0.62, 0.78, 1.0, 0.34), Vec2::new(4.0, 54.0)),
+                Transform::from_xyz(x, y, 4.7).with_rotation(Quat::from_rotation_z(-0.28)),
+                WorldVisual,
+            ));
+        }
+    }
+
+    if state.daily_modifier.as_ref().is_some_and(|modifier| {
+        modifier.kind == DailyModifierKind::BureaucracyDay
+            && state.current_room == PlantationRoom::PaperworkOffice
+    }) {
+        spawn_context_badge(
+            commands,
+            if state.language == crate::model::Language::Swedish {
+                "Medvind i pappren"
+            } else {
+                "Paperwork tailwind"
+            },
+            -318.0,
+            -104.0,
+            Color::srgba(0.66, 0.84, 1.0, 0.28),
+        );
+    }
+
+    if state.daily_modifier.as_ref().is_some_and(|modifier| {
+        modifier.kind == DailyModifierKind::MarketRush
+            && state.current_room == PlantationRoom::Roastery
+    }) {
+        spawn_context_badge(
+            commands,
+            if state.language == crate::model::Language::Swedish {
+                "Köpare väntar"
+            } else {
+                "Buyers waiting"
+            },
+            332.0,
+            -96.0,
+            Color::srgba(1.0, 0.74, 0.26, 0.30),
+        );
+    }
+
+    let event_kind = state.event.as_ref().map(|event| event.kind);
+    match (state.current_room, event_kind) {
+        (PlantationRoom::Sanctuary, Some(RandomEventKind::TouristGroup)) => {
+            spawn_context_badge(
+                commands,
+                if state.language == crate::model::Language::Swedish {
+                    "Turister vid grindarna"
+                } else {
+                    "Tourists at gate"
+                },
+                -308.0,
+                -92.0,
+                Color::srgba(0.95, 0.86, 0.48, 0.30),
+            );
+        }
+        (PlantationRoom::Roastery, Some(RandomEventKind::InfluencerVisit)) => {
+            spawn_context_badge(
+                commands,
+                if state.language == crate::model::Language::Swedish {
+                    "Kamera på"
+                } else {
+                    "Camera rolling"
+                },
+                0.0,
+                -88.0,
+                Color::srgba(0.92, 0.54, 1.0, 0.28),
+            );
+        }
+        (PlantationRoom::PaperworkOffice, Some(RandomEventKind::PaperworkAudit)) => {
+            spawn_context_badge(
+                commands,
+                if state.language == crate::model::Language::Swedish {
+                    "Revision pågår"
+                } else {
+                    "Audit pending"
+                },
+                -54.0,
+                -88.0,
+                Color::srgba(0.72, 0.90, 1.0, 0.32),
+            );
+        }
+        (PlantationRoom::CoffeeField, Some(RandomEventKind::Rainstorm)) => {
+            spawn_context_badge(
+                commands,
+                if state.language == crate::model::Language::Swedish {
+                    "Skyfall"
+                } else {
+                    "Rainstorm"
+                },
+                210.0,
+                -96.0,
+                Color::srgba(0.56, 0.72, 1.0, 0.30),
+            );
+        }
+        _ => {}
+    }
+}
+
+fn spawn_context_badge(commands: &mut Commands, label: &str, x: f32, y: f32, color: Color) {
+    commands.spawn((
+        Sprite::from_color(color, Vec2::new(190.0, 34.0)),
+        Transform::from_xyz(x, y, 6.2),
+        WorldVisual,
+    ));
+    commands.spawn((
+        Text2d::new(label),
+        TextFont {
+            font_size: 14.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.94, 0.74)),
+        Transform::from_xyz(x, y, 6.6),
         WorldVisual,
     ));
 }

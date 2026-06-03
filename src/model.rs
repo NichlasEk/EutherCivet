@@ -38,6 +38,12 @@ pub struct GameState {
     #[serde(default)]
     pub show_layout_guides: bool,
     #[serde(default)]
+    pub audio_muted: bool,
+    #[serde(default = "default_music_volume")]
+    pub music_volume: f32,
+    #[serde(default = "default_sfx_volume")]
+    pub sfx_volume: f32,
+    #[serde(default)]
     pub language: Language,
     pub coffee_fruit: f32,
     pub civet_feed: f32,
@@ -78,6 +84,8 @@ pub struct GameState {
     pub log: Vec<String>,
     #[serde(skip)]
     pub feedback: Vec<FeedbackToast>,
+    #[serde(skip)]
+    pub audio_cues: Vec<AudioCue>,
     pub dirty_visuals: bool,
 }
 
@@ -177,6 +185,25 @@ pub struct CivetProfile {
 pub struct FeedbackToast {
     pub text: String,
     pub age: f32,
+}
+
+#[derive(Clone, Copy)]
+pub enum AudioCue {
+    UiClick,
+    UiHover,
+    OrderAccept,
+    OrderDecline,
+    EventNotice,
+    DayReport,
+    Suspicion,
+    CivetChirp,
+    CivetPurr,
+    GoatBleat,
+    PaperworkStamp,
+    CoffeeRoast,
+    Cash,
+    Rain,
+    Camera,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -299,6 +326,9 @@ impl Default for GameState {
             inventory_open: false,
             settings_open: false,
             show_layout_guides: false,
+            audio_muted: false,
+            music_volume: default_music_volume(),
+            sfx_volume: default_sfx_volume(),
             language,
             coffee_fruit: 8.0,
             civet_feed: 0.0,
@@ -329,6 +359,7 @@ impl Default for GameState {
             rng_seed: 0xC1FE_CAFE_BA5E_BA11,
             log: initial_log(language),
             feedback: Vec::new(),
+            audio_cues: Vec::new(),
             dirty_visuals: true,
         }
     }
@@ -416,6 +447,14 @@ pub fn default_player_y() -> f32 {
     -244.0
 }
 
+pub fn default_music_volume() -> f32 {
+    0.42
+}
+
+pub fn default_sfx_volume() -> f32 {
+    0.70
+}
+
 fn short_feedback(line: &str) -> String {
     let first_sentence = line.split('.').next().unwrap_or(line).trim();
     let mut text = first_sentence.to_string();
@@ -481,6 +520,13 @@ impl GameState {
         self.log.push(line);
         while self.log.len() > 8 {
             self.log.remove(0);
+        }
+    }
+
+    pub fn cue_audio(&mut self, cue: AudioCue) {
+        self.audio_cues.push(cue);
+        while self.audio_cues.len() > 12 {
+            self.audio_cues.remove(0);
         }
     }
 
@@ -550,6 +596,8 @@ impl GameState {
         }
         self.suspicion = self.suspicion.clamp(0.0, 100.0);
         self.civet_happiness = self.civet_happiness.clamp(0.0, 100.0);
+        self.music_volume = self.music_volume.clamp(0.0, 1.0);
+        self.sfx_volume = self.sfx_volume.clamp(0.0, 1.0);
         if self.suspicion >= 100.0 {
             self.inspection = true;
             self.suspicion = 100.0;
@@ -623,6 +671,9 @@ pub struct LogText;
 
 #[derive(Component)]
 pub struct LocalizedText(pub &'static str);
+
+#[derive(Component)]
+pub struct AudioSettingsText;
 
 #[derive(Component)]
 pub struct WorldVisual;
@@ -786,6 +837,11 @@ pub enum Action {
     ShowSettings,
     CloseSettings,
     ToggleLayoutGuides,
+    ToggleAudioMute,
+    MusicVolumeDown,
+    MusicVolumeUp,
+    SfxVolumeDown,
+    SfxVolumeUp,
     SetLanguageEnglish,
     SetLanguageSwedish,
     Save,
