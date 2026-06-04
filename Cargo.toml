@@ -4,7 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.18.1", features = ["wav"] }
+bevy = { version = "0.18.1", features = ["wav"], optional = true }
+euther_civet_core = { path = "crates/euther-civet-core" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sys-locale = "0.3.2"
+
+[features]
+default = ["bevy-app"]
+bevy-app = ["dep:bevy"]
+
+[[bin]]
+name = "euther_civet"
+path = "src/main.rs"
+required-features = ["bevy-app"]

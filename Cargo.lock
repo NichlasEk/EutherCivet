@@ -2327,9 +2327,17 @@ name = "euther_civet"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "euther_civet_core",
  "serde",
  "serde_json",
  "sys-locale",
+]
+
+[[package]]
+name = "euther_civet_core"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
