@@ -114,6 +114,13 @@ pub struct EutherCivetFrame {
     pub available_actions: Vec<EutherCivetAction>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EutherCivetSave {
+    pub frame: u64,
+    pub state: GameState,
+}
+
 #[derive(Debug, Clone)]
 pub struct EutherCivetRuntime {
     state: GameState,
@@ -136,6 +143,20 @@ impl EutherCivetRuntime {
 
     pub fn from_state(state: GameState) -> Self {
         Self { state, frame: 0 }
+    }
+
+    pub fn from_save(save: EutherCivetSave) -> Self {
+        Self {
+            state: save.state,
+            frame: save.frame,
+        }
+    }
+
+    pub fn save(&self) -> EutherCivetSave {
+        EutherCivetSave {
+            frame: self.frame,
+            state: self.state.clone(),
+        }
     }
 
     pub fn reset(&mut self) -> EutherCivetFrame {
